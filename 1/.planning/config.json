@@ -1,0 +1,17 @@
+{
+  "project_name": "基于 LLaMA-Factory 的轻量级本地化大模型微调工作站",
+  "version": "1.0",
+  "workflow_preferences": {
+    "model_profile": "quality",
+    "enable_advanced_features": true,
+    "logging_level": "info",
+    "gpu_monitoring": true,
+    "task_queue": "celery",
+    "database": "mysql"
+  },
+  "llm_settings": {
+    "core_framework": "LLaMA-Factory",
+    "default_model": "llama-3-8b",
+    "quantization": "4bit"
+  }
+}
