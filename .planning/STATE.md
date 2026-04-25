@@ -31,6 +31,9 @@
 - MySQL 服务需要启动才能验证数据库表创建
 - Redis 服务需要启动才能验证 Celery worker
 
+## Project Rules
+- **权限暂停规则**: 遇到文件/目录权限问题（EPERM、EACCES 等）时，必须暂停执行并通知用户，待用户确认解决后再继续
+
 ## Infrastructure Notes
 - 后端启动: `cd 1/backend && python -m uvicorn app.main:app --reload --port 8000`
 - 前端启动: `cd 1/frontend && npm run dev` (端口 3000)

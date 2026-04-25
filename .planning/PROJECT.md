@@ -66,6 +66,7 @@
 - **LLaMA-Factory**: 必须以库方式导入调用，不能 subprocess — 影响训练服务设计
 - **Windows 兼容**: 使用 pymysql 替代 mysqlclient — 构建兼容性约束
 - **File Size**: 数据集上传最大 100MB — 影响上传机制设计
+- **Permission**: 遇到文件/目录权限问题（EPERM、EACCES 等）时必须暂停执行，通知用户手动解决，待用户确认后再继续
 
 ## Key Decisions
 

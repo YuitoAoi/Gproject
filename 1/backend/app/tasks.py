@@ -1,12 +1,12 @@
-from celery import shared_task
 from app.core.celery_app import celery_app
 
-@shared_task
+@celery_app.task(name='app.tasks.add')
 def add(x: int, y: int) -> int:
     """示例任务：加法运算"""
     return x + y
 
-@shared_task
+
+@celery_app.task(name='app.tasks.multiply')
 def multiply(x: int, y: int) -> int:
     """示例任务：乘法运算"""
     return x * y
