@@ -312,21 +312,30 @@
     },
     "workbench": {
       "title": "工作台",
-      "overview": "概览",
+      "dashboard": "仪表盘",
       "computeStorage": "算力与存储",
       "taskDispatch": "任务调度中心"
     },
     "dataManagement": {
-      "title": "数据管理"
+      "title": "数据管理",
+      "datasetHub": "数据集管理",
+      "dataProcessing": "数据预处理"
     },
-    "modelTraining": {
-      "title": "模型训练"
+    "modelFactory": {
+      "title": "模型工厂",
+      "newTraining": "新建训练任务",
+      "modelRegistry": "模型管理"
     },
     "taskMonitoring": {
       "title": "任务监控"
     },
     "modelInference": {
       "title": "模型推理"
+    },
+    "systemManagement": {
+      "title": "系统管理",
+      "usersRoles": "用户与角色",
+      "advancedSettings": "高级配置"
     },
     "help": {
       "title": "帮助中心",

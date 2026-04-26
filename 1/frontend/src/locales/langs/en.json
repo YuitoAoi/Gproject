@@ -315,6 +315,33 @@
       "document": "Document",
       "liteVersion": "Lite Version",
       "oldVersion": "v2.6.1 Version"
+    },
+    "workbench": {
+      "title": "Workbench",
+      "dashboard": "Dashboard",
+      "computeStorage": "Compute & Storage",
+      "taskDispatch": "Task Dispatch"
+    },
+    "dataManagement": {
+      "title": "Data Management",
+      "datasetHub": "Dataset Hub",
+      "dataProcessing": "Data Processing"
+    },
+    "modelFactory": {
+      "title": "Model Factory",
+      "newTraining": "New Training Job",
+      "modelRegistry": "Model Registry"
+    },
+    "taskMonitoring": {
+      "title": "Task Monitoring"
+    },
+    "modelInference": {
+      "title": "Model Inference"
+    },
+    "systemManagement": {
+      "title": "System Management",
+      "usersRoles": "Users & Roles",
+      "advancedSettings": "Advanced Settings"
     }
   },
   "table": {

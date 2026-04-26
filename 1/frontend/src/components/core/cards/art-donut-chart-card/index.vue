@@ -1,7 +1,7 @@
 <!-- 环型图卡片 -->
 <template>
-  <div class="art-card overflow-hidden" :style="{ height: `${height}rem` }">
-    <div class="flex box-border h-full p-5 pr-2">
+  <div class="art-card overflow-hidden" :class="flex ? 'flex flex-col' : ''" :style="flex ? {} : { height: `${height}rem` }">
+    <div class="flex box-border h-full p-5 pr-2" :class="flex ? 'flex-1 min-h-0' : ''">
       <div class="flex w-full items-start gap-5">
         <div class="flex-b h-full flex-1 flex-col">
           <p class="m-0 text-xl font-medium leading-tight text-g-900">
@@ -59,6 +59,8 @@
     previousValue?: string
     /** 高度 */
     height?: number
+    /** 是否使用自适应高度（配合 flex 使用） */
+    flex?: boolean
     /** 颜色 */
     color?: string
     /** 半径 */
@@ -69,6 +71,7 @@
 
   const props = withDefaults(defineProps<Props>(), {
     height: 9,
+    flex: false,
     radius: () => ['70%', '90%'],
     data: () => [0, 0]
   })
@@ -78,9 +81,10 @@
   }
 
   // 使用新的图表组件抽象
+  const chartHeight = computed(() => (props.flex ? '100%' : `${props.height}rem`))
   const { chartRef } = useChartComponent({
     props: {
-      height: `${props.height}rem`,
+      height: chartHeight.value,
       loading: false,
       isEmpty: props.data.every((val) => val === 0)
     },

@@ -1,11 +1,11 @@
 <!-- 数据列表卡片 -->
 <template>
-  <div class="art-card p-5">
-    <div class="pb-3.5">
+  <div class="art-card p-5 flex flex-col overflow-hidden">
+    <div class="pb-3.5 flex-shrink-0">
       <p class="text-lg font-medium">{{ title }}</p>
       <p class="text-sm text-g-600">{{ subtitle }}</p>
     </div>
-    <ElScrollbar :style="{ height: maxHeight }">
+    <ElScrollbar class="flex-1 min-h-0">
       <div v-for="(item, index) in list" :key="index" class="flex-c py-3">
         <div v-if="item.icon" class="flex-cc mr-3 size-10 rounded-lg" :class="item.class">
           <ArtSvgIcon :icon="item.icon" class="text-xl" />
@@ -18,7 +18,7 @@
       </div>
     </ElScrollbar>
     <ElButton
-      class="mt-[25px] w-full text-center"
+      :class="['w-full text-center', { 'mt-[25px]': showMoreButton }]"
       v-if="showMoreButton"
       v-ripple
       @click="handleMore"

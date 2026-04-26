@@ -1,11 +1,11 @@
 <!-- 时间轴列表卡片 -->
 <template>
-  <div class="art-card p-5">
-    <div class="pb-3.5">
+  <div class="art-card p-5 flex flex-col overflow-hidden">
+    <div class="pb-3.5 flex-shrink-0">
       <p class="text-lg font-medium">{{ title }}</p>
       <p class="text-sm text-g-600">{{ subtitle }}</p>
     </div>
-    <ElScrollbar :style="{ height: maxHeight }">
+    <ElScrollbar class="flex-1 min-h-0">
       <ElTimeline class="!pl-0.5">
         <ElTimelineItem
           v-for="item in list"
@@ -24,6 +24,13 @@
         </ElTimelineItem>
       </ElTimeline>
     </ElScrollbar>
+    <ElButton
+      :class="['w-full text-center', { 'mt-[25px]': showMoreButton }]"
+      v-if="showMoreButton"
+      v-ripple
+      @click="handleMore"
+      >查看更多</ElButton
+    >
   </div>
 </template>
 
@@ -55,15 +62,24 @@
     subtitle?: string
     /** 最大显示数量 */
     maxCount?: number
+    /** 是否显示更多按钮 */
+    showMoreButton?: boolean
   }
 
   // Props 定义和验证
   const props = withDefaults(defineProps<Props>(), {
     title: '',
     subtitle: '',
-    maxCount: DEFAULT_MAX_COUNT
+    maxCount: DEFAULT_MAX_COUNT,
+    showMoreButton: false
   })
 
-  // 计算最大高度
   const maxHeight = computed(() => `${ITEM_HEIGHT * props.maxCount}px`)
+
+  const emit = defineEmits<{
+    /** 点击更多按钮事件 */
+    (e: 'more'): void
+  }>()
+
+  const handleMore = () => emit('more')
 </script>
