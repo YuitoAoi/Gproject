@@ -1,51 +1,53 @@
 ---
-status: testing
+status: complete
 phase: 01-frontend-backend-infrastructure
 source: []
-started: 2026-04-23T05:00:00Z
-updated: 2026-04-23T05:00:00Z
+started: 2026-04-28T00:00:00Z
+updated: 2026-04-28T00:00:00Z
 ---
 
 ## Current Test
 
-number: 2
-name: 前端页面布局
-expected: |
-  页面占满整个浏览器窗口，头部、侧边栏、内容区正确显示
-awaiting: user response
+[testing complete]
 
 ## Tests
 
-### 1. 后端健康检查端点
-expected: 访问 http://localhost:8000/api/v1/health 返回 {"status": "ok"}，前端右上角显示 "Connected"
+### 1. 后端健康检查
+expected: |
+  访问 http://localhost:8000/api/v1/health 返回 {"status": "ok"}
 result: pass
 
-### 2. 前端页面布局
-expected: 页面占满整个浏览器窗口，头部、侧边栏、内容区正确显示
-result: pending
+### 2. 侧边栏和头部布局
+expected: |
+  左侧边栏显示导航菜单（工作台、数据管理、模型工厂等），头部显示工作台标题和折叠按钮
+result: pass
 
-### 3. 侧边栏折叠功能
-expected: 点击头部按钮可以展开/收起侧边栏
-result: pending
+### 3. 仪表盘页面
+expected: |
+  访问 /workbench/dashboard，显示仪表盘内容，包含统计卡片或图表区域（使用mock数据）
+result: pass
 
-### 4. 路由导航
-expected: 点击导航链接（首页、仪表盘、数据管理、训练任务、模型管理）正确跳转到对应页面
-result: pending
+### 4. 数据集管理页面
+expected: |
+  访问 /data-management/dataset-hub，显示数据集列表或上传界面（使用mock数据）
+result: pass
 
-### 5. 页面内容正确性
-expected: 每个导航页面显示对应的标题（如"数据管理"页面显示"数据管理"标题）
-result: pending
+### 5. 数据预处理页面
+expected: |
+  访问 /data-management/data-processing，显示数据预处理步骤界面（使用mock数据）
+result: pass
 
-### 6. Celery 任务执行
-expected: 调用 POST /api/v1/tasks/add 返回任务ID，GET /api/v1/tasks/{id} 可获取计算结果
-result: pending
+### 6. 侧边栏折叠功能
+expected: |
+  点击头部折叠按钮，侧边栏可以展开/收起
+result: pass
 
 ## Summary
 
 total: 6
-passed: 1
+passed: 6
 issues: 0
-pending: 5
+pending: 0
 skipped: 0
 blocked: 0
 

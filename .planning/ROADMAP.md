@@ -8,7 +8,7 @@
 | Phase | Name | Status | Plans | Progress |
 |-------|------|--------|-------|----------|
 | 1 | Frontend & Backend Infrastructure | ✓ Complete | 1/1 | 100% |
-| 2 | Data Management Module | ○ Pending | 0/1 | 0% |
+| 2 | Data Management Module | ○ Pending | 3/3 | 0% |
 | 3 | Training Task Orchestration | ○ Pending | 0/1 | 0% |
 | 4 | Real-time Monitoring | ○ Pending | 0/1 | 0% |
 | 5 | Inference Service & Observability | ○ Pending | 0/1 | 0% |
@@ -49,6 +49,11 @@
 4. dataset_info.json is auto-generated after conversion
 5. Dataset list displays all datasets with correct status
 6. Delete operation removes both database record and files
+
+**Plans:**
+- [ ] 02-01-PLAN.md — Backend: Dataset API + Celery Tasks
+- [ ] 02-02-PLAN.md — Frontend: Data Management UI
+- [ ] 02-03-PLAN.md — Integration: End-to-end verification
 
 ---
 

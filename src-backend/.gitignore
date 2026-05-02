@@ -1,0 +1,9 @@
+
+# python caches
+
+poetry.lock
+__pycache__/
+
+.pytest_cache/
+
+datasets/chunks/

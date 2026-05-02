@@ -1,0 +1,27 @@
+[
+    {
+        "instruction": "将以下中文翻译成英文",
+        "input": "大语言模型正在深刻改变人工智能领域的应用与研究方向。",
+        "output": "Large language models are profoundly changing the application and research directions of the artificial intelligence field."
+    },
+    {
+        "instruction": "生成一段关于春天的写景散文，100字左右",
+        "input": "",
+        "output": "春风拂过，冰雪消融，万物苏醒。柳枝抽出嫩绿的新芽，桃花绽放出粉嫩的笑颜。小溪叮咚流淌，鸟儿枝头欢唱，阳光温柔洒落，大地一片生机勃勃，处处洋溢着春天的美好与希望。"
+    },
+    {
+        "instruction": "编写Python函数，实现斐波那契数列前n项",
+        "input": "要求：包含注释，处理n<=0的异常",
+        "output": "def fibonacci(n):\n    \"\"\"生成斐波那契数列前n项\"\"\"\n    if n <= 0:\n        return []\n    res = [0, 1]\n    if n == 1:\n        return [0]\n    for i in range(2, n):\n        res.append(res[i-1] + res[i-2])\n    return res[:n]"
+    },
+    {
+        "instruction": "解释什么是区块链",
+        "input": "",
+        "output": "区块链是一种去中心化的分布式账本技术，数据以区块形式链式存储，通过密码学保证不可篡改、可追溯，无需中心机构即可实现点对点可信交易与数据共享，广泛应用于加密货币、供应链、金融等领域。"
+    },
+    {
+        "instruction": "总结以下文本核心观点",
+        "input": "随着AI技术快速发展，大模型在内容创作、客服、研发等领域广泛落地，但也面临数据安全、伦理合规、算力成本、 hallucination（幻觉）等挑战，未来需在技术优化与治理规范间平衡发展。",
+        "output": "AI大模型应用广泛，但存在数据安全、伦理、成本、幻觉等问题，未来需平衡技术与治理。"
+    }
+]
