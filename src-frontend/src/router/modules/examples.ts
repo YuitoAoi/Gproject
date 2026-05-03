@@ -19,16 +19,6 @@ export const examplesRoutes: AppRouteRecord = {
       },
       children: [
         {
-          path: 'switch-role',
-          name: 'PermissionSwitchRole',
-          component: '/examples/permission/switch-role',
-          meta: {
-            title: 'menus.examples.permission.switchRole',
-            icon: 'ri:contacts-line',
-            keepAlive: true
-          }
-        },
-        {
           path: 'button-auth',
           name: 'PermissionButtonAuth',
           component: '/examples/permission/button-auth',

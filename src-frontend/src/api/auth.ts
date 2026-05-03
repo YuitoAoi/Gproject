@@ -7,17 +7,25 @@ export function fetchLogin(params: Api.Auth.LoginParams) {
   })
 }
 
+export function fetchRegister(params: Api.Auth.RegisterParams) {
+  return request.post<Api.Auth.RegisterResponse>({
+    url: '/user',
+    params
+  })
+}
+
 export function fetchGetUserInfo() {
   return request.get<Api.Auth.UserInfo>({
-    url: '/user/info'
+    url: '/user'
   }).then((res) => res).catch(() => {
     return {
-      userId: 1,
-      userName: 'admin',
+      id: 1,
+      name: 'admin',
       email: 'admin@local.dev',
-      roles: ['R_SUPER'],
-      buttons: ['*'],
-      avatar: ''
+      is_admin: true,
+      is_active: true,
+      created_at: '',
+      last_login: ''
     }
   })
 }

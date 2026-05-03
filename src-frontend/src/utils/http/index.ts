@@ -65,7 +65,7 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
   (request: InternalAxiosRequestConfig) => {
     const { accessToken } = useUserStore()
-    if (accessToken) request.headers.set('Authorization', accessToken)
+    if (accessToken) request.headers.set('Authorization', `Bearer ${accessToken}`)
 
     if (request.data && !(request.data instanceof FormData) && !request.headers['Content-Type']) {
       request.headers.set('Content-Type', 'application/json')
@@ -82,9 +82,11 @@ axiosInstance.interceptors.request.use(
 
 /** 响应拦截器 */
 axiosInstance.interceptors.response.use(
-  (response: AxiosResponse<BaseResponse>) => {
-    const { code, msg } = response.data
-    if (code === ApiStatus.success) return response
+  (response: AxiosResponse<any>) => {
+    if (response.status === ApiStatus.success || response.status === ApiStatus.created) {
+      return response.data
+    }
+    const { code, msg } = response.data || {}
     if (code === ApiStatus.unauthorized) handleUnauthorizedError(msg)
     throw createHttpError(msg || $t('httpMsg.requestFailed'), code)
   },
@@ -175,14 +177,13 @@ async function request<T = any>(config: ExtendedAxiosRequestConfig): Promise<T> 
   }
 
   try {
-    const res = await axiosInstance.request<BaseResponse<T>>(config)
+    const res = await axiosInstance.request<T>(config)
 
-    // 显示成功消息
-    if (config.showSuccessMessage && res.data.msg) {
-      showSuccess(res.data.msg)
+    if (config.showSuccessMessage && (res as any).msg) {
+      showSuccess((res as any).msg)
     }
 
-    return res.data.data as T
+    return res as T
   } catch (error) {
     if (error instanceof HttpError && error.code !== ApiStatus.unauthorized) {
       const showMsg = config.showErrorMessage !== false

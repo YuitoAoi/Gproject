@@ -133,19 +133,11 @@
       "subTitle": "A sleek and practical interface for a great user experience"
     },
     "title": "Welcome back",
-    "subTitle": "Please enter your account and password to login",
-    "roles": {
-      "super": "Super Admin",
-      "admin": "Admin",
-      "user": "User"
-    },
+    "subTitle": "Please enter your email and password to login",
     "placeholder": {
-      "username": "Please enter your account",
-      "password": "Please enter your password",
-      "slider": "Please slide to verify"
+      "email": "Please enter your email",
+      "password": "Please enter your password"
     },
-    "sliderText": "Please slide to verify",
-    "sliderSuccessText": "Verification successful",
     "rememberPwd": "Remember password",
     "forgetPwd": "Forgot password",
     "btnText": "Login",
@@ -167,19 +159,21 @@
     "title": "Create account",
     "subTitle": "Welcome to join us, please fill in the following information to complete the registration",
     "placeholder": {
-      "username": "Please enter your account",
+      "name": "Please enter your username",
+      "email": "Please enter your email",
       "password": "Please enter your password",
       "confirmPassword": "Please enter your password again"
     },
     "rule": {
+      "nameLength": "The length is 3 to 50 characters",
+      "emailFormat": "Please enter a valid email address",
+      "passwordLength": "The password length cannot be less than 8 digits",
+      "passwordWeak": "Password must be at least 8 characters with 2 of: uppercase, lowercase, digit, special char",
       "confirmPasswordRequired": "Please enter your password again",
-      "passwordMismatch": "The two passwords are inconsistent!",
-      "usernameLength": "The length is 3 to 20 characters",
-      "passwordLength": "The password length cannot be less than 6 digits",
-      "agreementRequired": "Please agree to the privacy policy"
+      "passwordMismatch": "The two passwords are inconsistent!"
     },
-    "agreeText": "I agree",
-    "privacyPolicy": "Privacy policy",
+    "success": "Registered successfully",
+    "fail": "Registration failed",
     "submitBtnText": "Register",
     "hasAccount": "Already have an account?",
     "toLogin": "To login"
@@ -282,25 +276,24 @@
       "socketChat": "Socket Connection",
       "permission": {
         "title": "Frontend Permission",
-        "switchRole": "Toggle Auth",
         "buttonAuth": "Button Authority",
         "pageVisibility": "Super Admin Visibility"
+      },
+      "system": {
+        "title": "System Settings",
+        "user": "User Manage",
+        "role": "Role Manage",
+        "userCenter": "User Center",
+        "menu": "Menu Manage",
+        "nested": "Nested Menu",
+        "menu1": "Menu 1",
+        "menu2": "Menu 2",
+        "menu21": "Menu 2-1",
+        "menu3": "Menu 3",
+        "menu31": "Menu 3-1",
+        "menu32": "Menu 3-2",
+        "menu321": "Menu 3-2-1"
       }
-    },
-    "system": {
-      "title": "System Settings",
-      "user": "User Manage",
-      "role": "Role Manage",
-      "userCenter": "User Center",
-      "menu": "Menu Manage",
-      "nested": "Nested Menu",
-      "menu1": "Menu 1",
-      "menu2": "Menu 2",
-      "menu21": "Menu 2-1",
-      "menu3": "Menu 3",
-      "menu31": "Menu 3-1",
-      "menu32": "Menu 3-2",
-      "menu321": "Menu 3-2-1"
     },
     "safeguard": {
       "title": "Safeguard",

@@ -10,7 +10,6 @@
 import type { AppRouteRecord } from '@/types/router'
 import { useUserStore } from '@/store/modules/user'
 import { useAppMode } from '@/hooks/core/useAppMode'
-import { fetchGetMenuList } from '@/api/system-manage'
 import { asyncRoutes } from '../routes/asyncRoutes'
 import { RoutesAlias } from '../routesAlias'
 import { formatMenuTitle } from '@/utils'
@@ -55,10 +54,11 @@ export class MenuProcessor {
 
   /**
    * 处理后端控制模式的菜单
+   * 注：当前使用前端硬编码路由，后端菜单接口已废弃
    */
   private async processBackendMenu(): Promise<AppRouteRecord[]> {
-    const list = await fetchGetMenuList()
-    return this.filterEmptyMenus(list)
+    // 后端菜单接口已废弃，抛出错误引导使用前端模式
+    throw new Error('Backend menu API is deprecated. Use frontend mode instead.')
   }
 
   /**

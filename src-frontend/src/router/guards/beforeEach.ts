@@ -51,6 +51,7 @@ import { useWorktabStore } from '@/store/modules/worktab'
 import { ApiStatus } from '@/utils/http/status'
 import { isHttpError } from '@/utils/http/error'
 import { RouteRegistry, MenuProcessor, IframeRouteManager, RoutePermissionValidator } from '../core'
+import { fetchGetUserInfo } from '@/api/auth'
 
 // 路由注册器实例
 let routeRegistry: RouteRegistry | null = null
@@ -381,13 +382,14 @@ async function handleDynamicRoutes(
  * 获取用户信息
  */
 async function fetchUserInfo(): Promise<void> {
+  const userInfo = await fetchGetUserInfo()
   const userStore = useUserStore()
   userStore.setUserInfo({
-    userId: 1,
-    userName: 'admin',
-    email: 'admin@local.dev',
-    roles: ['R_SUPER'],
-    buttons: ['*'],
+    userId: userInfo.id,
+    userName: userInfo.name,
+    email: userInfo.email,
+    roles: userInfo.is_admin ? ['R_SUPER'] : ['R_USER'],
+    buttons: [],
     avatar: ''
   })
   userStore.checkAndClearWorktabs()

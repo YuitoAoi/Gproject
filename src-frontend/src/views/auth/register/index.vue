@@ -18,11 +18,19 @@
             label-position="top"
             :key="formKey"
           >
-            <ElFormItem prop="username">
+            <ElFormItem prop="name">
               <ElInput
                 class="custom-height"
-                v-model.trim="formData.username"
-                :placeholder="$t('register.placeholder.username')"
+                v-model.trim="formData.name"
+                :placeholder="$t('register.placeholder.name')"
+              />
+            </ElFormItem>
+
+            <ElFormItem prop="email">
+              <ElInput
+                class="custom-height"
+                v-model.trim="formData.email"
+                :placeholder="$t('register.placeholder.email')"
               />
             </ElFormItem>
 
@@ -47,17 +55,6 @@
                 @keyup.enter="register"
                 show-password
               />
-            </ElFormItem>
-
-            <ElFormItem prop="agreement">
-              <ElCheckbox v-model="formData.agreement">
-                {{ $t('register.agreeText') }}
-                <RouterLink
-                  style="color: var(--theme-color); text-decoration: none"
-                  to="/privacy-policy"
-                  >{{ $t('register.privacyPolicy') }}</RouterLink
-                >
-              </ElCheckbox>
             </ElFormItem>
 
             <div style="margin-top: 15px">
@@ -87,20 +84,23 @@
 
 <script setup lang="ts">
   import { useI18n } from 'vue-i18n'
+  import { ElMessage } from 'element-plus'
   import type { FormInstance, FormRules } from 'element-plus'
+  import { fetchRegister } from '@/api/auth'
+  import { useRouter } from 'vue-router'
 
   defineOptions({ name: 'Register' })
 
   interface RegisterForm {
-    username: string
+    name: string
+    email: string
     password: string
     confirmPassword: string
-    agreement: boolean
   }
 
   const USERNAME_MIN_LENGTH = 3
-  const USERNAME_MAX_LENGTH = 20
-  const PASSWORD_MIN_LENGTH = 6
+  const USERNAME_MAX_LENGTH = 50
+  const PASSWORD_MIN_LENGTH = 8
   const REDIRECT_DELAY = 1000
 
   const { t, locale } = useI18n()
@@ -116,19 +116,63 @@
   })
 
   const formData = reactive<RegisterForm>({
-    username: '',
+    name: '',
+    email: '',
     password: '',
-    confirmPassword: '',
-    agreement: false
+    confirmPassword: ''
   })
 
   /**
-   * 验证密码
-   * 当密码输入后，如果确认密码已填写，则触发确认密码的验证
+   * 验证用户名
+   */
+  const validateName = (_rule: any, value: string, callback: (error?: Error) => void) => {
+    if (!value) {
+      callback(new Error(t('register.placeholder.name')))
+      return
+    }
+    if (value.length < USERNAME_MIN_LENGTH || value.length > USERNAME_MAX_LENGTH) {
+      callback(new Error(t('register.rule.nameLength')))
+      return
+    }
+    callback()
+  }
+
+  /**
+   * 验证邮箱
+   */
+  const validateEmail = (_rule: any, value: string, callback: (error?: Error) => void) => {
+    if (!value) {
+      callback(new Error(t('register.placeholder.email')))
+      return
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(value)) {
+      callback(new Error(t('register.rule.emailFormat')))
+      return
+    }
+    callback()
+  }
+
+  /**
+   * 验证密码强度
+   * >=8 位，至少包含大小写/数字/特殊字符中的 2 类
    */
   const validatePassword = (_rule: any, value: string, callback: (error?: Error) => void) => {
     if (!value) {
       callback(new Error(t('register.placeholder.password')))
+      return
+    }
+    if (value.length < 8) {
+      callback(new Error(t('register.rule.passwordLength')))
+      return
+    }
+    let count = 0
+    if (/[a-z]/.test(value)) count++
+    if (/[A-Z]/.test(value)) count++
+    if (/\d/.test(value)) count++
+    if (/[^a-zA-Z0-9]/.test(value)) count++
+    if (count < 2) {
+      callback(new Error(t('register.rule.passwordWeak')))
       return
     }
 
@@ -161,34 +205,17 @@
     callback()
   }
 
-  /**
-   * 验证用户协议
-   * 确保用户已勾选同意协议
-   */
-  const validateAgreement = (_rule: any, value: boolean, callback: (error?: Error) => void) => {
-    if (!value) {
-      callback(new Error(t('register.rule.agreementRequired')))
-      return
-    }
-    callback()
-  }
-
   const rules = computed<FormRules<RegisterForm>>(() => ({
-    username: [
-      { required: true, message: t('register.placeholder.username'), trigger: 'blur' },
-      {
-        min: USERNAME_MIN_LENGTH,
-        max: USERNAME_MAX_LENGTH,
-        message: t('register.rule.usernameLength'),
-        trigger: 'blur'
-      }
+    name: [
+      { required: true, validator: validateName, trigger: 'blur' }
+    ],
+    email: [
+      { required: true, validator: validateEmail, trigger: 'blur' }
     ],
     password: [
-      { required: true, validator: validatePassword, trigger: 'blur' },
-      { min: PASSWORD_MIN_LENGTH, message: t('register.rule.passwordLength'), trigger: 'blur' }
+      { required: true, validator: validatePassword, trigger: 'blur' }
     ],
-    confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'blur' }],
-    agreement: [{ validator: validateAgreement, trigger: 'change' }]
+    confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'blur' }]
   }))
 
   /**
@@ -202,25 +229,22 @@
       await formRef.value.validate()
       loading.value = true
 
-      // TODO: 替换为真实 API 调用
-      // const params = {
-      //   username: formData.username,
-      //   password: formData.password
-      // }
-      // const res = await AuthService.register(params)
-      // if (res.code === ApiStatus.success) {
-      //   ElMessage.success('注册成功')
-      //   toLogin()
-      // }
+      const response = await fetchRegister({
+        name: formData.name.trim(),
+        email: formData.email,
+        password: formData.password
+      })
 
-      // 模拟注册请求
-      setTimeout(() => {
-        loading.value = false
-        ElMessage.success('注册成功')
+      if (response.success) {
+        ElMessage.success(t('register.success'))
         toLogin()
-      }, REDIRECT_DELAY)
+      } else {
+        ElMessage.error(response.error || t('register.fail'))
+      }
     } catch (error) {
-      console.error('表单验证失败:', error)
+      console.error('[Register] error:', error)
+      ElMessage.error(t('register.fail'))
+    } finally {
       loading.value = false
     }
   }

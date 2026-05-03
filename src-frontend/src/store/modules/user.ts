@@ -59,7 +59,7 @@ export const useUserStore = defineStore(
     // 锁屏密码
     const lockPassword = ref('')
     // 用户信息
-    const info = ref<Partial<Api.Auth.UserInfo>>({
+    const info = ref<Partial<Api.Auth.FrontendUserInfo>>({
       userId: 1,
       userName: 'admin',
       email: 'admin@local.dev',
@@ -85,7 +85,7 @@ export const useUserStore = defineStore(
      * 设置用户信息
      * @param newInfo 新的用户信息
      */
-    const setUserInfo = (newInfo: Api.Auth.UserInfo) => {
+    const setUserInfo = (newInfo: Api.Auth.FrontendUserInfo) => {
       info.value = newInfo
     }
 

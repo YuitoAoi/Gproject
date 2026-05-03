@@ -55,8 +55,8 @@
   import { useTableColumns } from '@/hooks/core/useTableColumns'
   import type { AppRouteRecord } from '@/types/router'
   import MenuDialog from './modules/menu-dialog.vue'
-  import { fetchGetMenuList } from '@/api/system-manage'
   import { ElTag, ElMessageBox } from 'element-plus'
+  import { asyncRoutes } from '@/router/routes/asyncRoutes'
 
   defineOptions({ name: 'Menus' })
 
@@ -101,13 +101,13 @@
 
   /**
    * 获取菜单列表数据
+   * 注：后端菜单接口已废弃，使用前端硬编码路由
    */
   const getMenuList = async (): Promise<void> => {
     loading.value = true
 
     try {
-      const list = await fetchGetMenuList()
-      tableData.value = list
+      tableData.value = asyncRoutes
     } catch (error) {
       throw error instanceof Error ? error : new Error('获取菜单失败')
     } finally {

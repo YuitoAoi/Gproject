@@ -1,6 +1,8 @@
-cd D:\files\Gproject\1\frontend
+cd D:\files\Gproject\src-frontend
 npm run dev
 
 cd D:\files\Gproject\1\backend
-python -m uvicorn app.main:app --reload --port 8000
+poetry run uvicorn src.app.main:app
 celery -A app.core.celery_app worker --loglevel=info
+
+ssh -p 59242 -N -L 3306:127.0.0.1:3306 kazefunet@frp-bar.com
