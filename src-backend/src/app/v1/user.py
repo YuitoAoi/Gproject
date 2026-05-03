@@ -3,11 +3,14 @@ from fastapi import APIRouter, Depends
 from src.app.dependencies import get_current_user, get_services
 from src.services import (
     ServiceFactory,
-    UserInfoResponse,
     UserLoginRequest,
     UserLoginResponse,
+    UserInfoResponse,
+    UserUpdateRequest,
+    UserUpdateResponse,
     UserRegisterRequest,
     UserRegisterResponse,
+
 )
 from src.services.jwt_service import TokenPayload
 
@@ -15,7 +18,7 @@ auth_api = APIRouter(
     prefix='/auth'
 )
 
-@auth_api.post("/login", response_model=UserLoginResponse)
+@auth_api.post("/login", response_model = UserLoginResponse)
 def login_user(
     request: UserLoginRequest,
     svc: ServiceFactory = Depends(get_services),
@@ -28,7 +31,7 @@ user_api = APIRouter(
 )
 
 
-@user_api.get("", response_model=UserInfoResponse)
+@user_api.get("", response_model = UserInfoResponse)
 def get_current_user_info(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
@@ -36,8 +39,16 @@ def get_current_user_info(
     """获取当前用户信息（不含密码）。"""
     return svc.get_user_info().execute(int(current_user.user_id))
 
+@user_api.patch("", response_model=UserUpdateResponse)
+def update_user_info(
+    request: UserUpdateRequest,
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """更新当前用户信息（需 Bearer token）。"""
+    return svc.update_user_info().execute(int(current_user.user_id), request)
 
-@user_api.post("", response_model=UserRegisterResponse, status_code=201)
+@user_api.post("", response_model = UserRegisterResponse, status_code=201)
 def register_user(
     request: UserRegisterRequest,
     svc: ServiceFactory = Depends(get_services),

@@ -47,6 +47,11 @@ from src.services.user_get_service import (
     UserGetService,
     UserInfoResponse,
 )
+from src.services.user_update_service import (
+    UserUpdateService,
+    UserUpdateRequest,
+    UserUpdateResponse
+)
 from src.services.user_register_service import (
     UserRegisterService,
     UserRegisterRequest,
@@ -105,6 +110,7 @@ class ServiceFactory:
 
         self._user_login: Optional[UserLoginService] = None
         self._user_get: Optional[UserGetService] = None
+        self._user_update: Optional[UserUpdateService] = None
         self._user_register: Optional[UserRegisterService] = None
 
     # ── 仓储懒加载 ──────────────────────────────────────────
@@ -185,7 +191,13 @@ class ServiceFactory:
         if self._user_get is None:
             self._user_get = UserGetService(self.user_repo)
         return self._user_get
-
+    
+    def update_user_info(self) -> UserUpdateService:
+        """获取当前用户信息服务"""
+        if self._user_update is None:
+            self._user_update = UserUpdateService(self.user_repo)
+        return self._user_update
+    
     def register_user(self) -> UserRegisterService:
         """用户注册服务"""
         if self._user_register is None:
