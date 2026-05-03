@@ -1,4 +1,5 @@
 services:
+  # Mysql 服务
   mysql:
     image: mysql:latest
     container_name: gproject-mysql
@@ -18,7 +19,7 @@ services:
       retries: 5
     networks:
       - gproject-net
-
+  # Redis 服务
   redis:
     image: redis:7-alpine
     container_name: gproject-redis
@@ -32,7 +33,7 @@ services:
       retries: 5
     networks:
       - gproject-net
-
+  # Backend
   gproject-backend:
     build:
       context: ../src-backend
@@ -46,7 +47,7 @@ services:
       REDIS_URL: "redis://redis:6379/0"
       CELERY_BROKER_URL: "redis://redis:6379/1"
       CELERY_RESULT_BACKEND: "redis://redis:6379/2"
-      DATA_DIR: "/app/datasets"
+      DATASETS_DIR: "/app/datasets"
       JWT_SECRET_KEY: "change-me-in-production"
       BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173"]'
     depends_on:
@@ -54,11 +55,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      graph-gen-api:
+        condition: service_healthy
+      llama-factory-api:
+        condition: service_healthy
     volumes:
       - dataset_data:/app/datasets
     networks:
       - gproject-net
-
+  # Frontend
   gproject-frontend:
     build:
       context: ../src-frontend
@@ -98,10 +103,21 @@ services:
       - dataset_data:/app/datasets
     networks:
       - gproject-net
-
+  # LlamaFactory 服务
+  llama-factory-api:
+    ports:
+      - "8002:8002"
+  # GraphGen 服务
+  graph-gen-api:
+    environment:
+      - DATASETS_DIR: "/app/datasets"
+    ports:
+      - "8001:8001"
 volumes:
   mysql_data:
   dataset_data:
+  model_data:
+  cache_data:
 
 networks:
   gproject-net:
