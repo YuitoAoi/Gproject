@@ -1,8 +1,6 @@
-version: "3.8"
-
 services:
   mysql:
-    image: mysql:8.0
+    image: mysql:latest
     container_name: gproject-mysql
     restart: unless-stopped
     environment:
@@ -35,10 +33,10 @@ services:
     networks:
       - gproject-net
 
-  gproject:
+  gproject-backend:
     build:
       context: ../src-backend
-      dockerfile: ../docker/DockerFile
+      dockerfile: ../docker/backend/DockerFile
     container_name: gproject-backend
     restart: unless-stopped
     ports:
@@ -61,6 +59,22 @@ services:
     networks:
       - gproject-net
 
+  gproject-frontend:
+    build:
+      context: ../src-frontend
+      dockerfile: ../docker/frontend/DockerFile
+    container_name: gproject-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+
+    environment:
+      # 环境变量
+    depends_on:
+      - gproject-backend
+    
+    networks:
+      - gproject-net
   celery-worker:
     build:
       context: ../src-backend
