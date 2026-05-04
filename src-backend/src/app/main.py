@@ -38,6 +38,35 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     DatasetRepositoryAdapter(db_conn).init_table()
     DatasetTagRepositoryAdapter(db_conn).init_table()
 
+    # ── 超级用户初始化：id=0 表首位 ──────────────────────────
+    from datetime import datetime
+    from src.core.password_encryptor import hash_password
+    from sqlalchemy import text
+
+    user_repo = UserRepositoryAdapter(db_conn)
+    user_repo.init_table()
+    existing = user_repo.find_by_id(0)
+
+    if existing is None:
+        now = datetime.now()
+        with db_conn.new_session() as s:
+            s.execute(text(
+                "INSERT INTO users (id, name, email, password, is_admin, is_active, created_at, last_login) "
+                "VALUES (0, :name, :email, :password, 1, 1, :now, :now)"
+            ), {
+                "name": "super",
+                "email": config.SUPER_USER_EMAIL,
+                "password": hash_password(config.SUPER_USER_PASSWORD),
+                "now": now,
+            })
+            s.commit()
+        logger.info(f"Super user created at id=0: {config.SUPER_USER_EMAIL}")
+    else:
+        existing.email = config.SUPER_USER_EMAIL
+        existing.password = hash_password(config.SUPER_USER_PASSWORD)
+        user_repo.update(0, existing)
+        logger.info(f"Super user updated at id=0: {config.SUPER_USER_EMAIL}")
+
     app.state.services = ServiceFactory(
         user_repo=UserRepositoryAdapter(db_conn),
         dataset_repo=DatasetRepositoryAdapter(db_conn),
