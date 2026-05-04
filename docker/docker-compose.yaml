@@ -1,0 +1,161 @@
+services:
+  # Mysql 服务
+  mysql:
+    image: mysql:latest
+    container_name: gproject-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: Poi114514.
+      MYSQL_DATABASE: llama_factory
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pPoi114514."]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gproject-net
+  # Redis 服务
+  redis:
+    image: redis:7-alpine
+    container_name: gproject-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - gproject-net
+  # Backend
+  gproject-backend:
+    build:
+      context: ../src-backend
+      dockerfile: ../docker/backend/DockerFile
+    container_name: gproject-backend
+    restart: unless-stopped
+    ports:
+      - "8800:8000"
+    environment:
+      DATABASE_URL: "mysql+pymysql://root:Poi114514.@mysql:3306/llama_factory"
+      REDIS_URL: "redis://redis:6379/0"
+      DATASETS_DIR: "/app/datasets"
+      JWT_SECRET_KEY: "change-me-in-production"
+      BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173"]'
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      graphgen:
+        condition: service_healthy
+      llamafactory:
+        condition: service_healthy
+    volumes:
+      - dataset_data:/app/datasets
+    networks:
+      - gproject-net
+  # Frontend
+  gproject-frontend:
+    build:
+      context: ../src-frontend
+      dockerfile: ../docker/frontend/DockerFile
+    container_name: gproject-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+
+    environment:
+      HOST: "localhost"
+      HTTP_PORT: "80"
+      HTTPS_PORT: "443"
+    depends_on:
+      - gproject-backend
+    networks:
+      - gproject-net
+      
+  celery-worker:
+    build:
+      context: ../src-celery
+      dockerfile: Dockerfile
+    container_name: gproject-celery
+    restart: unless-stopped
+    command: celery -A src.tasks.celery worker --loglevel=info --pool=solo
+    environment:
+      REDIS_URL: "redis://redis:6379/0"
+      BACKEND_HOST: "gproject-backend"
+      BACKEND_PORT: "8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      gproject-backend:
+        condition: service_started
+    volumes:
+      - dataset_data:/app/datasets
+    networks:
+      - gproject-net
+
+  # GraphGen API 服务
+  graphgen:
+    build:
+      context: ../../GraphGen
+    container_name: gproject-graphgen
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      GRAPHGEN_HOST: "0.0.0.0"
+      GRAPHGEN_PORT: "8001"
+      GRAPHGEN_DATASETS_DIR: "/app/datasets"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - dataset_data:/app/datasets
+    networks:
+      - gproject-net
+
+  # LlamaFactory 服务
+  llamafactory:
+    image: hiyouga/llamafactory:latest
+    container_name: llamafactory
+    ports:
+      - "7860:7860"
+      - "8000:8000"
+    ipc: host
+    tty: true
+    stdin_open: true
+    volumes:
+      - model_data:/app/models
+      - model_data/.cache:/root/.cache/huggingface/hub
+      - dataset_data:/app/data
+      
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: "all"
+              capabilities: [ gpu ]
+    restart: unless-stopped
+    networks:
+      - gproject-net
+
+volumes:
+  mysql_data:
+  dataset_data:
+  model_data:
+
+networks:
+  gproject-net:
+    driver: bridge

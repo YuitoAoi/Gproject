@@ -1,0 +1,227 @@
+from __future__ import annotations
+
+from typing import Optional
+
+from src.services.dataset_import_export_service import (
+    DatasetImportExportService,
+    DatasetImportRequest,
+    DatasetDownloadRequest,
+    DatasetImportExportResponse,
+    InitiateUploadRequest,
+    InitiateUploadResponse,
+    UploadChunkResponse,
+    CompleteUploadRequest,
+    CompleteUploadResponse,
+)
+from src.services.dataset_get_service import (
+    GetDatasetResponse,
+    GetDatasetsResponse,
+    GetDatasetsService,
+)
+from src.services.jwt_service import JWTService
+from src.services.user_login_service import (
+    UserLoginService,
+    UserLoginRequest,
+    UserLoginResponse,
+)
+from src.services.user_get_service import (
+    UserGetService,
+    UserInfoResponse,
+)
+from src.services.user_update_service import (
+    UserUpdateService,
+    UserUpdateRequest,
+    UserUpdateResponse
+)
+from src.services.user_register_service import (
+    UserRegisterService,
+    UserRegisterRequest,
+    UserRegisterResponse,
+)
+from src.services.interfaces.dataset_repository import DatasetRepository
+from src.services.interfaces.dataset_tag_repository import DatasetTagRepository
+from src.services.interfaces.db_conn import DatabaseConnection
+from src.services.interfaces.user_repository import UserRepository
+from src.services.interfaces.file_repository import FileRepository
+from src.services.dataset_process_service import (
+    DatasetProcessService,
+    DatasetProcessRequest,
+    DatasetProcessResponse,
+)
+from src.services.dataset_update_service import DatasetUpdateService
+from src.services.dataset_remove_service import DatasetRemoveService
+from src.services.dataset_tag_service import DatasetTagService
+
+__all__ = [
+    "ServiceFactory",
+    # 数据集
+    "GetDatasetResponse",
+    "GetDatasetsResponse",
+    # 用户
+    "UserLoginRequest",
+    "UserLoginResponse",
+    "UserRegisterRequest",
+    "UserRegisterResponse",
+]
+
+
+class ServiceFactory:
+    """服务工厂，负责依赖组装与服务实例化。
+
+    每个 ``get_xxx()`` 方法按需创建并缓存单例，
+    也可直接访问同名属性获取已缓存实例。
+    """
+
+    def __init__(
+        self,
+        user_repo: UserRepository,
+        dataset_repo: DatasetRepository,
+        file_repo: FileRepository,
+        conn: Optional[DatabaseConnection] = None,
+        dataset_tag_repo: Optional[DatasetTagRepository] = None,
+    ) -> None:
+        from src.services import JWTService
+        self._jwt = JWTService()
+        self.user_repo = user_repo
+        self._dataset_repo = dataset_repo
+        self._file_repo = file_repo
+        self._conn = conn
+        self._dataset_tag_repo = dataset_tag_repo
+
+        self._dataset_create: Optional[DatasetImportExportService] = None
+        self._dataset_get: Optional[GetDatasetsService] = None
+        self._dataset_process: Optional[DatasetProcessService] = None
+
+        self._user_login: Optional[UserLoginService] = None
+        self._user_get: Optional[UserGetService] = None
+        self._user_update: Optional[UserUpdateService] = None
+        self._user_register: Optional[UserRegisterService] = None
+        self._dataset_update: Optional[DatasetUpdateService] = None
+        self._datasets_remove: Optional[DatasetRemoveService] = None
+        self._dataset_tag: Optional[DatasetTagService] = None
+
+    # ── 仓储懒加载 ──────────────────────────────────────────
+
+    @property
+    def dataset_repo(self) -> DatasetRepository:
+        if self._dataset_repo is None:
+            if self._conn is None:
+                raise RuntimeError(
+                    "No DatabaseConnection available. Pass conn to ServiceFactory "
+                    "or dataset_repo explicitly."
+                )
+            from src.adapters.repositories.dataset_repo import (
+                DatasetRepositoryAdapter,
+            )
+            self._dataset_repo = DatasetRepositoryAdapter(self._conn)
+        return self._dataset_repo
+
+    @property
+    def dataset_tag_repo(self) -> DatasetTagRepository:
+        if self._dataset_tag_repo is None:
+            if self._conn is None:
+                raise RuntimeError(
+                    "DatasetTagRepository requires a DatabaseConnection. "
+                    "Pass conn or dataset_tag_repo to ServiceFactory."
+                )
+            from src.adapters.repositories.dataset_tag_repo import (
+                DatasetTagRepositoryAdapter,
+            )
+            self._dataset_tag_repo = DatasetTagRepositoryAdapter(self._conn)
+        return self._dataset_tag_repo
+
+    @property
+    def file_repo(self) -> FileRepository:
+        if self._file_repo is None:
+            from src.adapters.repositories.windows_file_repo import (
+                WindowsFileRepository,
+            )
+            self._file_repo = WindowsFileRepository()
+        return self._file_repo
+
+    # ── 服务实例化（缓存单例） ────────────────────────────────
+
+    def dataset_import_export(self) -> DatasetImportExportService:
+        """数据集导入导出统一服务（单例缓存）。"""
+        if self._dataset_create is None:
+            self._dataset_create = DatasetImportExportService(
+                self.dataset_repo, self.file_repo
+            )
+        return self._dataset_create
+
+    def get_datasets(self) -> GetDatasetsService:
+        """数据集查询服务。"""
+        if self._dataset_get is None:
+            self._dataset_get = GetDatasetsService(self.dataset_repo)
+        return self._dataset_get
+
+    def chunked_upload(self) -> DatasetImportExportService:
+        """分块上传服务，与导入导出共享同一实例。"""
+        return self.dataset_import_export()
+    def process_dataset(self) -> DatasetProcessService:
+        """数据处理服务：样本预览 + 图生成任务 + 下载。"""
+        if self._dataset_process is None:
+            from src.adapters.graphgen_client import GraphGenClient
+            self._dataset_process = DatasetProcessService(
+                self.dataset_repo, self.file_repo, GraphGenClient()
+            )
+        return self._dataset_process
+    def jwt(self) -> JWTService:
+        if self._jwt is None:
+            self._jwt = JWTService()
+        return self._jwt
+    
+    def login_user(self) -> UserLoginService:
+        """用户登录服务"""
+        if self._user_login is None:
+            self._user_login = UserLoginService(self._jwt, self.user_repo)
+        return self._user_login
+    
+    def get_user_info(self) -> UserGetService:
+        """获取当前用户信息服务"""
+        if self._user_get is None:
+            self._user_get = UserGetService(self.user_repo)
+        return self._user_get
+    
+    def update_user_info(self) -> UserUpdateService:
+        """获取当前用户信息服务"""
+        if self._user_update is None:
+            self._user_update = UserUpdateService(self.user_repo)
+        return self._user_update
+    
+    def register_user(self) -> UserRegisterService:
+        """用户注册服务"""
+        if self._user_register is None:
+            self._user_register = UserRegisterService(self.user_repo)
+        return self._user_register
+
+    def update_dataset(self) -> DatasetUpdateService:
+        if self._dataset_update is None:
+            self._dataset_update = DatasetUpdateService(self.dataset_repo)
+        return self._dataset_update
+
+    def remove_datasets(self) -> DatasetRemoveService:
+        if self._datasets_remove is None:
+            self._datasets_remove = DatasetRemoveService(
+                self.dataset_repo, self.file_repo
+            )
+        return self._datasets_remove
+
+    def dataset_tag(self) -> DatasetTagService:
+        """数据集标签服务"""
+        if self._dataset_tag is None:
+            self._dataset_tag = DatasetTagService(self.dataset_tag_repo, self.dataset_repo)
+        return self._dataset_tag
+
+    # ── 生命周期 ─────────────────────────────────────────────
+
+    def dispose(self) -> None:
+        """释放所有资源（数据库连接等）。"""
+        if self._dataset_repo is not None:
+            # TODO 实现数据库释放资源业务
+            # self._dataset_repo.dispose()
+            pass
+        
+        self._dataset_create = None
+        self._dataset_get = None
+        self._dataset_process = None

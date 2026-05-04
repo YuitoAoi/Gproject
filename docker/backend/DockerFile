@@ -1,0 +1,26 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# 系统依赖
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Poetry
+RUN pip install --no-cache-dir poetry
+
+# 依赖层（利用 Docker 缓存）
+COPY pyproject.toml poetry.lock ./
+RUN poetry config virtualenvs.create false \
+    && poetry install --no-interaction --no-ansi --no-root
+
+# 源码
+COPY . .
+
+# 数据目录
+RUN mkdir -p /app/datasets/chunks /app/datasets/datasets
+
+EXPOSE 8000
+
+CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

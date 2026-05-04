@@ -1,0 +1,30 @@
+# Ide temp
+.claude
+.planning
+.vscode
+!.vscode/settings.json
+AGENTS.md
+
+# Temp files
+node_modules
+.DS_Store
+dist
+dist-ssr
+*.local
+.cursorrules
+*-lock.*
+
+# Auto-generated files
+src/types/import/auto-imports.d.ts
+src/types/import/components.d.ts
+.auto-import.json
+
+# Local envs
+.env
+
+# logs
+logs/
+.log
+
+# art-design-pro-3.0.2
+art-design-pro-3.0.2/
