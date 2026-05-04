@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
 from src.app.dependencies import get_current_user, get_services
@@ -6,7 +6,9 @@ from src.services import ServiceFactory
 from src.services.dataset_tag_service import (
     DatasetTagCreateRequest,
     DatasetTagCreateResponse,
+    DatasetTagDeleteRequest,
     DatasetTagDeleteResponse,
+    DatasetTagInfoGetRequest,
     DatasetTagInfoGetResponse,
     DatasetTagsGetResponse,
     DatasetTagUpdateRequest,
@@ -32,24 +34,24 @@ def list_tags(
 
 
 # ══════════════════════════════════════════════════════════
-# GET /tag/{tag_id} — 获取单个标签
+# POST /tag/get — 获取单个标签
 # ══════════════════════════════════════════════════════════
 
-@router.get("/{tag_id}", response_model=DatasetTagInfoGetResponse)
+@router.post("/get", response_model=DatasetTagInfoGetResponse)
 def get_tag(
-    tag_id: int,
+    request: DatasetTagInfoGetRequest,
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
     owner_id = int(current_user.user_id)
-    return svc.dataset_tag().get_tag(owner_id, tag_id)
+    return svc.dataset_tag().get_tag(owner_id, request.tag_id)
 
 
 # ══════════════════════════════════════════════════════════
 # POST /tag — 创建标签
 # ══════════════════════════════════════════════════════════
 
-@router.post("/", response_model=DatasetTagCreateResponse, status_code=201)
+@router.post("", response_model=DatasetTagCreateResponse, status_code=201)
 def create_tag(
     request: DatasetTagCreateRequest,
     svc: ServiceFactory = Depends(get_services),
@@ -63,18 +65,16 @@ def create_tag(
 
 
 # ══════════════════════════════════════════════════════════
-# PATCH /tag/{tag_id} — 更新标签
+# PATCH /tag — 更新标签
 # ══════════════════════════════════════════════════════════
 
-@router.patch("/{tag_id}", response_model=DatasetTagUpdateResponse)
+@router.patch("", response_model=DatasetTagUpdateResponse)
 def update_tag(
-    tag_id: int,
     request: DatasetTagUpdateRequest,
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
     owner_id = int(current_user.user_id)
-    request.tag_id = tag_id
     result = svc.dataset_tag().update_tag(request, owner_id)
     if not result.success:
         return JSONResponse(content=result.model_dump(), status_code=400)
@@ -82,18 +82,17 @@ def update_tag(
 
 
 # ══════════════════════════════════════════════════════════
-# DELETE /tag/{tag_id} — 删除标签
+# DELETE /tag — 删除标签
 # ══════════════════════════════════════════════════════════
 
-@router.delete("/{tag_id}", response_model=DatasetTagDeleteResponse)
+@router.delete("", response_model=DatasetTagDeleteResponse)
 def delete_tag(
-    tag_id: int,
-    force: bool = Query(default=False, description="强制删除，同时移除关联数据集中的 tag"),
+    request: DatasetTagDeleteRequest,
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
     owner_id = int(current_user.user_id)
-    result = svc.dataset_tag().delete_tag(owner_id, tag_id, force=force)
+    result = svc.dataset_tag().delete_tag(owner_id, request.tag_id, force=request.force)
     if not result.success:
         return JSONResponse(content=result.model_dump(), status_code=400)
     return result

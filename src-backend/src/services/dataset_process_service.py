@@ -1,10 +1,15 @@
-"""数据集处理服务：样本预览、清洗配置、异步任务触发、文件下载。"""
+"""数据集处理服务：样本预览、图生成任务提交/查询/取消、文件下载。"""
 from __future__ import annotations
 
+import csv
+import io
+import json
+from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
+from src.adapters.graphgen_client import GraphGenClient
 from src.services.interfaces.dataset_repository import DatasetRepository
 from src.services.interfaces.file_repository import FileRepository
 
@@ -15,6 +20,7 @@ from src.services.interfaces.file_repository import FileRepository
 
 class SampleRequest(BaseModel):
     """样本预览请求"""
+    dataset_id: int
     limit: int = Field(default=100, ge=1, le=200, description="返回行数上限")
 
 
@@ -27,168 +33,264 @@ class SampleResponse(BaseModel):
 
 
 # ══════════════════════════════════════════════════════════
-# 清洗配置
+# 图生成任务
 # ══════════════════════════════════════════════════════════
 
-class FieldMapping(BaseModel):
-    """单条字段映射：源列 → LLaMA 标准字段"""
-    source_column: str = Field(..., description="源数据表头名")
-    target_field: Literal["instruction", "input", "output"] = Field(
-        ..., description="LLaMA-Factory 标准字段"
-    )
+class DatasetProcessRequest(BaseModel):
+    dataset_id: int
+    """图生成任务请求。input_file 由 service 层根据 dataset_id 自动填入。"""
+    model_config = {"extra": "forbid"}
+
+    # LLM
+    api_key: str
+    synthesizer_url: str
+    synthesizer_model: str
+    mode: Literal[
+        "atomic", "multi_hop", "aggregated", "CoT",
+        "multi_choice", "multi_answer", "fill_in_blank", "true_false",
+    ]
+    data_format: Literal["Alpaca", "Sharegpt", "ChatML"]
+
+    # Optional with defaults
+    tokenizer: str = "cl100k_base"
+    trainee_model: Optional[str] = None
+    trainee_url: Optional[str] = None
+    trainee_api_key: Optional[str] = None
+    chunk_size: int = Field(default=1024, gt=0)
+    chunk_overlap: int = Field(default=100, ge=0)
+    quiz_samples: int = Field(default=2, ge=0)
+    partition_method: Literal["dfs", "bfs", "leiden", "ece"] = "ece"
+    dfs_max_units: int = 5
+    bfs_max_units: int = 5
+    leiden_max_size: int = 20
+    leiden_use_lcc: bool = False
+    leiden_random_seed: int = 42
+    ece_max_units: int = 20
+    ece_min_units: int = 3
+    ece_max_tokens: int = 10240
+    ece_unit_sampling: Literal["random", "max_loss", "min_loss"] = "random"
+    rpm: int = Field(default=1000, gt=0)
+    tpm: int = Field(default=50000, gt=0)
 
 
-class BasicFiltering(BaseModel):
-    """基础过滤"""
-    enabled: bool = False
-    remove_empty: bool = Field(default=True, description="剔除空白行/缺失值")
-    min_text_length: int = Field(default=10, ge=1, le=10000, description="过滤短文本（字符数）")
-
-
-class TextFormatting(BaseModel):
-    """文本格式化"""
-    enabled: bool = False
-    remove_html: bool = Field(default=True, description="移除 HTML/XML 标签")
-    normalize_unicode: bool = Field(default=False, description="全角转半角")
-
-
-class PiiMasking(BaseModel):
-    """隐私脱敏"""
-    enabled: bool = False
-    phone: bool = Field(default=True, description="手机号码脱敏")
-    id_card: bool = Field(default=False, description="身份证号脱敏")
-    email: bool = Field(default=False, description="电子邮箱脱敏")
-    bank_card: bool = Field(default=False, description="银行卡号脱敏")
-
-
-class Deduplication(BaseModel):
-    """语料去重"""
-    enabled: bool = False
-    method: Literal["exact", "minhash"] = Field(default="minhash")
-    threshold: float = Field(default=0.85, ge=0.5, le=1.0, description="MinHash 相似度阈值")
-
-
-class CleanConfig(BaseModel):
-    """清洗编排完整配置"""
-    field_mapping: List[FieldMapping] = Field(
-        default_factory=list, description="字段映射列表"
-    )
-    basic_filtering: BasicFiltering = Field(default_factory=BasicFiltering)
-    text_formatting: TextFormatting = Field(default_factory=TextFormatting)
-    pii_masking: PiiMasking = Field(default_factory=PiiMasking)
-    deduplication: Deduplication = Field(default_factory=Deduplication)
-
-
-class ProcessRequest(BaseModel):
-    """处理请求 —— 包含清洗或转换的全部配置"""
-    # 处理类型
-    process_type: Literal["clean", "convert"] = Field(..., description="clean=数据清洗 / convert=格式转换")
-
-    # 清洗配置（process_type=clean 时使用）
-    clean_config: Optional[CleanConfig] = Field(None, description="清洗编排配置")
-
-    # 格式转换配置（process_type=convert 时使用）
-    convert_format: Optional[Literal["alpaca", "sharegpt"]] = Field(
-        None, description="转换目标格式"
-    )
-
-
-class ProcessResponse(BaseModel):
-    """处理任务响应"""
-    task_id: Optional[str] = Field(None, description="Celery 异步任务 ID")
-    status: str = Field(default="pending", description="pending / running / completed / failed")
-    message: str = ""
+class DatasetProcessResponse(BaseModel):
+    """图生成任务状态响应"""
+    job_id: str
+    status: Literal["pending", "running", "done", "failed", "cancelled"]
+    created_at: Optional[str] = None
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    progress: float = Field(default=0.0, ge=0.0, le=1.0)
     error: Optional[str] = None
+    output_path: Optional[str] = None
 
 
 # ══════════════════════════════════════════════════════════
-# 文件下载
-# ══════════════════════════════════════════════════════════
-
-class DownloadResponse(BaseModel):
-    """下载响应（元数据，实际文件通过 StreamingResponse 返回）"""
-    filename: str = ""
-    file_size: int = 0
-    format: str = ""
-    error: Optional[str] = None
-
-
-# ══════════════════════════════════════════════════════════
-# 服务实现
+# 服务
 # ══════════════════════════════════════════════════════════
 
 class DatasetProcessService:
-    """数据集处理服务 —— 样本预览 + 清洗/转换触发。"""
+    """数据集处理服务。
+
+    依赖通过构造函数注入。
+    """
 
     def __init__(
         self,
         dataset_repo: DatasetRepository,
         file_repo: FileRepository,
+        gg_client: GraphGenClient,
     ) -> None:
         self._dataset_repo = dataset_repo
         self._file_repo = file_repo
+        self._gg = gg_client
 
-    def get_sample(
-        self, dataset_id: int, request: SampleRequest
-    ) -> SampleResponse:
-        """获取数据集的前 N 条样本及表头。
+    # ── 样本预览 ──────────────────────────────────────────────
 
-        TODO: 实现从 file_repo 读取 csv/xlsx/json 文件并解析前 N 行。
-        """
-        ds = self._dataset_repo.find(dataset_id)
+    def get_sample(self, request: SampleRequest) -> SampleResponse:
+        """读取数据集文件，返回前 N 条样本及表头。"""
+        ds = self._dataset_repo.find(request.dataset_id)
         if ds is None:
-            return SampleResponse(error=f"Dataset not found: {dataset_id}")
+            return SampleResponse(error=f"Dataset not found: {request.dataset_id}")
 
-        # TODO: 根据 ds.meta.format 选择解析方式
-        # - csv: pd.read_csv(file_path, nrows=limit)
-        # - xlsx: pd.read_excel(file_path, nrows=limit)
-        # - json: json.load + 切片
+        file_path = ds.meta.file_path
+        if not self._file_repo.exists(file_path):
+            return SampleResponse(error=f"File not found: {file_path}")
+
+        fmt = ds.meta.format
+        try:
+            if fmt == "csv":
+                return self._sample_csv(file_path, request.limit)
+            elif fmt in ("json", "jsonl"):
+                return self._sample_jsonl(file_path, request.limit)
+            elif fmt == "xlsx":
+                return self._sample_xlsx(file_path, request.limit)
+            else:
+                return SampleResponse(error=f"Unsupported format: {fmt}")
+        except Exception as exc:
+            return SampleResponse(error=f"Sample read error: {exc}")
+
+    # ── 图生成任务 ────────────────────────────────────────────
+        
+    def process(self, request: DatasetProcessRequest) -> DatasetProcessResponse:
+        """提交图生成任务到 GraphGen。仅 status=0（未处理）的数据集可提交。"""
+        ds = self._dataset_repo.find(request.dataset_id)
+        if ds is None:
+            return DatasetProcessResponse(
+                job_id="", status="failed",
+                error=f"Dataset not found: {request.dataset_id}",
+            )
+
+        if ds.status != 0:
+            return DatasetProcessResponse(
+                job_id="", status="failed",
+                error=f"Dataset already processed (status={ds.status})",
+            )
+
+        file_path = ds.meta.file_path
+        if not self._file_repo.exists(file_path):
+            return DatasetProcessResponse(
+                job_id="", status="failed",
+                error=f"File not found: {file_path}",
+            )
+
+        input_file = Path(file_path).name
+        payload = request.model_dump()
+        payload["input_file"] = input_file
+
+        resp = self._gg.submit_job(payload)
+        if resp.is_error:
+            return DatasetProcessResponse(
+                job_id="", status="failed",
+                error=self._parse_error(resp),
+            )
+
+        data = resp.json()
+        return DatasetProcessResponse(
+            job_id=data.get("job_id", ""),
+            status=data.get("status", "pending"),
+        )
+
+    def get_job(self, job_id: str) -> DatasetProcessResponse:
+        """查询 GraphGen 任务状态。"""
+        resp = self._gg.get_job(job_id)
+        if resp.is_error:
+            return DatasetProcessResponse(
+                job_id=job_id, status="failed",
+                error=self._parse_error(resp),
+            )
+
+        data = resp.json()
+        return DatasetProcessResponse(
+            job_id=data.get("job_id", job_id),
+            status=data.get("status", "unknown"),
+            created_at=data.get("created_at"),
+            started_at=data.get("started_at"),
+            finished_at=data.get("finished_at"),
+            progress=data.get("progress", 0.0),
+            error=data.get("error"),
+            output_path=data.get("output_path"),
+        )
+
+    def cancel_job(self, job_id: str) -> DatasetProcessResponse:
+        """取消 GraphGen 任务。"""
+        resp = self._gg.cancel_job(job_id)
+        if resp.is_error:
+            return DatasetProcessResponse(
+                job_id=job_id, status="failed",
+                error=self._parse_error(resp),
+            )
+
+        data = resp.json()
+        return DatasetProcessResponse(
+            job_id=data.get("job_id", job_id),
+            status=data.get("status", "cancelled"),
+        )
+
+    # ── 内部 ──────────────────────────────────────────────────
+
+    @staticmethod
+    def _parse_error(resp) -> str:
+        """从 httpx Response 提取错误信息。"""
+        try:
+            detail = resp.json()
+            return detail.get("detail", resp.text)
+        except Exception:
+            return resp.text or f"HTTP {resp.status_code}"
+
+    # ── 样本读取 ──────────────────────────────────────────────
+
+    def _sample_csv(self, file_path: str, limit: int) -> SampleResponse:
+        raw = self._file_repo.read(file_path)
+        reader = csv.reader(io.StringIO(raw.decode("utf-8")))
+        try:
+            columns = next(reader)
+        except StopIteration:
+            return SampleResponse(columns=[], rows=[], total_rows=0)
+
+        rows: List[Dict[str, Any]] = []
+        total = 0
+        for row in reader:
+            total += 1
+            if len(rows) < limit:
+                rows.append({col: row[i] if i < len(row) else ""
+                             for i, col in enumerate(columns)})
         return SampleResponse(
-            columns=[],
-            rows=[],
-            total_rows=0,
-            error="Sample preview not yet implemented",
+            columns=columns,
+            rows=rows,
+            total_rows=total + 1,  # +1 for header
         )
 
-    def process(
-        self, dataset_id: int, request: ProcessRequest
-    ) -> ProcessResponse:
-        """提交清洗/转换任务到 Celery。"""
-        ds = self._dataset_repo.find(dataset_id)
-        if ds is None:
-            return ProcessResponse(error=f"Dataset not found: {dataset_id}")
-
-        if request.process_type == "clean" and request.clean_config is None:
-            return ProcessResponse(error="clean_config is required for clean process_type")
-
-        if request.process_type == "convert" and request.convert_format is None:
-            return ProcessResponse(error="convert_format is required for convert process_type")
-
-        # 延迟导入，服务层不直接依赖 infrastructure
-        from src.tasks.dataset_tasks import dataset_clean, dataset_convert
-
-        if request.process_type == "clean":
-            task = dataset_clean.delay(dataset_id, request.model_dump())
-        else:
-            task = dataset_convert.delay(dataset_id, request.convert_format)
-
-        return ProcessResponse(
-            task_id=task.id,
-            status="pending",
-            message=f"{request.process_type} task started",
+    def _sample_jsonl(self, file_path: str, limit: int) -> SampleResponse:
+        raw = self._file_repo.read(file_path)
+        lines = raw.decode("utf-8").strip().splitlines()
+        rows: List[Dict[str, Any]] = []
+        columns: List[str] = []
+        for line in lines:
+            try:
+                obj = json.loads(line)
+                if isinstance(obj, dict):
+                    rows.append(obj)
+                    for k in obj:
+                        if k not in columns:
+                            columns.append(k)
+                    if len(rows) >= limit:
+                        break
+            except json.JSONDecodeError:
+                continue
+        return SampleResponse(
+            columns=columns,
+            rows=rows[:limit],
+            total_rows=len(lines),
         )
 
-    def download(self, dataset_id: int) -> DownloadResponse:
-        """获取数据集文件的下载信息。
+    def _sample_xlsx(self, file_path: str, limit: int) -> SampleResponse:
+        raw = self._file_repo.read(file_path)
+        from openpyxl import load_workbook
 
-        TODO: 返回文件元数据，实际下载通过路由层的 FileResponse 实现。
-        """
-        ds = self._dataset_repo.find(dataset_id)
-        if ds is None:
-            return DownloadResponse(error=f"Dataset not found: {dataset_id}")
+        wb = load_workbook(io.BytesIO(raw), read_only=True)
+        ws = wb.active
+        if ws is None:
+            wb.close()
+            return SampleResponse(columns=[], rows=[], total_rows=0)
+        rows_iter = ws.iter_rows(values_only=True)
 
-        return DownloadResponse(
-            filename=f"{ds.name}.{ds.meta.format}",
-            file_size=ds.meta.file_size,
-            format=ds.meta.format,
+        try:
+            columns = [str(c) if c is not None else "" for c in next(rows_iter)]
+        except StopIteration:
+            wb.close()
+            return SampleResponse(columns=[], rows=[], total_rows=0)
+
+        rows: List[Dict[str, Any]] = []
+        total = 0
+        for row in rows_iter:
+            total += 1
+            if len(rows) < limit:
+                rows.append({col: (row[i] if i < len(row) else "")
+                             for i, col in enumerate(columns)})
+        wb.close()
+        return SampleResponse(
+            columns=columns,
+            rows=rows,
+            total_rows=total + 1,
         )

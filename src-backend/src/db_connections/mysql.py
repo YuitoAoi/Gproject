@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from src.services.interfaces.db_conn import DatabaseConnection
 
 
-class MysqlDatabaseConnection(DatabaseConnection):
+class MysqlConnection(DatabaseConnection):
     """基于 SQLAlchemy 的 MySQL 数据库连接实现。
 
     使用 pymysql 驱动，连接池大小为 20，自动检测断连并重连。

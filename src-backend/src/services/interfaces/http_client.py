@@ -8,7 +8,7 @@ from httpx import Response
 
 class HTTPClientConfig(msgspec.Struct):
     name: str
-    base_url: str
+    url: str
     retries: int = 3
     timeout: int = 5000  # ms
 
@@ -25,7 +25,7 @@ class HTTPClient(abc.ABC):
     def __init__(self, config: HTTPClientConfig) -> None:
         self.config = config
         self._client = httpx.Client(
-            base_url=config.base_url,
+            base_url=config.url,
             timeout=httpx.Timeout(config.timeout / 1000.0),
         )
         if not self._check():
@@ -164,7 +164,7 @@ class AsyncHTTPClient(abc.ABC):
 
     async def __aenter__(self) -> Self:
         self._client = httpx.AsyncClient(
-            base_url=self.config.base_url,
+            base_url=self.config.url,
             timeout=httpx.Timeout(self.config.timeout / 1000.0),
         )
         if not await self._check():

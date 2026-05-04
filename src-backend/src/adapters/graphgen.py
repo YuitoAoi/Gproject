@@ -1,3 +1,0 @@
-
-class GraphGenDatasetProcessorAdapter:
-    pass

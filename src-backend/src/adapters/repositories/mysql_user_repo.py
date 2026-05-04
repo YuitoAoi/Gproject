@@ -1,25 +1,33 @@
-from typing import List, Optional, cast
+"""用户仓储实现 —— 通过 SQLAlchemy 自动适配 MySQL / SQLite。"""
 from datetime import datetime
+from typing import List, Optional, cast
 
-from sqlalchemy import text
+from sqlalchemy import Boolean, Column, DateTime, Integer, MetaData, String, Table, text
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
-from src.services.interfaces.user_repository import UserRepository
-from src.services.interfaces.db_conn import DatabaseConnection
 from src.core.user import User
+from src.services.interfaces.db_conn import DatabaseConnection
+from src.services.interfaces.user_repository import UserRepository
+
+_metadata = MetaData()
+
+_user_table = Table(
+    "users",
+    _metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("name", String(255), nullable=False),
+    Column("email", String(255), nullable=False, unique=True),
+    Column("password", String(255), nullable=False),
+    Column("is_admin", Boolean, default=False),
+    Column("is_active", Boolean, default=True),
+    Column("created_at", DateTime, nullable=False),
+    Column("last_login", DateTime, nullable=False),
+)
 
 
-class MysqlUserRepository(UserRepository):
-    """基于 SQLAlchemy + MySQL 的用户仓储实现。
-
-    使用示例::
-
-        conn = MysqlDatabaseConnection(url)
-        conn.start()
-        repo = MysqlUserRepository(conn)
-        repo.create(user)
-    """
+class UserRepositoryAdapter(UserRepository):
+    """用户仓储实现。SQLAlchemy Core Table 自动适配 MySQL / SQLite。"""
 
     _COLUMNS = ("id, name, email, password, is_admin, is_active, "
                 "created_at, last_login")
@@ -30,11 +38,18 @@ class MysqlUserRepository(UserRepository):
     def _session(self) -> Session:
         return cast(Session, self._conn.new_session())
 
+    # ── 表初始化 ──────────────────────────────────────────────
+
+    def init_table(self) -> None:
+        self._conn.start()
+        assert self._conn.engine is not None
+        _metadata.create_all(self._conn.engine)
+
     # ── UserRepository 实现 ────────────────────────────────────
 
     def create(self, user: User) -> Optional[int]:
         with self._session() as session:
-            session.execute(
+            result = session.execute(
                 text(
                     "INSERT INTO users "
                     "(name, email, password, is_admin, is_active, created_at, last_login) "
@@ -51,8 +66,7 @@ class MysqlUserRepository(UserRepository):
                 },
             )
             session.commit()
-            pk = session.execute(text("SELECT LAST_INSERT_ID()")).scalar()
-            return pk
+            return result.lastrowid
 
     def find_by_id(self, id: int) -> Optional[User]:
         with self._session() as session:

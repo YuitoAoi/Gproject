@@ -11,7 +11,7 @@ class Config(BaseSettings):
     PROJECT_NAME: str = 'LLaMA-Factory Workstation'
     VERSION: str = '1.0.0'
 
-    DATABASE_URL: str = 'mysql+pymysql://user:password@localhost:3306/llama_factory'
+    DATABASE_URL: str = 'sqlite:///gproject.db'
     REDIS_URL: str = 'redis://localhost:6379/0'
 
     BACKEND_CORS_ORIGINS: List[str] = ['http://localhost:3000', 'http://localhost:5173']
@@ -21,6 +21,13 @@ class Config(BaseSettings):
 
     DATASETS_DIR: str = str(Path(__file__).resolve().parents[2] / "datasets")
 
+    GRAPHGEN_API_URL: str = "http://localhost:8001/api/v1"
+    SYNTHESIZER_MODEL: str = "Qwen/Qwen2.5-7B-Instruct"
+    SYNTHESIZER_BASE_URL: str = "https://api.siliconflow.cn/v1"
+    SYNTHESIZER_API_KEY: str = "your-api-key"
+    TRAINEE_MODE: str = "Qwen/Qwen2.5-7B-Instruct"
+    TRAINEE_BASE_URL: str = "https://api.siliconflow.cn/v1"
+    TRAINEE_API_KEY: str = "your-api-key"
     class Config:
         env_file = '.env'
 

@@ -19,15 +19,16 @@ from sqlalchemy.orm import DeclarativeBase, Session
 
 from src.services.interfaces.db_conn import DatabaseConnection
 
-from .memory import MemoryDatabaseConnection
-from .mysql import MysqlDatabaseConnection
+from .mysql import MysqlConnection
+from .sqlite import SqliteConnection
 
 __all__ = [
     "Base",
     "get_db",
     "session_scope",
-    "MysqlDatabaseConnection",
-    "MemoryDatabaseConnection",
+    "MysqlConnection",
+    "SqliteConnection",
+    "create_db_connection",
 ]
 
 # ═══════════════════════════════════════════════
@@ -99,3 +100,21 @@ def get_db(connection: DatabaseConnection) -> Iterator[Session]:
         yield session
     finally:
         session.close()
+
+
+# ═══════════════════════════════════════════════
+# 自动检测
+# ═══════════════════════════════════════════════
+
+
+def create_db_connection(database_url: str) -> DatabaseConnection:
+    """根据 URL 协议自动选择数据库连接。
+
+    ``sqlite:///`` → SqliteConnection
+    ``mysql+pymysql://`` 或 ``mysql://`` → MysqlConnection
+    """
+    if database_url.startswith("sqlite"):
+        return SqliteConnection(database_url)
+    if database_url.startswith("mysql"):
+        return MysqlConnection(database_url)
+    raise ValueError(f"Unsupported database URL scheme: {database_url}")

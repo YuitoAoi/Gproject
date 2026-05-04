@@ -25,27 +25,28 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     import logging
     logger = logging.getLogger("uvicorn")
 
-    from src.db_connections.mysql import MysqlDatabaseConnection
-    from src.adapters.repositories.mysql_user_repo import MysqlUserRepository
-    from src.adapters.repositories.mysql_dataset_repo import MysqlDatasetRepository
-    from src.adapters.repositories.mysql_dataset_tag_repo import MysqlDatasetTagRepository
+    from src.db_connections import create_db_connection
+    from src.adapters.repositories.mysql_user_repo import UserRepositoryAdapter
+    from src.adapters.repositories.dataset_repo import DatasetRepositoryAdapter
+    from src.adapters.repositories.dataset_tag_repo import DatasetTagRepositoryAdapter
     from src.adapters.repositories.windows_file_repo import WindowsFileRepository
 
-    db_conn = MysqlDatabaseConnection(database_url=config.DATABASE_URL)
+    db_conn = create_db_connection(config.DATABASE_URL)
 
     try:
         db_conn.start()
-        logger.info("MySQL connected successfully")
-        MysqlDatasetRepository(db_conn).init_table()
-        MysqlDatasetTagRepository(db_conn).init_table()
+        logger.info("Database connected successfully")
+        DatasetRepositoryAdapter(db_conn).init_table()
+        DatasetTagRepositoryAdapter(db_conn).init_table()
     except RuntimeError as e:
-        logger.warning(f"MySQL unavailable, starting in degraded mode: {e}")
+        logger.warning(f"Database unavailable, starting in degraded mode: {e}")
 
     app.state.services = ServiceFactory(
-        user_repo=MysqlUserRepository(db_conn),
-        dataset_repo=MysqlDatasetRepository(db_conn),
+        user_repo=UserRepositoryAdapter(db_conn),
+        dataset_repo=DatasetRepositoryAdapter(db_conn),
         file_repo=WindowsFileRepository(),
-        dataset_tag_repo=MysqlDatasetTagRepository(db_conn),
+        conn=db_conn,
+        dataset_tag_repo=DatasetTagRepositoryAdapter(db_conn),
     )
     app.state.db_conn = db_conn
     yield

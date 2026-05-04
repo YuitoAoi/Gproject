@@ -7,27 +7,53 @@ from src.services import (
     GetDatasetsResponse,
     ServiceFactory,
 )
-from src.services.chunked_upload_service import (
-    ChunkedUploadService,
+from src.services.dataset_import_export_service import (
     CompleteUploadRequest,
     CompleteUploadResponse,
+    DatasetDownloadRequest,
+    DatasetDownloadTokenResponse,
+    DatasetImportExportResponse,
+    DatasetImportRequest,
     InitiateUploadRequest,
     InitiateUploadResponse,
     UploadChunkResponse,
+    UploadStatusResponse,
 )
 from src.services.dataset_process_service import (
-    ProcessRequest,
-    ProcessResponse,
+    DatasetProcessRequest,
+    DatasetProcessResponse,
     SampleRequest,
     SampleResponse,
+)
+from src.services.dataset_remove_service import (
+    DatasetRemoveRequest,
+    DatasetRemoveResponse,
+)
+from src.services.dataset_update_service import (
+    DatasetUpdateRequest,
+    DatasetUpdateResponse,
 )
 from src.services.jwt_service import TokenPayload
 
 router = APIRouter(prefix="/dataset", tags=["dataset"])
+datasets_router = APIRouter(prefix="/datasets", tags=["dataset"])
 download_router = APIRouter(tags=["download"])
 
 
-@router.get("/", response_model=GetDatasetsResponse)
+def _check_owner(svc: ServiceFactory, dataset_id: int, owner_id: int) -> str | None:
+    ds = svc.dataset_repo.find(dataset_id)
+    if ds is None:
+        return f"Dataset not found: {dataset_id}"
+    if ds.owner_id != owner_id:
+        return f"Dataset does not belong to this user: {dataset_id}"
+    return None
+
+
+# ══════════════════════════════════════════════════════════
+# 查询
+# ══════════════════════════════════════════════════════════
+
+@datasets_router.get("", response_model=GetDatasetsResponse)
 def list_datasets(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
@@ -36,14 +62,31 @@ def list_datasets(
     return svc.get_datasets().get_all(owner_id=owner_id)
 
 
-@router.get("/{dataset_id}", response_model=GetDatasetResponse)
+@router.post("/get", response_model=GetDatasetResponse)
 def get_dataset(
-    dataset_id: int,
+    request: DatasetDownloadRequest,
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
     owner_id = int(current_user.user_id)
-    return svc.get_datasets().get_by_id(dataset_id, owner_id)
+    return svc.get_datasets().get_by_id(request.dataset_id, owner_id)
+
+
+# ══════════════════════════════════════════════════════════
+# 导入
+# ══════════════════════════════════════════════════════════
+
+@router.post("/import", response_model=DatasetImportExportResponse, status_code=201)
+def import_dataset(
+    request: DatasetImportRequest,
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    owner_id = int(current_user.user_id)
+    result = svc.dataset_import_export().import_dataset(request, owner_id)
+    if not result.success:
+        return JSONResponse(content=result.model_dump(), status_code=400)
+    return result
 
 
 # ══════════════════════════════════════════════════════════
@@ -56,7 +99,6 @@ def initiate_upload(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    """初始化上传，返回 upload_id。"""
     return svc.chunked_upload().initiate(request)
 
 
@@ -68,18 +110,16 @@ def upload_chunk(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    """上传单个分片 (multipart/form-data)。"""
     data = file.file.read()
     return svc.chunked_upload().upload_chunk(upload_id, chunk_index, data)
 
 
-@router.get("/upload/{upload_id}/status")
+@router.post("/upload/status", response_model=UploadStatusResponse)
 def upload_status(
-    upload_id: str,
+    upload_id: str = Form(...),
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    """查询上传进度（断点续传）。"""
     return svc.chunked_upload().get_status(upload_id)
 
 
@@ -89,81 +129,106 @@ def complete_upload(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    """合并分块 → 校验哈希 → 创建 Dataset 记录。"""
     request.owner_id = int(current_user.user_id)
-    return svc.chunked_upload().complete(request)
+    result = svc.chunked_upload().complete(request)
+    if not result.success:
+        return JSONResponse(content=result.model_dump(), status_code=400)
+    return result
 
 
 # ══════════════════════════════════════════════════════════
-# 样本 / 处理
+# 更新
 # ══════════════════════════════════════════════════════════
 
-@router.get("/{dataset_id}/sample", response_model=SampleResponse)
+@router.patch("", response_model=DatasetUpdateResponse)
+def update_dataset(
+    request: DatasetUpdateRequest,
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    owner_id = int(current_user.user_id)
+    result = svc.update_dataset().execute(request, owner_id)
+    if not result.success:
+        return JSONResponse(content=result.model_dump(), status_code=400)
+    return result
+
+
+# ══════════════════════════════════════════════════════════
+# 样本 & 处理
+# ══════════════════════════════════════════════════════════
+
+@router.post("/sample", response_model=SampleResponse)
 def get_dataset_sample(
-    dataset_id: int,
-    limit: int = 100,
+    request: SampleRequest,
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    """获取数据集前 N 条样本及表头。"""
-    return svc.process_dataset().get_sample(dataset_id, SampleRequest(limit=limit))
+    owner_id = int(current_user.user_id)
+    err = _check_owner(svc, request.dataset_id, owner_id)
+    if err:
+        return SampleResponse(error=err)
+    return svc.process_dataset().get_sample(request)
 
 
-@router.post("/{dataset_id}/process", response_model=ProcessResponse)
+@router.post("/process", response_model=DatasetProcessResponse)
 def process_dataset(
-    dataset_id: int,
-    request: ProcessRequest,
+    request: DatasetProcessRequest,
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    """提交数据清洗/格式转换任务。"""
-    return svc.process_dataset().process(dataset_id, request)
+    owner_id = int(current_user.user_id)
+    err = _check_owner(svc, request.dataset_id, owner_id)
+    if err:
+        return DatasetProcessResponse(job_id="", status="failed", error=err)
+    return svc.process_dataset().process(request)
 
 
 # ══════════════════════════════════════════════════════════
 # 下载
 # ══════════════════════════════════════════════════════════
 
-@router.post("/{dataset_id}/download")
+@router.post("/download", response_model=DatasetDownloadTokenResponse)
 def request_download_token(
-    dataset_id: int,
+    request: DatasetDownloadRequest,
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    """生成下载令牌。"""
-    info = svc.process_dataset().download(dataset_id)
+    owner_id = int(current_user.user_id)
+    err = _check_owner(svc, request.dataset_id, owner_id)
+    if err:
+        return DatasetDownloadTokenResponse(download_token="", filename="", file_size=0, format="", sha256="", error=err)
+
+    info = svc.dataset_import_export().download(request)
     if info.error:
-        return {"error": info.error}
+        return JSONResponse(content={"error": info.error}, status_code=404)
 
     token = svc.jwt()._generate_download_token(
-        dataset_id=dataset_id,
-        user_id=int(current_user.user_id),
+        dataset_id=request.dataset_id,
+        user_id=owner_id,
     )
-    return {
-        "download_token": token,
-        "filename": info.filename,
-        "file_size": info.file_size,
-        "format": info.format,
-    }
+    return DatasetDownloadTokenResponse(
+        download_token=token,
+        filename=info.filename or "",
+        file_size=info.file_size or 0,
+        format=info.format or "",
+        sha256=info.sha256 or "",
+    )
 
 
 @download_router.get("/down_dataset/{token}")
-def download_by_token(token: str, request: Request):
-    """凭下载令牌获取文件流。"""
-    svc: ServiceFactory = request.app.state.services
-
+def download_by_token(
+    token: str,
+    request: Request,
+    svc: ServiceFactory = Depends(get_services),
+):
     payload = svc.jwt().verify_download_token(token)
     if payload is None:
-        return JSONResponse(
-            {"error": "Invalid or expired download token."}, status_code=401
-        )
+        return JSONResponse({"error": "Invalid or expired download token."}, status_code=401)
 
     dataset_id = payload["dataset_id"]
     ds = svc.dataset_repo.find(dataset_id)
     if ds is None:
-        return JSONResponse(
-            {"error": f"Dataset not found: {dataset_id}"}, status_code=404
-        )
+        return JSONResponse({"error": f"Dataset not found: {dataset_id}"}, status_code=404)
 
     file_path = ds.meta.file_path
     if not file_path:
@@ -184,14 +249,11 @@ def download_by_token(token: str, request: Request):
 # 删除
 # ══════════════════════════════════════════════════════════
 
-@router.delete("/{dataset_id}")
+@datasets_router.delete("", response_model=DatasetRemoveResponse)
 def delete_dataset(
-    dataset_id: int,
-    svc: ServiceFactory = Depends(get_services),
+    request: DatasetRemoveRequest,
     current_user: TokenPayload = Depends(get_current_user),
+    svc: ServiceFactory = Depends(get_services),
 ):
-    """删除数据集（含文件）。"""
-    err = svc.dataset_repo.remove(dataset_id)
-    if err is not None:
-        return {"error": str(err)}
-    return {"deleted": str(dataset_id)}
+    owner_id = int(current_user.user_id)
+    return svc.remove_datasets().execute(request, owner_id)
