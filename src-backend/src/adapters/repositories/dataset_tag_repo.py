@@ -1,7 +1,8 @@
-from typing import List, Optional, cast
+"""标签仓储实现 —— 通过 SQLAlchemy 自动适配 MySQL / SQLite。"""
 from datetime import datetime
+from typing import List, Optional, cast
 
-from sqlalchemy import text
+from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, text
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
@@ -9,12 +10,22 @@ from src.core.dataset_tag import DatasetTag
 from src.services.interfaces.dataset_tag_repository import DatasetTagRepository
 from src.services.interfaces.db_conn import DatabaseConnection
 
+_metadata = MetaData()
 
-class MysqlDatasetTagRepository(DatasetTagRepository):
-    """基于 SQLAlchemy + MySQL 的数据集标签仓储实现。
+_tag_table = Table(
+    "dataset_tags",
+    _metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("owner_id", Integer, nullable=False, default=0),
+    Column("name", String(255), nullable=False),
+    Column("color", String(50), nullable=False, default="#808080"),
+    Column("description", Text),
+    Column("created_at", DateTime, nullable=False),
+)
 
-    所有写方法返回 Optional[Exception]：成功返回 None，失败返回异常对象。
-    """
+
+class DatasetTagRepositoryAdapter(DatasetTagRepository):
+    """标签仓储实现。SQLAlchemy Core Table 自动适配 MySQL / SQLite。"""
 
     _COLUMNS = ("id, owner_id, name, color, description, created_at")
 
@@ -27,19 +38,9 @@ class MysqlDatasetTagRepository(DatasetTagRepository):
     # ── 表初始化 ──────────────────────────────────────────────
 
     def init_table(self) -> None:
-        """确保 dataset_tags 表结构与实体匹配。"""
-        with self._session() as s:
-            s.execute(text("""
-                CREATE TABLE IF NOT EXISTS dataset_tags (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    owner_id INT NOT NULL DEFAULT 0,
-                    name VARCHAR(255) NOT NULL,
-                    color VARCHAR(50) NOT NULL DEFAULT '#808080',
-                    description TEXT,
-                    created_at DATETIME NOT NULL
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            """))
-            s.commit()
+        self._conn.start()
+        assert self._conn.engine is not None
+        _metadata.create_all(self._conn.engine)
 
     # ── DatasetTagRepository 实现 ─────────────────────────────
 

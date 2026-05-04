@@ -52,16 +52,16 @@ def dataset_clean(self, dataset_id: int, config_dict: Dict[str, Any]) -> Dict[st
     try:
         from src.services.dataset_clean_service import DatasetCleanService
         from src.services.dataset_process_service import CleanConfig
-        from src.db_connections.mysql import MysqlDatabaseConnection
+        from src.db_connections.mysql import MysqlConnection
 
         _publish_progress(task_id, "start", 0.0, "Task started")
 
         # 连接数据库
-        db_conn = MysqlDatabaseConnection(config.DATABASE_URL)
+        db_conn = MysqlConnection(config.DATABASE_URL)
         db_conn.start()
 
-        from src.adapters.repositories.mysql_dataset_repo import MysqlDatasetRepository
-        repo = MysqlDatasetRepository(db_conn)
+        from src.adapters.repositories.mysql_dataset_repo import DatasetRepositoryAdapter
+        repo = DatasetRepositoryAdapter(db_conn)
 
         ds = repo.find(dataset_id)
         if ds is None:
@@ -126,13 +126,13 @@ def dataset_convert(self, dataset_id: int, target_format: str) -> Dict[str, Any]
     try:
         _publish_progress(task_id, "start", 0.0, f"Converting to {target_format}")
 
-        from src.db_connections.mysql import MysqlDatabaseConnection
+        from src.db_connections.mysql import MysqlConnection
 
-        db_conn = MysqlDatabaseConnection(config.DATABASE_URL)
+        db_conn = MysqlConnection(config.DATABASE_URL)
         db_conn.start()
 
-        from src.adapters.repositories.mysql_dataset_repo import MysqlDatasetRepository
-        repo = MysqlDatasetRepository(db_conn)
+        from src.adapters.repositories.mysql_dataset_repo import DatasetRepositoryAdapter
+        repo = DatasetRepositoryAdapter(db_conn)
 
         ds = repo.find(dataset_id)
         if ds is None:

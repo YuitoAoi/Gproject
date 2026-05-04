@@ -2,7 +2,7 @@
 
 **Base URL**: `/api/v1`
 
-所有需要认证的端点必须在请求头中携带 `Authorization: Bearer <access_token>`。
+所有认证端点需携带 `Authorization: Bearer <access_token>`。
 
 ---
 
@@ -10,7 +10,7 @@
 
 ### `POST /auth/login`
 
-登录获取 token。
+登录获取 token。无需认证。
 
 **请求体** (`application/json`):
 
@@ -37,7 +37,7 @@
 
 ### `POST /user`
 
-注册新用户。
+注册新用户。无需认证。
 
 **请求体** (`application/json`):
 
@@ -61,7 +61,7 @@
 
 ### `GET /user`
 
-获取当前用户信息。 **[认证]**
+获取当前用户信息。**[认证]**
 
 **响应** `200`:
 
@@ -80,7 +80,7 @@
 
 ### `PATCH /user`
 
-更新当前用户信息。 **[认证]**
+更新当前用户信息。**[认证]**
 
 **请求体** (`application/json`):
 
@@ -102,9 +102,11 @@
 
 ## 数据集
 
-### `GET /dataset/`
+所有 `dataset_id` 均在请求体中传递，不暴露在 URL。
 
-获取当前用户的全部数据集。 **[认证]**
+### `GET /datasets`
+
+获取当前用户的全部数据集。**[认证]**
 
 **响应** `200`:
 
@@ -123,16 +125,22 @@
 | `name` | `string` | 名称 |
 | `desc` | `string` | 描述 |
 | `meta` | `DatasetMeta` | 元信息（format, file_path, file_size） |
-| `status` | `int` | 状态码 |
-| `tag_ids` | `int[]` | 关联标签 ID 列表 |
+| `status` | `int` | 状态码（0=未处理） |
+| `tag_ids` | `int[]` | 关联标签 ID |
 | `created_at` | `datetime` | 创建时间 |
 | `updated_at` | `datetime` | 更新时间 |
 
 ---
 
-### `GET /dataset/{dataset_id}`
+### `POST /dataset/get`
 
-获取单个数据集详情。 **[认证]**
+获取单个数据集详情。**[认证]**
+
+**请求体** (`application/json`):
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `dataset_id` | `int` | 是 | 数据集 ID |
 
 **响应** `200`:
 
@@ -143,15 +151,166 @@
 
 ---
 
-### `DELETE /dataset/{dataset_id}`
+### `POST /dataset/import`
 
-删除数据集及其文件。 **[认证]**
+从本地已有文件创建数据集记录。**[认证]**
+
+**请求体** (`application/json`):
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `name` | `string` | 是 | - | 数据集名称 |
+| `file_path` | `string` | 是 | - | 文件路径 |
+| `desc` | `string` | 否 | `null` | 描述（最长 500） |
+| `tag_ids` | `int[]` | 否 | `[]` | 标签 ID 列表 |
+
+**响应** `201`:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `success` | `bool` | 是否成功 |
+| `dataset_id` | `int` | 新数据集 ID |
+| `filename` | `string` | 文件名 |
+| `file_path` | `string` | 文件路径 |
+| `file_size` | `int` | 文件大小（字节） |
+| `format` | `string` | 文件格式 |
+| `sha256` | `string` | 文件 SHA-256 校验码 |
+| `error` | `string` | 错误信息 |
+
+---
+
+### `PATCH /dataset`
+
+更新数据集信息。`meta`/`owner_id`/`status`/时间戳不可编辑。**[认证]**
+
+**请求体** (`application/json`):
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `dataset_id` | `int` | 是 | 数据集 ID |
+| `name` | `string` | 否 | 新名称 |
+| `desc` | `string` | 否 | 新描述 |
+| `tag_ids` | `int[]` | 否 | 新标签 ID 列表 |
 
 **响应** `200`:
 
-```json
-{ "deleted": "1" }
-```
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `success` | `bool` | 是否成功 |
+| `error` | `string` | 错误信息 |
+
+---
+
+### `DELETE /datasets`
+
+批量删除数据集（含磁盘文件）。**[认证]**
+
+**请求体** (`application/json`):
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `dataset_ids` | `int[]` | 是 | 要删除的数据集 ID 列表 |
+
+**响应** `200`:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `success` | `bool` | 全部成功则为 `true` |
+| `deleted` | `int[]` | 成功删除的 ID 列表 |
+| `errors` | `string[]` | 失败原因列表 |
+
+---
+
+### `POST /dataset/sample`
+
+获取数据集前 N 条样本及表头。**[认证]**
+
+**请求体** (`application/json`):
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `dataset_id` | `int` | 是 | - | 数据集 ID |
+| `limit` | `int` | 否 | `100` | 返回行数（1-200） |
+
+**响应** `200`:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `columns` | `string[]` | 表头列名 |
+| `rows` | `object[]` | 样本数据行 |
+| `total_rows` | `int` | 文件总行数 |
+| `error` | `string` | 错误信息 |
+
+---
+
+### `POST /dataset/process`
+
+提交图生成任务到 GraphGen。仅 `status=0` 的数据集可处理。**[认证]**
+
+**请求体** (`application/json`):
+
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `dataset_id` | `int` | 是 | - | 数据集 ID |
+| `api_key` | `string` | 是 | - | LLM API Key |
+| `synthesizer_url` | `string` | 是 | - | 合成模型 API 地址 |
+| `synthesizer_model` | `string` | 是 | - | 合成模型名称 |
+| `mode` | `string` | 是 | - | 生成模式：`atomic`/`multi_hop`/`aggregated`/`CoT`/`multi_choice`/`multi_answer`/`fill_in_blank`/`true_false` |
+| `data_format` | `string` | 是 | - | 输出格式：`Alpaca`/`Sharegpt`/`ChatML` |
+| `tokenizer` | `string` | 否 | `cl100k_base` | 分词器 |
+| `trainee_model` | `string` | 否 | `null` | 训练目标模型 |
+| `trainee_url` | `string` | 否 | `null` | 训练目标 API 地址 |
+| `trainee_api_key` | `string` | 否 | `null` | 训练目标 API Key |
+| `chunk_size` | `int` | 否 | `1024` | 分块大小 |
+| `chunk_overlap` | `int` | 否 | `100` | 分块重叠 |
+| `quiz_samples` | `int` | 否 | `2` | Quiz 采样数 |
+| `partition_method` | `string` | 否 | `ece` | 图分区算法：`dfs`/`bfs`/`leiden`/`ece` |
+| `rpm` | `int` | 否 | `1000` | 每分钟请求数限制 |
+| `tpm` | `int` | 否 | `50000` | 每分钟 Token 数限制 |
+
+分区参数：`dfs_max_units`(5)、`bfs_max_units`(5)、`leiden_max_size`(20)、`leiden_use_lcc`(false)、`leiden_random_seed`(42)、`ece_max_units`(20)、`ece_min_units`(3)、`ece_max_tokens`(10240)、`ece_unit_sampling`(random)。
+
+**响应** `200`:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `job_id` | `string` | 任务 ID |
+| `status` | `string` | `pending`/`running`/`done`/`failed`/`cancelled` |
+| `created_at` | `string` | 创建时间 |
+| `started_at` | `string` | 开始时间 |
+| `finished_at` | `string` | 完成时间 |
+| `progress` | `float` | 进度 0.0-1.0 |
+| `error` | `string` | 错误信息 |
+| `output_path` | `string` | 输出文件路径 |
+
+---
+
+### `POST /dataset/download`
+
+生成数据集下载令牌。**[认证]**
+
+**请求体** (`application/json`):
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `dataset_id` | `int` | 是 | 数据集 ID |
+
+**响应** `200`:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `download_token` | `string` | 临时下载令牌 |
+| `filename` | `string` | 文件名 |
+| `file_size` | `int` | 文件大小（字节） |
+| `format` | `string` | 文件格式 |
+| `sha256` | `string` | 文件 SHA-256 校验码 |
+| `error` | `string` | 错误信息 |
+
+---
+
+### `GET /down_dataset/{token}`
+
+凭下载令牌获取文件流（二进制响应）。无需 Bearer 认证，使用下载令牌。
 
 ---
 
@@ -159,40 +318,76 @@
 
 #### `POST /dataset/upload/initiate`
 
-初始化分块上传。 **[认证]**
+初始化分块上传。**[认证]**
 
 **请求体** (`application/json`):
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| `filename` | `string` | 是 | 文件名 |
-| `file_size` | `int` | 是 | 文件大小（字节） |
-| `file_hash` | `string` | 是 | 客户端 SHA-256 |
-| `chunk_size` | `int` | 否 | 分片大小（1-10 MB，默认 5 MB） |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `filename` | `string` | 是 | - | 原始文件名 |
+| `file_size` | `int` | 是 | - | 文件总大小（字节） |
+| `file_hash` | `string` | 是 | - | 客户端计算的 SHA-256 |
+| `chunk_size` | `int` | 否 | `5242880` | 分片大小（1-10 MB） |
+
+**响应** `200`:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `upload_id` | `string` | 上传会话 ID |
+| `chunk_size` | `int` | 实际分片大小 |
+| `total_chunks` | `int` | 总分片数 |
+| `uploaded_chunks` | `int[]` | 已上传分片序号 |
+| `is_instant_complete` | `bool` | 是否秒传 |
 
 ---
 
 #### `POST /dataset/upload/chunk`
 
-上传单个分片 (`multipart/form-data`)。 **[认证]**
+上传单个分片。**[认证]**
+
+`multipart/form-data`:
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `upload_id` | `string` (form) | 上传会话 ID |
-| `chunk_index` | `int` (form) | 分片序号（从 0 开始） |
-| `file` | `file` (form) | 分片二进制数据 |
+| `upload_id` | `string` | 上传会话 ID |
+| `chunk_index` | `int` | 分片序号（从 0 开始） |
+| `file` | `binary` | 分片数据 |
+
+**响应** `200`:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `upload_id` | `string` | 上传会话 ID |
+| `chunk_index` | `int` | 分片序号 |
+| `received` | `bool` | 是否接收成功 |
+| `error` | `string` | 错误信息 |
 
 ---
 
-#### `GET /dataset/upload/{upload_id}/status`
+#### `POST /dataset/upload/status`
 
-查询上传进度（支持断点续传）。 **[认证]**
+查询上传进度。**[认证]**
+
+`multipart/form-data`:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `upload_id` | `string` | 上传会话 ID |
+
+**响应** `200`:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `upload_id` | `string` | 上传会话 ID |
+| `uploaded_chunks` | `int[]` | 已上传分片序号 |
+| `total_chunks` | `int` | 总分片数 |
+| `is_complete` | `bool` | 是否全部上传完成 |
 
 ---
 
 #### `POST /dataset/upload/complete`
 
-合并分片、校验哈希、创建数据集记录。 **[认证]**
+合并分片、校验哈希、创建数据集记录、建索引。任意步骤失败则回滚。**[认证]**
 
 **请求体** (`application/json`):
 
@@ -203,69 +398,37 @@
 | `desc` | `string` | 否 | 描述 |
 | `tag_ids` | `int[]` | 否 | 标签 ID 列表 |
 
----
-
-### 样本与处理
-
-#### `GET /dataset/{dataset_id}/sample`
-
-获取数据集前 N 条样本及表头。 **[认证]**
-
-**查询参数**:
-
-| 参数 | 类型 | 默认 | 说明 |
-|------|------|------|------|
-| `limit` | `int` | `100` | 返回行数（1-200） |
-
----
-
-#### `POST /dataset/{dataset_id}/process`
-
-提交数据清洗/格式转换任务。 **[认证]**
-
----
-
-#### `POST /dataset/{dataset_id}/download`
-
-生成下载令牌。 **[认证]**
-
 **响应** `200`:
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `download_token` | `string` | 下载令牌 |
-| `filename` | `string` | 文件名 |
-| `file_size` | `int` | 文件大小 |
-| `format` | `string` | 文件格式 |
-
----
-
-### `GET /down_dataset/{token}`
-
-凭下载令牌获取文件流（二进制响应）。
+| `success` | `bool` | 是否成功 |
+| `dataset_id` | `int` | 新数据集 ID |
+| `file_path` | `string` | 最终文件路径 |
+| `error` | `string` | 错误信息（含哈希不匹配等） |
 
 ---
 
 ## 标签
 
+所有 `tag_id` 均在请求体中传递。
+
 ### `GET /tags`
 
-获取当前用户的所有标签。 **[认证]**
+获取当前用户的所有标签。**[认证]**
 
 **响应** `200`:
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `success` | `bool` | 是否成功 |
-| `error` | `string` | 错误信息 |
 | `tags` | `TagInfo[]` | 标签列表 |
+| `error` | `string` | 错误信息 |
 
 **TagInfo** 对象:
 
 | 字段 | 类型 | 说明 |
 |------|------|------|
-| `success` | `bool` | 是否成功 |
-| `error` | `string` | 错误信息 |
 | `tag_id` | `int` | 标签 ID |
 | `tag_name` | `string` | 标签名称 |
 | `tag_color` | `string` | 标签颜色（hex） |
@@ -274,19 +437,23 @@
 
 ---
 
-### `GET /tag/{tag_id}`
+### `POST /tag/get`
 
-获取单个标签详情。 **[认证]**
+获取单个标签详情。**[认证]**
 
-**响应** `200`: 返回单个 `TagInfo` 对象（结构同上）。
+**请求体** (`application/json`):
 
-**错误** `400`: 标签不存在或不属于当前用户时返回 `"Tag not found"`。
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `tag_id` | `int` | 是 | 标签 ID |
+
+**响应** `200`: 返回 `TagInfo` 对象。标签不存在或不属于当前用户时返回 `"Tag not found"`。
 
 ---
 
-### `POST /tag/`
+### `POST /tag`
 
-创建标签。 **[认证]**
+创建标签。**[认证]**
 
 **请求体** (`application/json`):
 
@@ -301,20 +468,19 @@
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `success` | `bool` | 是否成功 |
-| `error` | `string` | 错误信息（如重名时返回 `"Tag name already exists for this user: xxx"`） |
+| `error` | `string` | 错误信息（重名时返回提示） |
 
 ---
 
-### `PATCH /tag/{tag_id}`
+### `PATCH /tag`
 
-更新标签。 **[认证]**
-
-仅需传入要修改的字段，未传入的字段保持不变。
+更新标签。仅传要修改的字段。**[认证]**
 
 **请求体** (`application/json`):
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
+| `tag_id` | `int` | 是 | 标签 ID |
 | `tag_name` | `string` | 否 | 新名称 |
 | `tag_color` | `string` | 否 | 新颜色 |
 | `tag_desc` | `string` | 否 | 新描述 |
@@ -324,19 +490,20 @@
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | `success` | `bool` | 是否成功 |
-| `error` | `string` | 错误信息（标签不存在/无权访问返回 `"Tag not found"`，重名返回相应错误） |
+| `error` | `string` | 错误信息 |
 
 ---
 
-### `DELETE /tag/{tag_id}`
+### `DELETE /tag`
 
-删除标签。 **[认证]**
+删除标签。**[认证]**
 
-**查询参数**:
+**请求体** (`application/json`):
 
-| 参数 | 类型 | 默认 | 说明 |
-|------|------|------|------|
-| `force` | `bool` | `false` | `false` 时若标签被数据集引用则返回引用列表；`true` 时级联移除所有关联并删除 |
+| 字段 | 类型 | 必填 | 默认值 | 说明 |
+|------|------|------|--------|------|
+| `tag_id` | `int` | 是 | - | 标签 ID |
+| `force` | `bool` | 否 | `false` | 强制删除，同时移除关联数据集中的该 tag |
 
 **响应** `200`:
 
@@ -345,8 +512,4 @@
 | `success` | `bool` | 是否成功 |
 | `error` | `string` | 错误信息 |
 
-**行为**:
-
-- `force=false`，标签被数据集引用 → 返回 `"Tag is referenced by: [数据集名称列表]"`，不执行删除
-- `force=true` → 遍历用户数据集移除该 `tag_id`，随后删除标签
-- 标签不存在或不属于当前用户 → 返回 `"Tag not found"`
+**行为**: `force=false` 且标签被数据集引用时返回引用列表不删除；`force=true` 遍历数据集移除 `tag_id` 后删除标签。标签不存在/无权访问统一返回 `"Tag not found"`。

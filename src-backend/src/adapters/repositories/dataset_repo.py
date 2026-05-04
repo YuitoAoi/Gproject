@@ -1,10 +1,11 @@
+"""数据集仓储实现 —— 通过 SQLAlchemy 自动适配 MySQL / SQLite。"""
 from __future__ import annotations
 
 import json
-from typing import List, Optional, cast
 from datetime import datetime
+from typing import List, Optional, cast
 
-from sqlalchemy import text
+from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, text
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
@@ -12,13 +13,25 @@ from src.core.dataset import Dataset, DatasetMeta
 from src.services.interfaces.dataset_repository import DatasetRepository
 from src.services.interfaces.db_conn import DatabaseConnection
 
+_metadata = MetaData()
 
-class MysqlDatasetRepository(DatasetRepository):
-    """基于 SQLAlchemy + MySQL 的数据集仓储实现。
+_dataset_table = Table(
+    "datasets",
+    _metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("owner_id", Integer, nullable=False, default=0),
+    Column("name", String(255), nullable=False),
+    Column("description", Text),
+    Column("meta", Text, nullable=False, default="{}"),
+    Column("status", Integer, default=0),
+    Column("tag_ids", Text, default="[]"),
+    Column("created_at", DateTime, nullable=False),
+    Column("updated_at", DateTime, nullable=False),
+)
 
-    meta 嵌套对象以 JSON 列存储，tag_ids 以 JSON 数组存储。
-    所有写方法返回 Optional[Exception]：成功返回 None，失败返回异常对象。
-    """
+
+class DatasetRepositoryAdapter(DatasetRepository):
+    """数据集仓储实现。SQLAlchemy Core Table 自动适配 MySQL / SQLite。"""
 
     _COLUMNS = ("id, owner_id, name, description, meta, status, tag_ids, "
                 "created_at, updated_at")
@@ -32,54 +45,29 @@ class MysqlDatasetRepository(DatasetRepository):
     # ── 表初始化 ──────────────────────────────────────────────
 
     def init_table(self) -> None:
-        """确保 datasets 表结构与实体匹配。缺失列自动补齐。"""
-        with self._session() as s:
-            s.execute(text("""
-                CREATE TABLE IF NOT EXISTS datasets (
-                    id INT AUTO_INCREMENT PRIMARY KEY,
-                    owner_id INT NOT NULL DEFAULT 0,
-                    name VARCHAR(255) NOT NULL,
-                    description TEXT,
-                    meta JSON NOT NULL,
-                    status INT DEFAULT 0,
-                    tag_ids JSON,
-                    created_at DATETIME NOT NULL,
-                    updated_at DATETIME NOT NULL
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            """))
-            s.commit()
+        self._conn.start()
+        assert self._conn.engine is not None
+        _metadata.create_all(self._conn.engine)
 
-            for col, col_def in [
-                ("owner_id", "INT NOT NULL DEFAULT 0"),
-                ("description", "TEXT"),
-                ("meta", "JSON NOT NULL"),
-                ("tag_ids", "JSON"),
+    # ── 索引管理 ───────────────────────────────────────────────
+
+    def ensure_indexes(self) -> None:
+        with self._session() as s:
+            for idx_def in [
+                "CREATE INDEX IF NOT EXISTS idx_datasets_owner_id ON datasets (owner_id)",
+                "CREATE INDEX IF NOT EXISTS idx_datasets_status ON datasets (status)",
             ]:
                 try:
-                    s.execute(text(
-                        f"ALTER TABLE datasets ADD COLUMN {col} {col_def}"
-                    ))
+                    s.execute(text(idx_def))
                     s.commit()
                 except Exception:
                     s.rollback()
-            # 旧表兼容：不再使用的列改为可空
-            for old_col, old_type in [
-                ("file_path", "VARCHAR(500)"),
-                ("format", "VARCHAR(20)"),
-                ("file_size", "BIGINT"),
-                ("total_records", "INT"),
-            ]:
+
+    def drop_indexes(self) -> None:
+        with self._session() as s:
+            for idx_name in ["idx_datasets_owner_id", "idx_datasets_status"]:
                 try:
-                    s.execute(text(
-                        f"ALTER TABLE datasets MODIFY COLUMN {old_col} {old_type} NULL"
-                    ))
-                    s.commit()
-                except Exception:
-                    s.rollback()
-                try:
-                    s.execute(text(
-                        f"ALTER TABLE datasets ADD COLUMN {col} {col_def}"
-                    ))
+                    s.execute(text(f"DROP INDEX IF EXISTS {idx_name}"))
                     s.commit()
                 except Exception:
                     s.rollback()
@@ -89,7 +77,7 @@ class MysqlDatasetRepository(DatasetRepository):
     def create(self, dataset: Dataset) -> Optional[Exception]:
         try:
             with self._session() as session:
-                session.execute(
+                result = session.execute(
                     text(
                         "INSERT INTO datasets "
                         "(owner_id, name, description, meta, status, tag_ids, created_at, updated_at) "
@@ -107,8 +95,7 @@ class MysqlDatasetRepository(DatasetRepository):
                     },
                 )
                 session.commit()
-                new_id = session.execute(text("SELECT LAST_INSERT_ID()")).scalar()
-                dataset.id = new_id
+                dataset.id = result.lastrowid
                 return None
         except Exception as exc:
             return exc
@@ -206,6 +193,22 @@ class MysqlDatasetRepository(DatasetRepository):
             return None
         except Exception as exc:
             return exc
+
+    def remove_batch(self, ids: List[int]) -> Optional[List[Exception]]:
+        if not ids:
+            return None
+        try:
+            with self._session() as session:
+                placeholders = ",".join(f":id_{i}" for i in range(len(ids)))
+                params = {f"id_{i}": id_ for i, id_ in enumerate(ids)}
+                session.execute(
+                    text(f"DELETE FROM datasets WHERE id IN ({placeholders})"),
+                    params,
+                )
+                session.commit()
+            return None
+        except Exception as exc:
+            return [exc]
 
     # ── 内部工具 ───────────────────────────────────────────────
 

@@ -6,13 +6,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src" / "service
 
 # 模拟 lifespan 启动
 from src.core.config import config
-from src.db_connections.mysql import MysqlDatabaseConnection
-from src.adapters.repositories.mysql_user_repo import MysqlUserRepository
-from src.adapters.repositories.mysql_dataset_repo import MysqlDatasetRepository
+from src.db_connections.mysql import MysqlConnection
+from src.adapters.repositories.mysql_user_repo import UserRepositoryAdapter
+from src.adapters.repositories.mysql_dataset_repo import DatasetRepositoryAdapter
 from src.adapters.repositories.windows_file_repo import WindowsFileRepository
 from src.services import ServiceFactory
 
-db_conn = MysqlDatabaseConnection(database_url=config.DATABASE_URL)
+db_conn = MysqlConnection(database_url=config.DATABASE_URL)
 try:
     db_conn.start()
     print("DB: started")
@@ -20,8 +20,8 @@ except Exception as e:
     print(f"DB: {e}")
 
 factory = ServiceFactory(
-    user_repo=MysqlUserRepository(db_conn),
-    dataset_repo=MysqlDatasetRepository(db_conn),
+    user_repo=UserRepositoryAdapter(db_conn),
+    dataset_repo=DatasetRepositoryAdapter(db_conn),
     file_repo=WindowsFileRepository(),
 )
 print("Factory: created")

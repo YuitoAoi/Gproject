@@ -31,3 +31,7 @@ class DatasetRepository(abc.ABC):
     @abc.abstractmethod
     def remove(self, id: int) -> Optional[Exception]:
         pass
+
+    @abc.abstractmethod
+    def remove_batch(self,ids: List[int]) -> Optional[List[Exception]]:
+        pass

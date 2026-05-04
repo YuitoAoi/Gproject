@@ -160,10 +160,10 @@ class TestDatasetAPI:
 
     def test_process_clean(self, client):
         tc, mock_svc = client
-        from src.services.dataset_process_service import ProcessResponse
+        from src.services.dataset_process_service import DatasetProcessResponse
 
         mock_svc.process_dataset.return_value.process.return_value = \
-            ProcessResponse(task_id="task-123", status="pending")
+            DatasetProcessResponse(task_id="task-123", status="pending")
 
         resp = tc.post("/dataset/1/process", json={
             "process_type": "clean",

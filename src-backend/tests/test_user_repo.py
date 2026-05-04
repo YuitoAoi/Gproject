@@ -19,8 +19,8 @@ def _make_user(name="alice", email="alice@test.com", password="secret") -> User:
     )
 
 
-class TestMysqlUserRepository:
-    """MysqlUserRepository 集成测试（需要本地 MySQL）"""
+class TestUserRepositoryAdapter:
+    """UserRepositoryAdapter 集成测试（SQLite :memory:）"""
 
     # ── create ─────────────────────────────────────────────────
 
