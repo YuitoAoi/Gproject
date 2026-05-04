@@ -263,6 +263,6 @@ def delete_dataset(
 ):
     owner_id = int(current_user.user_id)
     result = svc.remove_datasets().execute(request, owner_id)
-    if not result.success:
+    if not result.deleted:
         return JSONResponse(content=result.model_dump(), status_code=404)
     return result

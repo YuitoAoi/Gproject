@@ -17,6 +17,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from src.services import ServiceFactory
 from src.core.config import config
 @asynccontextmanager
@@ -26,7 +27,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     logger = logging.getLogger("uvicorn")
 
     from src.db_connections import create_db_connection
-    from src.adapters.repositories.mysql_user_repo import UserRepositoryAdapter
+    from src.adapters.repositories.user_repo import UserRepositoryAdapter
     from src.adapters.repositories.dataset_repo import DatasetRepositoryAdapter
     from src.adapters.repositories.dataset_tag_repo import DatasetTagRepositoryAdapter
     from src.adapters.repositories.windows_file_repo import WindowsFileRepository
@@ -49,17 +50,21 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     if existing is None:
         now = datetime.now()
-        with db_conn.new_session() as s:
+        s = db_conn.new_session()
+        try:
             s.execute(text(
-                "INSERT INTO users (id, name, email, password, is_admin, is_active, created_at, last_login) "
-                "VALUES (0, :name, :email, :password, 1, 1, :now, :now)"
+                "INSERT INTO users (id, name, email, password, is_admin, is_active, created_at, last_login, last_login_ip) "
+                "VALUES (0, :name, :email, :password, 1, 1, :now, :now, :ip)"
             ), {
                 "name": "super",
                 "email": config.SUPER_USER_EMAIL,
                 "password": hash_password(config.SUPER_USER_PASSWORD),
                 "now": now,
+                "ip": "",
             })
             s.commit()
+        finally:
+            s.close()
         logger.info(f"Super user created at id=0: {config.SUPER_USER_EMAIL}")
     else:
         existing.email = config.SUPER_USER_EMAIL
@@ -80,11 +85,32 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     db_conn.dispose()
 
 
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 app = FastAPI(
     title="GProject",
     version="1.0.0",
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_exception_handler(_request: Request, exc: StarletteHTTPException):
+    """HTTPException → 统一 Response 格式。"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"success": False, "error": exc.detail},
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def _pydantic_422_to_400(_request: Request, exc: RequestValidationError):
+    """Pydantic 校验错 → 400，统一 Response 格式。"""
+    return JSONResponse(
+        status_code=400,
+        content={"success": False, "error": str(exc.errors())},
+    )
 
 
 # ── 依赖注入 ──────────────────────────────────────────────

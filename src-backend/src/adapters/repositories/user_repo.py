@@ -23,6 +23,7 @@ _user_table = Table(
     Column("is_active", Boolean, default=True),
     Column("created_at", DateTime, nullable=False),
     Column("last_login", DateTime, nullable=False),
+    Column("last_login_ip", String(45), default=""),
 )
 
 
@@ -30,7 +31,7 @@ class UserRepositoryAdapter(UserRepository):
     """用户仓储实现。SQLAlchemy Core Table 自动适配 MySQL / SQLite。"""
 
     _COLUMNS = ("id, name, email, password, is_admin, is_active, "
-                "created_at, last_login")
+                "created_at, last_login, last_login_ip")
 
     def __init__(self, connection: DatabaseConnection) -> None:
         self._conn = connection
@@ -44,6 +45,17 @@ class UserRepositoryAdapter(UserRepository):
         self._conn.start()
         assert self._conn.engine is not None
         _metadata.create_all(self._conn.engine)
+
+        # 补齐旧表缺失的列
+        with self._session() as s:
+            for col, col_def in [
+                ("last_login_ip", "VARCHAR(45) DEFAULT ''"),
+            ]:
+                try:
+                    s.execute(text(f"ALTER TABLE users ADD COLUMN {col} {col_def}"))
+                    s.commit()
+                except Exception:
+                    s.rollback()
 
     # ── UserRepository 实现 ────────────────────────────────────
 
@@ -63,10 +75,11 @@ class UserRepositoryAdapter(UserRepository):
                     "is_active": user.is_active,
                     "created_at": user.created_at,
                     "last_login": user.last_login,
+                    "last_login_ip": user.last_login_ip,
                 },
             )
             session.commit()
-            return result.lastrowid
+            return cast(CursorResult, result).lastrowid
 
     def find_by_id(self, id: int) -> Optional[User]:
         with self._session() as session:
@@ -132,6 +145,7 @@ class UserRepositoryAdapter(UserRepository):
                     "is_active": user.is_active,
                     "created_at": user.created_at,
                     "last_login": user.last_login,
+                    "last_login_ip": user.last_login_ip,
                 },
             ))
             session.commit()
@@ -164,6 +178,7 @@ class UserRepositoryAdapter(UserRepository):
             is_active=bool(row.is_active),
             created_at=_ensure_datetime(row.created_at),
             last_login=_ensure_datetime(row.last_login),
+            last_login_ip=row.last_login_ip or "",
         )
 
 

@@ -4,6 +4,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from src.services.interfaces.user_repository import UserRepository
+from src.services.utils import is_safe_name, is_safe_password
 
 
 class UserUpdateRequest(BaseModel):
@@ -31,12 +32,16 @@ class UserUpdateService:
             return UserUpdateResponse(error="User not found.")
 
         if request.name:
+            if not is_safe_name(request.name):
+                return UserUpdateResponse(error="Invalid name.")
             user.name = request.name
         if request.email:
             if self._user_repo.find_by_email(request.email):
                 return UserUpdateResponse(error="Email already used.")
             user.email = request.email
         if request.old_password and request.password:
+            if not is_safe_password(request.password):
+                return UserUpdateResponse(error="Password contains invalid characters.")
             from src.core.password_encryptor import verify_password, hash_password
             if not verify_password(request.old_password, user.password):
                 return UserUpdateResponse(error="Old password is incorrect.")

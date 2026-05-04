@@ -5,13 +5,13 @@ from pydantic import BaseModel
 
 from src.services.interfaces.user_repository import UserRepository
 from src.services.jwt_service import JWTService
+from src.services.utils import is_valid_email
 
 
 class UserLoginRequest(BaseModel):
-    """登录请求"""
+    """登录请求。仅接受 email + password。"""
     email: str
     password: str
-    login_ip: Optional[str] = None
 
 
 class UserLoginResponse(BaseModel):
@@ -35,30 +35,26 @@ class UserLoginService:
         self._jwt_service = jwt_service
         self._user_repo = user_repo
 
-    def execute(self, request: UserLoginRequest) -> UserLoginResponse:
+    def execute(
+        self, request: UserLoginRequest, login_ip: str = ""
+    ) -> UserLoginResponse:
         if not request.email:
-            return UserLoginResponse(
-                error=f"{ValueError('Email cannot be none.')}"
-            )
+            return UserLoginResponse(error="Email cannot be empty.")
         if not request.password:
-            return UserLoginResponse(
-                error=f"{ValueError('Auth password cannot be none.')}"
-            )
+            return UserLoginResponse(error="Password cannot be empty.")
+        if not is_valid_email(request.email):
+            return UserLoginResponse(error="Invalid email format.")
 
         user = self._user_repo.find_by_email(request.email)
         if not user:
-            return UserLoginResponse(
-                error=f"{ValueError('User not found')}"
-            )
+            return UserLoginResponse(error="User not found.")
 
         from src.core.password_encryptor import verify_password
         if not verify_password(request.password, user.password):
-            return UserLoginResponse(
-                error=f"{ValueError('Wrong password.')}"
-            )
+            return UserLoginResponse(error="Wrong password.")
 
-        # 更新最后登录时间
         user.last_login = datetime.now()
+        user.last_login_ip = login_ip
         self._user_repo.update(user.id, user)
 
         # 生成 JWT Token

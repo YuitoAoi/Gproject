@@ -10,7 +10,7 @@ if str(_SERVICES_DIR) not in sys.path:
 from sqlalchemy import text
 
 from src.db_connections.sqlite import SqliteConnection
-from src.adapters.repositories.mysql_user_repo import UserRepositoryAdapter
+from src.adapters.repositories.user_repo import UserRepositoryAdapter
 
 TRUNCATE_USERS = text("DELETE FROM users")
 

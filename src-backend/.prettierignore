@@ -1,0 +1,19 @@
+# Python
+*.py
+*.pyc
+__pycache__/
+
+# Virtual env
+.venv/
+venv/
+
+# Data & cache
+data/
+cache/
+.pytest_cache/
+*.db
+
+# Generated
+*.egg-info/
+dist/
+build/

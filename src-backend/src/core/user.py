@@ -12,3 +12,4 @@ class User(BaseModel):
     is_active: bool
     created_at: datetime
     last_login: datetime
+    last_login_ip: str = ""

@@ -62,7 +62,7 @@ class TestAuthRoutes:
         tc, mock_svc = client
         from src.services import UserLoginResponse
         mock_svc.login_user.return_value.execute.return_value = \
-            UserLoginResponse(success=False, error="Invalid credentials")
+            UserLoginResponse(success=False, error="Wrong password.")
         resp = tc.post("/auth/login", json={"email": "a@b.com", "password": "x"})
         assert resp.status_code == 401
 
@@ -108,7 +108,7 @@ class TestUserRoutes:
         mock_svc.update_user_info.return_value.execute.return_value = \
             UserUpdateResponse(success=False, error="Email already used")
         resp = tc.patch("/user", json={"email": "taken@b.com"}, **_auth())
-        assert resp.status_code == 400
+        assert resp.status_code == 409
 
     def test_register_user(self, client):
         tc, mock_svc = client
@@ -122,9 +122,9 @@ class TestUserRoutes:
         tc, mock_svc = client
         from src.services import UserRegisterResponse
         mock_svc.register_user.return_value.execute.return_value = \
-            UserRegisterResponse(success=False, error="Email exists")
+            UserRegisterResponse(success=False, error="Email already used.")
         resp = tc.post("/user", json={"name": "New", "email": "n@b.com", "password": "pw"})
-        assert resp.status_code == 400
+        assert resp.status_code == 409
 
 
 class TestTagRoutes:

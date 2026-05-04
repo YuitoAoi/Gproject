@@ -30,6 +30,7 @@ def _make_user(
         is_active=True,
         created_at=now,
         last_login=now,
+        last_login_ip="",
     )
 
 
@@ -85,7 +86,7 @@ class TestUserLoginService:
         result = service.execute(UserLoginRequest(email="", password="secret"))
 
         assert result.success is False
-        assert "Email cannot be none" in result.error
+        assert "Email cannot be empty" in result.error
         mock_jwt.generate_token_pair.assert_not_called()
         mock_repo.find_by_email.assert_not_called()
 
@@ -101,7 +102,7 @@ class TestUserLoginService:
         result = service.execute(UserLoginRequest(email="test@x.com", password=""))
 
         assert result.success is False
-        assert "Auth password cannot be none" in result.error
+        assert "Password cannot be empty" in result.error
 
     def test_login_user_not_found(self):
         """用户不存在 → User not found"""
@@ -160,7 +161,6 @@ class TestUserLoginService:
                 user_repo=mock_repo,
             )
             request = UserLoginRequest(email=user.email, password="correct")
-            assert request.login_ip is None
             result = service.execute(request)
 
         assert result.success is True

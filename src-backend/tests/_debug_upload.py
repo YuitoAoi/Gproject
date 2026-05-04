@@ -7,7 +7,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src" / "service
 # 模拟 lifespan 启动
 from src.core.config import config
 from src.db_connections.mysql import MysqlConnection
-from src.adapters.repositories.mysql_user_repo import UserRepositoryAdapter
+from src.adapters.repositories.user_repo import UserRepositoryAdapter
 from src.adapters.repositories.mysql_dataset_repo import DatasetRepositoryAdapter
 from src.adapters.repositories.windows_file_repo import WindowsFileRepository
 from src.services import ServiceFactory
