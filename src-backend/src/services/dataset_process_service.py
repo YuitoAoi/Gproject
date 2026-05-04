@@ -173,8 +173,8 @@ class DatasetProcessService:
         # 提交 Celery 异步监控（Celery 不可用时不影响任务提交）
         if job_id:
             try:
-                from src.core.celery import celery_app
-                celery_app.send_task(
+                from src.adapters.celery_client import celery_client
+                celery_client.send_task(
                     "dataset.monitor_graphgen",
                     kwargs={"job_id": job_id, "dataset_id": request.dataset_id},
                 )

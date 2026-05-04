@@ -1,15 +1,15 @@
 """共享 Celery 实例 —— backend 和 celery worker 共用。"""
 from celery import Celery
 
-from .config import config
+from src.core.config import config
 
-celery_app = Celery(
+celery_client = Celery(
     "gproject",
     broker=config.CELERY_BROKER_URL,
     backend=config.CELERY_RESULT_BACKEND,
 )
 
-celery_app.conf.update(
+celery_client.conf.update(
     task_serializer="json",
     result_serializer="json",
     accept_content=["json"],
