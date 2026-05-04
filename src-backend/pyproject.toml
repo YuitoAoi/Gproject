@@ -35,4 +35,5 @@ package-mode = false
 [dependency-groups]
 dev = [
     "pysqlite3 (>=0.6.0,<0.7.0)",
+    "pytest-cov (>=7.1.0,<8.0.0)",
 ]

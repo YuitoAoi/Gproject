@@ -40,12 +40,12 @@ datasets_router = APIRouter(prefix="/datasets", tags=["dataset"])
 download_router = APIRouter(tags=["download"])
 
 
-def _check_owner(svc: ServiceFactory, dataset_id: int, owner_id: int) -> str | None:
+def _check_owner(svc, dataset_id: int, owner_id: int) -> JSONResponse | None:
     ds = svc.dataset_repo.find(dataset_id)
     if ds is None:
-        return f"Dataset not found: {dataset_id}"
+        return JSONResponse({"error": f"Dataset not found: {dataset_id}"}, status_code=404)
     if ds.owner_id != owner_id:
-        return f"Dataset does not belong to this user: {dataset_id}"
+        return JSONResponse({"error": f"Dataset not found: {dataset_id}"}, status_code=404)
     return None
 
 
@@ -69,7 +69,10 @@ def get_dataset(
     current_user: TokenPayload = Depends(get_current_user),
 ):
     owner_id = int(current_user.user_id)
-    return svc.get_datasets().get_by_id(request.dataset_id, owner_id)
+    result = svc.get_datasets().get_by_id(request.dataset_id, owner_id)
+    if result.error:
+        return JSONResponse(content=result.model_dump(), status_code=404)
+    return result
 
 
 # ══════════════════════════════════════════════════════════
@@ -111,7 +114,10 @@ def upload_chunk(
     current_user: TokenPayload = Depends(get_current_user),
 ):
     data = file.file.read()
-    return svc.chunked_upload().upload_chunk(upload_id, chunk_index, data)
+    result = svc.chunked_upload().upload_chunk(upload_id, chunk_index, data)
+    if result.error:
+        return JSONResponse(content=result.model_dump(), status_code=400)
+    return result
 
 
 @router.post("/upload/status", response_model=UploadStatusResponse)
@@ -149,7 +155,7 @@ def update_dataset(
     owner_id = int(current_user.user_id)
     result = svc.update_dataset().execute(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(), status_code=404)
     return result
 
 
@@ -166,7 +172,7 @@ def get_dataset_sample(
     owner_id = int(current_user.user_id)
     err = _check_owner(svc, request.dataset_id, owner_id)
     if err:
-        return SampleResponse(error=err)
+        return err
     return svc.process_dataset().get_sample(request)
 
 
@@ -179,7 +185,7 @@ def process_dataset(
     owner_id = int(current_user.user_id)
     err = _check_owner(svc, request.dataset_id, owner_id)
     if err:
-        return DatasetProcessResponse(job_id="", status="failed", error=err)
+        return err
     return svc.process_dataset().process(request)
 
 
@@ -196,7 +202,7 @@ def request_download_token(
     owner_id = int(current_user.user_id)
     err = _check_owner(svc, request.dataset_id, owner_id)
     if err:
-        return DatasetDownloadTokenResponse(download_token="", filename="", file_size=0, format="", sha256="", error=err)
+        return err
 
     info = svc.dataset_import_export().download(request)
     if info.error:
@@ -256,4 +262,7 @@ def delete_dataset(
     svc: ServiceFactory = Depends(get_services),
 ):
     owner_id = int(current_user.user_id)
-    return svc.remove_datasets().execute(request, owner_id)
+    result = svc.remove_datasets().execute(request, owner_id)
+    if not result.success:
+        return JSONResponse(content=result.model_dump(), status_code=404)
+    return result

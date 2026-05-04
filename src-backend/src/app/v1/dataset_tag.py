@@ -21,7 +21,7 @@ tags_router = APIRouter(tags=["tag"])
 
 
 # ══════════════════════════════════════════════════════════
-# GET /tags — 获取用户全部标签
+# GET /tags
 # ══════════════════════════════════════════════════════════
 
 @tags_router.get("/tags", response_model=DatasetTagsGetResponse)
@@ -34,7 +34,7 @@ def list_tags(
 
 
 # ══════════════════════════════════════════════════════════
-# POST /tag/get — 获取单个标签
+# POST /tag/get
 # ══════════════════════════════════════════════════════════
 
 @router.post("/get", response_model=DatasetTagInfoGetResponse)
@@ -44,11 +44,14 @@ def get_tag(
     current_user: TokenPayload = Depends(get_current_user),
 ):
     owner_id = int(current_user.user_id)
-    return svc.dataset_tag().get_tag(owner_id, request.tag_id)
+    result = svc.dataset_tag().get_tag(owner_id, request.tag_id)
+    if not result.success:
+        return JSONResponse(content=result.model_dump(), status_code=404)
+    return result
 
 
 # ══════════════════════════════════════════════════════════
-# POST /tag — 创建标签
+# POST /tag
 # ══════════════════════════════════════════════════════════
 
 @router.post("", response_model=DatasetTagCreateResponse, status_code=201)
@@ -65,7 +68,7 @@ def create_tag(
 
 
 # ══════════════════════════════════════════════════════════
-# PATCH /tag — 更新标签
+# PATCH /tag
 # ══════════════════════════════════════════════════════════
 
 @router.patch("", response_model=DatasetTagUpdateResponse)
@@ -77,12 +80,12 @@ def update_tag(
     owner_id = int(current_user.user_id)
     result = svc.dataset_tag().update_tag(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(), status_code=404)
     return result
 
 
 # ══════════════════════════════════════════════════════════
-# DELETE /tag — 删除标签
+# DELETE /tag
 # ══════════════════════════════════════════════════════════
 
 @router.delete("", response_model=DatasetTagDeleteResponse)
