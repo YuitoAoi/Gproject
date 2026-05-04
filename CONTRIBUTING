@@ -1,0 +1,14 @@
+# $$ 贡献指导手册$$
+
+$感$谢您对该项目做出的任何贡献，可以是一次**Issue**、一个**PR**、也可以是您按下的**Star**，它们会实打实地改善GProject、让GProject 成为更加强大的开源项目。
+
+## [$$项目协议$$](./LICENSE)
+该项目是遵循 **MIT** 协议开源的，您可以直接引用或是改写它的源代码用于学习亦或是商业用途。<p>
+
+   **NOTICE**: 在[README.md文件](./README.md)写过关于项目对某些依赖项目的引用，您可以单独部署，和本项目无关的Issue请分别提交到它们的仓库中。
+
+## [$$项目文档索引$$](./docs/)
+
+## Branch 命名
+构建新代码 feat-your-branch-description
+改动原有代码 fix-your-branch-description
