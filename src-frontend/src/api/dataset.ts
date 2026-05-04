@@ -1,17 +1,42 @@
 import axios from 'axios'
 import request from '@/utils/http'
 
-export interface Dataset {
-  id: number
-  name: string
-  description: string | null
+export interface DatasetMeta {
+  format: 'csv' | 'xlsx' | 'json'
   file_path: string
   file_size: number
-  format: string
-  total_records: number
-  status: 'pending' | 'processing' | 'converting' | 'ready' | 'error'
+}
+
+export interface Dataset {
+  id: number
+  owner_id: number
+  name: string
+  desc: string | null
+  meta: DatasetMeta
+  status: number
+  tag_ids: number[]
   created_at: string
   updated_at: string
+}
+
+export interface DatasetListResponse {
+  items: Dataset[]
+  total: number
+  error: string | null
+}
+
+export interface TagInfo {
+  tag_id: number
+  tag_name: string
+  tag_color: string
+  tag_desc: string
+  tag_created_at: string
+}
+
+export interface TagsGetResponse {
+  success: boolean
+  error: string | null
+  tags: TagInfo[]
 }
 
 export interface UploadInitiateResponse {
@@ -56,15 +81,21 @@ export interface TaskStatusResponse {
   error?: string
 }
 
+export interface SampleResponse {
+  headers: string[]
+  samples: Record<string, any>[]
+  total: number
+}
+
 const CHUNK_SIZE = 5 * 1024 * 1024
 
 export async function initiateUpload(filename: string, fileSize: number, fileFormat: string): Promise<UploadInitiateResponse> {
-  const params = new URLSearchParams({
+  const response = await axios.post('/api/v1/dataset/upload/initiate', {
     filename,
-    file_size: fileSize.toString(),
-    file_format: fileFormat
+    file_size: fileSize,
+    file_hash: '',
+    chunk_size: CHUNK_SIZE
   })
-  const response = await axios.get(`/api/v1/datasets/initiate-upload?${params.toString()}`)
   return response.data
 }
 
@@ -77,7 +108,7 @@ export async function uploadChunk(
   formData.append('file', chunk)
 
   const response = await axios.post<UploadChunkResponse>(
-    `/api/v1/datasets/upload-chunk?upload_id=${uploadId}&chunk_number=${chunkNumber}`,
+    `/api/v1/dataset/upload/chunk?upload_id=${uploadId}&chunk_index=${chunkNumber}`,
     formData,
     {
       headers: { 'Content-Type': 'multipart/form-data' }
@@ -92,13 +123,12 @@ export async function completeUpload(
   fileFormat: string,
   fileSize: number
 ): Promise<UploadCompleteResponse> {
-  const params = new URLSearchParams({
+  const response = await axios.post('/api/v1/dataset/upload/complete', {
     upload_id: uploadId,
-    filename,
+    name: filename.replace(/\.[^.]+$/, ''),
     file_format: fileFormat,
-    file_size: fileSize.toString()
+    file_size: fileSize
   })
-  const response = await axios.post(`/api/v1/datasets/complete-upload?${params.toString()}`)
   return response.data
 }
 
@@ -146,53 +176,95 @@ export async function uploadDataset(
   return completeResponse
 }
 
-export interface DatasetListResponse {
-  records: Dataset[]
-  current: number
-  size: number
-  total: number
-}
-
 export interface GetDatasetsParams {
   skip?: number
   limit?: number
 }
 
-export async function getDatasets(params: GetDatasetsParams = {}): Promise<DatasetListResponse> {
+export async function getDatasets(params: GetDatasetsParams = {}): Promise<{
+  records: Dataset[]
+  current: number
+  size: number
+  total: number
+}> {
   const { skip = 0, limit = 100 } = params
-  const response = await axios.get('/api/v1/datasets', {
+  const response = await axios.get<DatasetListResponse>('/api/v1/dataset', {
     params: { skip, limit }
   })
-  const records: Dataset[] = response.data
+  const items = response.data.items || []
   return {
-    records,
+    records: items,
     current: 1,
     size: limit,
-    total: records.length
+    total: response.data.total || items.length
   }
 }
 
-export async function getDataset(id: number): Promise<Dataset> {
-  return request.get<Dataset>({
-    url: `/datasets/${id}`
-  })
+export async function getDatasetDetail(id: number): Promise<Dataset | null> {
+  try {
+    const response = await axios.get(`/api/v1/dataset/${id}`)
+    return response.data.dataset || null
+  } catch {
+    return null
+  }
 }
 
 export async function deleteDataset(id: number): Promise<void> {
   return request.del({
-    url: `/datasets/${id}`
+    url: `/dataset/${id}`
   })
 }
 
 export async function processDataset(datasetId: number, requestParams: ProcessRequest): Promise<ProcessResponse> {
   return request.post<ProcessResponse>({
-    url: `/datasets/${datasetId}/process`,
+    url: `/dataset/${datasetId}/process`,
     data: requestParams
   })
 }
 
 export async function getTaskStatus(taskId: string): Promise<TaskStatusResponse> {
-  return request.get<TaskStatusResponse>({
-    url: `/datasets/tasks/${taskId}`
-  })
+  return Promise.reject(new Error('Task status is provided via WebSocket, not HTTP polling'))
+}
+
+export async function getTags(): Promise<TagsGetResponse> {
+  try {
+    const response = await axios.get<TagsGetResponse>('/api/v1/tags')
+    return response.data
+  } catch {
+    return { success: false, error: 'Failed to fetch tags', tags: [] }
+  }
+}
+
+export async function createTag(name: string, color: string, desc: string = ''): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await axios.post('/api/v1/tag/', { name, color, desc })
+    return response.data
+  } catch (err: any) {
+    return { success: false, error: err.response?.data?.error || 'Failed to create tag' }
+  }
+}
+
+export async function getDatasetSample(datasetId: number, limit: number = 20): Promise<SampleResponse> {
+  try {
+    const response = await axios.get<SampleResponse>(`/api/v1/dataset/${datasetId}/sample`, {
+      params: { limit }
+    })
+    return response.data
+  } catch {
+    return { headers: [], samples: [], total: 0 }
+  }
+}
+
+export async function requestDownloadToken(datasetId: number): Promise<{
+  download_token: string
+  filename: string
+  file_size: number
+  format: string
+} | null> {
+  try {
+    const response = await axios.post(`/api/v1/dataset/${datasetId}/download`)
+    return response.data
+  } catch {
+    return null
+  }
 }

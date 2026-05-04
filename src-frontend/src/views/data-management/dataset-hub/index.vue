@@ -269,6 +269,7 @@
         :data="data"
         :columns="columns"
         :pagination="pagination"
+        empty-height="400px"
         @selection-change="handleSelectionChange"
         @pagination:size-change="handleSizeChange"
         @pagination:current-change="handleCurrentChange"
@@ -282,13 +283,13 @@
       @upload-start="handleUploadStart"
     />
 
-    <!-- 数据集抽屉 (暂未对接) -->
-    <!-- <DatasetDrawer
+    <!-- 数据集抽屉 -->
+    <DatasetDrawer
       v-model:visible="drawerVisible"
       :dataset="currentDataset"
       ref="drawerRef"
-      @add-tag="handleAddTag"
-    /> -->
+      @refresh="refreshData"
+    />
   </div>
 </template>
 
@@ -296,17 +297,26 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useTable } from '@/hooks/core/useTable'
-  import { getDatasets, deleteDataset as apiDeleteDataset, uploadDataset, type Dataset } from '@/api/dataset'
+  import {
+    getDatasets,
+    deleteDataset as apiDeleteDataset,
+    uploadDataset,
+    type Dataset,
+    getTags,
+    type TagInfo
+  } from '@/api/dataset'
   import DatasetUpload from './modules/dataset-upload.vue'
+  import DatasetDrawer from './modules/dataset-drawer.vue'
   import { useWebSocketTask } from '@/hooks/core/useWebSocketTask'
-  import { nextTick, ref as vueRef } from 'vue'
+  import { nextTick, ref as vueRef, shallowRef, onMounted } from 'vue'
   import { ElTag, ElMessageBox, ElMessage, ElTooltip } from 'element-plus'
   import axios from 'axios'
 
   defineOptions({ name: 'DatasetHubPage' })
 
-  type DatasetListItem = Dataset
   const drawerRef = vueRef<{ setActiveTab: (tab: string) => void } | null>(null)
+
+  const allTags = shallowRef<TagInfo[]>([])
 
   // 上传弹窗
   const uploadVisible = ref(false)
@@ -316,7 +326,7 @@
   const currentDataset = ref<Dataset | null>(null)
 
   // 选中行
-  const selectedRows = ref<DatasetListItem[]>([])
+  const selectedRows = ref<Dataset[]>([])
 
   // 搜索与筛选
   const searchKeyword = ref('')
@@ -361,39 +371,19 @@
     return '#409EFF'
   }
 
-  // 数据集状态配置
-  const DATASET_STATUS_CONFIG = {
-    ready: { type: 'success' as const, text: '已就绪', dot: '#67C23A' },
-    pending: { type: 'info' as const, text: '待处理', dot: '#909399' },
-    processing: { type: 'warning' as const, text: '处理中', dot: '#E6A23C' },
-    converting: { type: 'warning' as const, text: '转换中', dot: '#E6A23C' },
-    error: { type: 'danger' as const, text: '异常', dot: '#F56C6C' }
-  } as const
-
-  const FORMAT_COLOR_MAP: Record<string, string> = {
-    JSON: '#409EFF',
-    CSV: '#E6A23C',
-    TXT: '#909399'
+  const getStatusConfig = (status: number) => {
+    if (status === 3) return { type: 'success' as const, text: '已就绪', dot: '#67C23A' }
+    if (status === 1 || status === 2) return { type: 'warning' as const, text: '清洗中', dot: '#409EFF' }
+    return { type: 'info' as const, text: '待清洗', dot: '#E6A23C' }
   }
 
-  const getStatusConfig = (status: string) => {
-    return (
-      DATASET_STATUS_CONFIG[status as keyof typeof DATASET_STATUS_CONFIG] || {
-        type: 'info' as const,
-        text: '未知',
-        dot: '#909399'
-      }
-    )
+  const resolveTags = (tagIds: number[]) => {
+    return allTags.value.filter((t) => tagIds.includes(t.tag_id))
   }
 
   const formatSize = (size: number): string => {
     if (size >= 1024) return `${(size / 1024).toFixed(2)} GB`
     return `${size.toFixed(1)} MB`
-  }
-
-  const formatRecords = (records: number): string => {
-    if (records >= 10000) return `${(records / 10000).toFixed(1)} 万`
-    return records.toLocaleString()
   }
 
   const {
@@ -407,7 +397,7 @@
     handleSizeChange,
     handleCurrentChange,
     refreshData
-} = useTable({
+  } = useTable({
     core: {
       apiFn: getDatasets,
       apiParams: {
@@ -422,11 +412,12 @@
           prop: 'name',
           label: '数据集名称',
           width: 280,
-          formatter: (row) => {
+          formatter: (row: Dataset) => {
             return h(
               'span',
               {
-                class: 'text-sm font-medium truncate cursor-pointer hover:text-primary'
+                class: 'text-sm font-medium truncate cursor-pointer hover:text-primary',
+                onClick: () => handleEdit(row)
               },
               row.name
             )
@@ -435,15 +426,34 @@
         {
           prop: 'format',
           label: '格式',
-          formatter: (row) => {
+          formatter: (row: Dataset) => {
             return h(
               ElTag,
               {
                 size: 'small',
-                type: row.format === 'json' ? 'primary' : row.format === 'csv' ? 'warning' : 'info',
+                type: row.meta.format === 'json' ? 'primary' : row.meta.format === 'csv' ? 'warning' : 'info',
                 effect: 'plain'
               },
-              () => row.format.toUpperCase()
+              () => row.meta.format.toUpperCase()
+            )
+          }
+        },
+        {
+          prop: 'tag_ids',
+          label: '标签',
+          width: 180,
+          formatter: (row: Dataset) => {
+            const tags = resolveTags(row.tag_ids || [])
+            if (tags.length === 0) {
+              return h('span', { class: 'text-xs text-g-400' }, '—')
+            }
+            return h('div', { class: 'flex flex-wrap gap-1' },
+              tags.map((t) =>
+                h(ElTag, {
+                  size: 'small',
+                  effect: 'dark',
+                  style: { backgroundColor: t.tag_color, borderColor: t.tag_color }
+                }, () => t.tag_name))
             )
           }
         },
@@ -451,18 +461,12 @@
           prop: 'file_size',
           label: '大小',
           sortable: true,
-          formatter: (row) => formatSize(row.file_size)
-        },
-        {
-          prop: 'total_records',
-          label: '记录数',
-          width: 100,
-          formatter: (row) => row.total_records?.toLocaleString() || '—'
+          formatter: (row: Dataset) => formatSize(row.meta.file_size)
         },
         {
           prop: 'status',
           label: '状态',
-          formatter: (row) => {
+          formatter: (row: Dataset) => {
             const config = getStatusConfig(row.status)
             return h('div', { class: 'flex items-center gap-1.5' }, [
               h('span', {
@@ -477,7 +481,7 @@
           prop: 'created_at',
           label: '创建时间',
           sortable: true,
-          formatter: (row) => {
+          formatter: (row: Dataset) => {
             const date = new Date(row.created_at)
             return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
           }
@@ -485,15 +489,17 @@
         {
           prop: 'operation',
           label: '操作',
-          width: 100,
+          width: 120,
           fixed: 'right',
-          formatter: (row) =>
+          formatter: (row: Dataset) =>
             h('div', { class: 'flex gap-1' }, [
               h(ArtButtonTable, {
+                type: 'edit',
+                onClick: () => handleEdit(row)
+              }),
+              h(ArtButtonTable, {
                 type: 'delete',
-                onClick: () => {
-                  handleDelete(row)
-                }
+                onClick: () => handleDelete(row)
               })
             ])
         }
@@ -532,7 +538,20 @@
     getData()
   }
 
-  // 行点击 → 打开抽屉 (已移除，改为只在数据集名称上点击触发)
+  onMounted(async () => {
+    const tagRes = await getTags()
+    if (tagRes.success) {
+      allTags.value = tagRes.tags
+    }
+  })
+
+  const handleEdit = (row: Dataset) => {
+    currentDataset.value = row
+    drawerVisible.value = true
+    nextTick(() => {
+      drawerRef.value?.setActiveTab('edit')
+    })
+  }
 
   // 非阻塞上传：立即添加到任务队列，后台上传
   const handleUploadStart = (fileInfo: { name: string; size: number; raw: File }) => {
@@ -664,51 +683,19 @@
   }
 
   // HTTP轮询Celery任务状态作为兜底方案
+  // 注意：任务进度由WebSocket实时推送，此处仅作为极端情况下的降级处理
   const pollTaskStatus = async (celTaskId: string, uiTaskId: number) => {
-    try {
-      const response = await axios.get(`/api/v1/datasets/tasks/${celTaskId}`)
-      const data = response.data
+    const idx = uploadTasks.value.findIndex((t) => t.id === uiTaskId)
+    if (idx === -1) return
 
-      const idx = uploadTasks.value.findIndex((t) => t.id === uiTaskId)
-      if (idx === -1) return
+    const currentStatus = uploadTasks.value[idx].status
+    if (currentStatus === 'completed' || currentStatus === 'error') return
 
-      const currentStatus = uploadTasks.value[idx].status
-      if (currentStatus === 'completed' || currentStatus === 'error') return
-
-      if (data.status === 'SUCCESS') {
-        uploadTasks.value[idx] = {
-          ...uploadTasks.value[idx],
-          progress: 100,
-          status: 'completed',
-          speed: '—',
-          remaining: '—'
-        }
-        ElMessage.success('数据集上传完成')
-        refreshData()
-      } else if (data.status === 'FAILURE') {
-        uploadTasks.value[idx] = {
-          ...uploadTasks.value[idx],
-          status: 'error',
-          remaining: data.error || '处理失败'
-        }
-        ElMessage.error('文件处理失败')
-      } else {
-        setTimeout(() => {
-          const i = uploadTasks.value.findIndex((t) => t.id === uiTaskId)
-          if (i !== -1 && uploadTasks.value[i].status === 'uploading') {
-            pollTaskStatus(celTaskId, uiTaskId)
-          }
-        }, 3000)
-      }
-    } catch (err) {
-      const idx = uploadTasks.value.findIndex((t) => t.id === uiTaskId)
-      if (idx !== -1) {
-        uploadTasks.value[idx] = {
-          ...uploadTasks.value[idx],
-          status: 'error',
-          remaining: '网络连接失败，请检查网络后重试'
-        }
-      }
+    // WebSocket未连接且30秒内未收到完成信号时，提示用户刷新页面确认状态
+    ElMessage.warning('上传已进入最后阶段，请刷新页面查看最新状态')
+    uploadTasks.value[idx] = {
+      ...uploadTasks.value[idx],
+      remaining: '等待最终确认...'
     }
   }
 
@@ -814,7 +801,7 @@
   }
 
   // 单行删除
-  const handleDelete = async (row: DatasetListItem) => {
+  const handleDelete = async (row: Dataset) => {
     try {
       await ElMessageBox.confirm(
         `确定要删除数据集「${row.name}」吗？删除后不可恢复。`,
@@ -835,16 +822,8 @@
     }
   }
 
-  // 选择变化
-  const handleSelectionChange = (selection: DatasetListItem[]) => {
+  const handleSelectionChange = (selection: Dataset[]) => {
     selectedRows.value = selection
-  }
-
-  // 添加标签（暂时禁用，Dataset类型暂无tags字段）
-  const handleAddTag = (_tag: { label: string; color: string }) => {
-    // if (currentDataset.value) {
-    //   currentDataset.value.tags = [...(currentDataset.value.tags || []), tag]
-    // }
   }
 </script>
 

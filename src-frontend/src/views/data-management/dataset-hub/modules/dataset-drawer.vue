@@ -20,7 +20,6 @@
     </template>
 
     <ElTabs v-model="activeTab" class="drawer-tabs">
-      <!-- Tab 1: 数据集信息（元数据 + 数据血缘） -->
       <ElTabPane label="数据集信息" name="meta">
         <div class="p-2">
           <div class="metadata-grid">
@@ -30,105 +29,59 @@
             </div>
             <div class="meta-item">
               <span class="meta-label">文件格式</span>
-              <ElTag size="small" :type="formatTagType">{{ dataset?.format }}</ElTag>
+              <ElTag size="small" :type="formatTagType">{{ dataset?.meta?.format?.toUpperCase() }}</ElTag>
             </div>
             <div class="meta-item">
               <span class="meta-label">文件大小</span>
-              <span class="meta-value">{{ formatSize(dataset?.size || 0) }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">记录总数</span>
-              <span class="meta-value">{{ formatRecords(dataset?.records || 0) }}</span>
+              <span class="meta-value">{{ formatSize(dataset?.meta?.file_size || 0) }}</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">存储路径</span>
-              <span class="meta-value text-xs font-mono">{{ dataset?.storagePath }}</span>
+              <span class="meta-value text-xs font-mono">{{ dataset?.meta?.file_path }}</span>
             </div>
             <div class="meta-item">
-              <span class="meta-label">创建者</span>
-              <span class="meta-value">{{ dataset?.creator }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">上传时间</span>
-              <span class="meta-value">{{ dataset?.uploadTime }}</span>
+              <span class="meta-label">创建时间</span>
+              <span class="meta-value">{{ formatDate(dataset?.created_at) }}</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">最后修改</span>
-              <span class="meta-value">{{ dataset?.updateTime }}</span>
+              <span class="meta-value">{{ formatDate(dataset?.updated_at) }}</span>
+            </div>
+            <div class="meta-item">
+              <span class="meta-label">状态</span>
+              <span class="meta-value">{{ statusText }}</span>
             </div>
           </div>
-
-          <!-- 数据血缘（放在数据集信息下方） -->
-          <div class="mt-6 pt-5 border-t border-g-100">
-            <h4 class="text-sm font-medium text-g-700 mb-4">数据血缘</h4>
-            <template v-if="dataset?.lineage">
-              <div class="lineage-flow">
-                <div class="lineage-node">
-                  <div class="node-icon bg-amber-100">
-                    <span class="ri:database-2-line text-amber-600"></span>
-                  </div>
-                  <div class="node-content">
-                    <div class="text-sm font-medium">{{ dataset.lineage.sourceName }}</div>
-                    <div class="text-xs text-g-400">原始数据源</div>
-                  </div>
-                </div>
-                <div class="lineage-arrow">
-                  <div class="arrow-line"></div>
-                  <div class="arrow-rules">
-                    <ElTag
-                      v-for="rule in dataset.lineage.rules"
-                      :key="rule"
-                      size="small"
-                      type="info"
-                      effect="plain"
-                      class="mr-1"
-                    >
-                      {{ rule }}
-                    </ElTag>
-                  </div>
-                  <div class="arrow-line"></div>
-                </div>
-                <div class="lineage-node">
-                  <div class="node-icon bg-primary-light">
-                    <span class="ri:file-text-line text-primary"></span>
-                  </div>
-                  <div class="node-content">
-                    <div class="text-sm font-medium">{{ dataset.name }}</div>
-                    <div class="text-xs text-g-400">当前数据集</div>
-                  </div>
-                </div>
-              </div>
-            </template>
-            <template v-else>
-              <div class="text-center py-6 text-g-400">
-                <span class="ri:git-branch-line text-3xl block mb-2"></span>
-                <p class="text-sm">该数据集无血缘关系</p>
-                <p class="text-xs mt-1">直接导入的原始数据集不会有衍生链路</p>
-              </div>
-            </template>
+          <div class="mt-5 pt-4 border-t border-g-100">
+            <h4 class="text-sm font-medium text-g-700 mb-3">数据血缘</h4>
+            <div class="text-center py-6 text-g-400">
+              <span class="ri:git-branch-line text-3xl block mb-2"></span>
+              <p class="text-sm">该数据集无血缘关系</p>
+              <p class="text-xs mt-1">直接导入的原始数据集不会有衍生链路</p>
+            </div>
           </div>
         </div>
       </ElTabPane>
 
-      <!-- Tab 2: 编辑数据集 -->
       <ElTabPane label="编辑数据集" name="edit">
         <div class="p-2">
           <ElForm label-width="80px" label-position="top">
             <ElFormItem label="数据集名称">
-              <ElInput :model-value="dataset?.name" placeholder="数据集名称" />
+              <ElInput v-model="editForm.name" placeholder="数据集名称" />
             </ElFormItem>
             <ElFormItem label="标签">
               <div class="tag-editor">
                 <ElTag
-                  v-for="tag in dataset?.tags || []"
-                  :key="tag.label"
+                  v-for="tag in resolvedTags"
+                  :key="tag.tag_id"
                   closable
                   size="default"
-                  :color="tag.color"
+                  :style="{ backgroundColor: tag.tag_color, borderColor: tag.tag_color }"
                   class="mr-1 mb-1"
                   effect="dark"
+                  @close="removeTag(tag.tag_id)"
                 >
-                  {{ tag.label }}
+                  {{ tag.tag_name }}
                 </ElTag>
                 <span class="tag-add-btn" @click="tagDialogVisible = true">
                   <ArtSvgIcon icon="ri:add-line" class="tag-add-icon" />
@@ -136,101 +89,94 @@
               </div>
             </ElFormItem>
             <ElFormItem label="状态">
-              <ElSelect :model-value="dataset?.status" style="width: 200px">
-                <ElOption label="已就绪" value="ready" />
-                <ElOption label="处理中" value="processing" />
-                <ElOption label="已禁用" value="disabled" />
-                <ElOption label="异常" value="error" />
+              <ElSelect v-model="editForm.status" style="width: 200px">
+                <ElOption label="待清洗" :value="0" />
+                <ElOption label="清洗中" :value="1" />
+                <ElOption label="已就绪" :value="3" />
               </ElSelect>
             </ElFormItem>
             <ElFormItem label="描述">
               <ElInput
-                :model-value="dataset?.description"
+                v-model="editForm.desc"
                 type="textarea"
                 :rows="3"
                 placeholder="数据集描述"
               />
             </ElFormItem>
             <ElFormItem>
-              <ElButton type="primary">保存修改</ElButton>
-              <ElButton class="ml-2">重置</ElButton>
+              <ElButton type="primary" :loading="saveLoading" @click="handleSave">保存修改</ElButton>
+              <ElButton class="ml-2" @click="handleReset">重置</ElButton>
             </ElFormItem>
           </ElForm>
         </div>
       </ElTabPane>
 
-      <!-- Tab 3: 数据预览 -->
-      <ElTabPane label="数据预览" name="samples">
+      <ElTabPane label="样本预览" name="samples">
         <div class="p-2">
-          <div class="text-xs text-g-400 mb-3">前 20 条数据预览</div>
-          <div class="sample-list">
+          <div v-if="sampleLoading" class="flex items-center justify-center py-10">
+            <span class="ri:loader-4-line text-2xl text-g-400 animate-spin"></span>
+          </div>
+          <div v-else-if="samples.length === 0" class="text-center py-10 text-g-400">
+            <span class="ri:file-list-3-line text-3xl block mb-2"></span>
+            <p class="text-sm">暂无预览数据</p>
+          </div>
+          <div v-else class="sample-list">
             <div
-              v-for="(sample, idx) in (dataset?.samples || [])"
+              v-for="(sample, idx) in samples"
               :key="idx"
               class="sample-item"
             >
               <div class="sample-index">{{ idx + 1 }}</div>
-              <pre class="sample-content">{{ sample }}</pre>
+              <pre class="sample-content">{{ JSON.stringify(sample, null, 2) }}</pre>
             </div>
           </div>
         </div>
       </ElTabPane>
 
-      <!-- Tab 4: 操作日志 -->
       <ElTabPane label="操作日志" name="logs">
         <div class="p-2">
-          <ElTimeline>
-            <ElTimelineItem
-              v-for="(log, idx) in dataset?.logs || []"
-              :key="idx"
-              :timestamp="log.time"
-              placement="top"
-              size="normal"
-            >
-              <div class="text-sm font-medium">{{ log.action }}</div>
-              <div class="text-xs text-g-500 mt-1">{{ log.detail }}</div>
-            </ElTimelineItem>
-          </ElTimeline>
+          <div class="text-center py-10 text-g-400">
+            <span class="ri:time-line text-3xl block mb-2"></span>
+            <p class="text-sm">暂无操作日志</p>
+          </div>
         </div>
       </ElTabPane>
     </ElTabs>
 
-    <!-- 底部操作按钮 -->
     <template #footer>
       <div class="flex justify-end gap-3">
-        <ElButton>
+        <ElButton @click="handleDownload">
           <span class="ri:download-2-line mr-1"></span>下载文件
         </ElButton>
-        <ElButton type="primary">
+        <ElButton type="primary" @click="handleClean">
           <span class="ri:brush-line mr-1"></span>去清洗
         </ElButton>
       </div>
     </template>
 
-    <!-- 新建标签弹窗 -->
-    <ElDialog v-model="tagDialogVisible" title="新建标签" width="420px" :close-on-click-modal="false">
+    <ElDialog v-model="tagDialogVisible" title="编辑标签" width="420px" :close-on-click-modal="false">
       <div class="tag-dialog-content">
         <div class="mb-4">
-          <div class="text-sm text-g-500 mb-3">已有标签</div>
+          <div class="text-sm text-g-500 mb-3">已有标签（点击选择）</div>
           <div class="tag-list-wrap">
             <ElTag
               v-for="tag in allTags"
-              :key="tag.label"
+              :key="tag.tag_id"
               size="small"
-              :color="tag.color"
+              :style="{ backgroundColor: tag.tag_color, borderColor: tag.tag_color }"
               effect="dark"
               class="mr-1 mb-1 cursor-pointer"
-              :class="{ 'tag-selected': newTagForm.label === tag.label }"
+              :class="{ 'tag-selected': newTagForm.tag_id === tag.tag_id }"
               @click="selectExistingTag(tag)"
             >
-              {{ tag.label }}
+              {{ tag.tag_name }}
             </ElTag>
             <span v-if="allTags.length === 0" class="text-xs text-g-400">暂无可用标签</span>
           </div>
         </div>
         <div class="tag-form">
           <div class="text-sm text-g-500 mb-3">新建标签</div>
-          <ElInput v-model="newTagForm.label" placeholder="请输入标签名称" class="mb-3" />
+          <ElInput v-model="newTagForm.name" placeholder="请输入标签名称" class="mb-3" />
           <div class="flex items-center gap-2">
             <span class="text-sm text-g-500">选择颜色</span>
             <div class="color-picker">
@@ -246,52 +192,77 @@
           </div>
           <div class="mt-3">
             <ElTag :color="newTagForm.color || '#67C23A'" effect="dark">
-              {{ newTagForm.label || '标签预览' }}
+              {{ newTagForm.name || '标签预览' }}
             </ElTag>
           </div>
         </div>
       </div>
       <template #footer>
         <ElButton @click="tagDialogVisible = false">取消</ElButton>
-        <ElButton type="primary" @click="handleAddTag">确定</ElButton>
+        <ElButton type="primary" :loading="tagLoading" @click="handleAddTag">确定</ElButton>
       </template>
     </ElDialog>
   </ElDrawer>
 </template>
 
 <script setup lang="ts">
-  import type { DatasetItem } from '@/mock/temp/formData'
-  import { DATASET_TABLE_DATA } from '@/mock/temp/formData'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import { useRouter } from 'vue-router'
+  import { ElMessage } from 'element-plus'
+  import {
+    getTags,
+    createTag,
+    getDatasetSample,
+    requestDownloadToken,
+    type Dataset,
+    type TagInfo
+  } from '@/api/dataset'
 
   interface Props {
     visible: boolean
-    dataset: DatasetItem | null
+    dataset: Dataset | null
   }
 
   interface Emits {
     (e: 'update:visible', value: boolean): void
-    (e: 'add-tag', tag: { label: string; color: string }): void
+    (e: 'refresh'): void
   }
 
   const props = defineProps<Props>()
   const emit = defineEmits<Emits>()
+  const router = useRouter()
 
   const activeTab = ref('meta')
-
   const drawerVisible = computed({
     get: () => props.visible,
     set: (value) => emit('update:visible', value)
   })
-
   const drawerTitle = computed(() => props.dataset?.name || '数据集详情')
 
+  const editForm = reactive({
+    name: '',
+    desc: '',
+    status: 0,
+    tag_ids: [] as number[]
+  })
+
+  const allTags = ref<TagInfo[]>([])
+  const samples = ref<Record<string, any>[]>([])
+  const sampleLoading = ref(false)
+  const saveLoading = ref(false)
+  const tagLoading = ref(false)
+
   const formatTagType = computed(() => {
-    const fmt = props.dataset?.format
-    if (fmt === 'JSON') return 'primary' as const
-    if (fmt === 'CSV') return 'warning' as const
-    if (fmt === 'TXT') return 'info' as const
+    const fmt = props.dataset?.meta?.format
+    if (fmt === 'json') return 'primary' as const
+    if (fmt === 'csv') return 'warning' as const
     return 'info' as const
+  })
+
+  const statusText = computed(() => {
+    if (props.dataset?.status === 3) return '已就绪'
+    if (props.dataset?.status === 1 || props.dataset?.status === 2) return '清洗中'
+    return '待清洗'
   })
 
   const formatSize = (size: number): string => {
@@ -299,10 +270,15 @@
     return `${size.toFixed(1)} MB`
   }
 
-  const formatRecords = (records: number): string => {
-    if (records >= 10000) return `${(records / 10000).toFixed(1)} 万`
-    return records.toLocaleString()
+  const formatDate = (dateStr: string | undefined): string => {
+    if (!dateStr) return '—'
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
   }
+
+  const resolvedTags = computed(() => {
+    return allTags.value.filter((t) => (editForm.tag_ids || []).includes(t.tag_id))
+  })
 
   const handleBeforeClose = () => {
     drawerVisible.value = false
@@ -310,33 +286,109 @@
 
   const setActiveTab = (tab: string) => {
     activeTab.value = tab
+    if (tab === 'samples' && props.dataset?.id) {
+      loadSamples(props.dataset.id)
+    }
   }
 
-  // 标签弹窗
+  const loadSamples = async (datasetId: number) => {
+    sampleLoading.value = true
+    samples.value = []
+    const res = await getDatasetSample(datasetId)
+    if (res.samples.length > 0) {
+      samples.value = res.samples
+    }
+    sampleLoading.value = false
+  }
+
+  const handleReset = () => {
+    if (!props.dataset) return
+    editForm.name = props.dataset.name || ''
+    editForm.desc = props.dataset.desc || ''
+    editForm.status = props.dataset.status
+    editForm.tag_ids = [...(props.dataset.tag_ids || [])]
+  }
+
+  const handleSave = async () => {
+    ElMessage.info('更新 API 暂未上线，保存功能待后端对接后启用')
+  }
+
+  const removeTag = (tagId: number) => {
+    editForm.tag_ids = editForm.tag_ids.filter((id) => id !== tagId)
+  }
+
+  const handleDownload = async () => {
+    if (!props.dataset?.id) return
+    const res = await requestDownloadToken(props.dataset.id)
+    if (res?.download_token) {
+      window.open(`/down_dataset/${res.download_token}`, '_blank')
+    } else {
+      ElMessage.error('获取下载链接失败')
+    }
+  }
+
+  const handleClean = () => {
+    if (!props.dataset?.id) return
+    router.push({ path: '/data-management/data-processing', query: { datasetId: String(props.dataset.id) } })
+  }
+
   const tagDialogVisible = ref(false)
   const colorPresets = ['#67C23A', '#409EFF', '#E6A23C', '#F56C6C', '#909399', '#1D84FF', '#5D87FF']
   const newTagForm = reactive({
-    label: '',
+    tag_id: null as number | null,
+    name: '',
     color: '#67C23A'
   })
 
-  const allTags = computed(() => {
-    const existing = DATASET_TABLE_DATA.flatMap((d) => d.tags || [])
-    return existing.filter((tag, idx, arr) => arr.findIndex((t) => t.label === tag.label) === idx)
+  const selectExistingTag = (tag: TagInfo) => {
+    newTagForm.tag_id = tag.tag_id
+    newTagForm.name = tag.tag_name
+    newTagForm.color = tag.tag_color
+  }
+
+  const handleAddTag = async () => {
+    if (!newTagForm.name.trim()) {
+      ElMessage.warning('请输入标签名称')
+      return
+    }
+    if (newTagForm.tag_id && !editForm.tag_ids.includes(newTagForm.tag_id)) {
+      editForm.tag_ids.push(newTagForm.tag_id)
+      ElMessage.success('标签已添加')
+      tagDialogVisible.value = false
+      newTagForm.tag_id = null
+      newTagForm.name = ''
+      newTagForm.color = '#67C23A'
+      return
+    }
+    tagLoading.value = true
+    const res = await createTag(newTagForm.name, newTagForm.color)
+    tagLoading.value = false
+    if (res.success) {
+      ElMessage.success('标签创建成功')
+      const tagRes = await getTags()
+      if (tagRes.success) {
+        allTags.value = tagRes.tags
+        const created = tagRes.tags.find((t) => t.tag_name === newTagForm.name)
+        if (created && !editForm.tag_ids.includes(created.tag_id)) {
+          editForm.tag_ids.push(created.tag_id)
+        }
+      }
+      tagDialogVisible.value = false
+      newTagForm.tag_id = null
+      newTagForm.name = ''
+      newTagForm.color = '#67C23A'
+    } else {
+      ElMessage.error(res.error || '创建标签失败')
+    }
+  }
+
+  onMounted(async () => {
+    const tagRes = await getTags()
+    if (tagRes.success) {
+      allTags.value = tagRes.tags
+    }
+    handleReset()
   })
-
-  const selectExistingTag = (tag: { label: string; color: string }) => {
-    newTagForm.label = tag.label
-    newTagForm.color = tag.color
-  }
-
-  const handleAddTag = () => {
-    if (!newTagForm.label.trim()) return
-    emit('add-tag', { label: newTagForm.label, color: newTagForm.color })
-    newTagForm.label = ''
-    newTagForm.color = '#67C23A'
-    tagDialogVisible.value = false
-  }
 
   defineExpose({ setActiveTab })
 </script>
@@ -377,57 +429,12 @@
       border-color: transparent;
     }
   }
-  .lineage-flow {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    padding: 24px 0;
-  }
-  .lineage-node {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: var(--el-fill-color-light);
-    border-radius: 8px;
-    padding: 12px 20px;
-    width: 100%;
-    max-width: 360px;
-  }
-  .node-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-    flex-shrink: 0;
-  }
-  .bg-primary-light {
-    background: rgba(var(--el-color-primary-rgb), 0.1);
-  }
-  .lineage-arrow {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
-  .arrow-line {
-    width: 2px;
-    height: 16px;
-    background: var(--el-border-color);
-  }
-  .arrow-rules {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    justify-content: center;
-  }
   .sample-list {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
   }
   .sample-item {
     display: flex;
@@ -455,7 +462,6 @@
     overflow-x: auto;
   }
 
-  // 新建标签按钮
   .tag-add-btn {
     display: inline-flex;
     align-items: center;
@@ -485,7 +491,6 @@
     }
   }
 
-  // 标签弹窗内容区
   .tag-dialog-content {
     background: var(--el-fill-color-lighter);
     border-radius: 8px;
@@ -509,7 +514,6 @@
     border-top: 1px solid var(--el-border-color-lighter);
   }
 
-  // 颜色选择器
   .color-picker {
     display: flex;
     gap: 8px;
