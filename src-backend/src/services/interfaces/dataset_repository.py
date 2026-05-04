@@ -13,6 +13,10 @@ class DatasetRepository(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def find_by_owner(self, owner_id: int) -> List[Dataset]:
+        pass
+
+    @abc.abstractmethod
     def find_all(self) -> List[Dataset]:
         pass
 

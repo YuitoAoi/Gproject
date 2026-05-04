@@ -26,7 +26,7 @@ from src.services.dataset_create_service import (
     CreateDatasetResponse,
     CreateDatasetService,
 )
-from src.services.datasets_get_service import (
+from src.services.dataset_get_service import (
     GetDatasetResponse,
     GetDatasetsResponse,
     GetDatasetsService,
@@ -58,6 +58,7 @@ from src.services.user_register_service import (
     UserRegisterResponse,
 )
 from src.services.interfaces.dataset_repository import DatasetRepository
+from src.services.interfaces.dataset_tag_repository import DatasetTagRepository
 from src.services.interfaces.user_repository import UserRepository
 from src.services.interfaces.file_repository import FileRepository
 from src.services.chunked_upload_service import (
@@ -68,6 +69,7 @@ from src.services.dataset_process_service import (
     ProcessRequest,
     ProcessResponse,
 )
+from src.services.dataset_tag_service import DatasetTagService
 
 __all__ = [
     "ServiceFactory",
@@ -94,13 +96,15 @@ class ServiceFactory:
         user_repo: UserRepository,
         dataset_repo: DatasetRepository,
         file_repo: FileRepository,
+        dataset_tag_repo: Optional[DatasetTagRepository] = None,
     ) -> None:
         from src.services import JWTService
         self._jwt = JWTService()
         self.user_repo = user_repo
         self._dataset_repo = dataset_repo
         self._file_repo = file_repo
-        
+        self._dataset_tag_repo = dataset_tag_repo
+
         self._dataset_create: Optional[CreateDatasetService] = None
         self._dataset_get: Optional[GetDatasetsService] = None
         self._dataset_import: Optional[ImportDatasetService] = None
@@ -112,6 +116,7 @@ class ServiceFactory:
         self._user_get: Optional[UserGetService] = None
         self._user_update: Optional[UserUpdateService] = None
         self._user_register: Optional[UserRegisterService] = None
+        self._dataset_tag: Optional[DatasetTagService] = None
 
     # ── 仓储懒加载 ──────────────────────────────────────────
 
@@ -123,6 +128,21 @@ class ServiceFactory:
             )
             self._dataset_repo = MemoryDatasetRepoAdpter()
         return self._dataset_repo
+
+    @property
+    def dataset_tag_repo(self) -> DatasetTagRepository:
+        if self._dataset_tag_repo is None:
+            conn = getattr(self.dataset_repo, "_conn", None)
+            if conn is None:
+                raise RuntimeError(
+                    "DatasetTagRepository requires a database-backed DatasetRepository. "
+                    "Pass dataset_tag_repo explicitly to ServiceFactory."
+                )
+            from src.adapters.repositories.mysql_dataset_tag_repo import (
+                MysqlDatasetTagRepository,
+            )
+            self._dataset_tag_repo = MysqlDatasetTagRepository(conn)
+        return self._dataset_tag_repo
 
     @property
     def file_repo(self) -> FileRepository:
@@ -203,6 +223,12 @@ class ServiceFactory:
         if self._user_register is None:
             self._user_register = UserRegisterService(self.user_repo)
         return self._user_register
+
+    def dataset_tag(self) -> DatasetTagService:
+        """数据集标签服务"""
+        if self._dataset_tag is None:
+            self._dataset_tag = DatasetTagService(self.dataset_tag_repo, self.dataset_repo)
+        return self._dataset_tag
 
     # ── 生命周期 ─────────────────────────────────────────────
 

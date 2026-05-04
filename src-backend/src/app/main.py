@@ -28,6 +28,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     from src.db_connections.mysql import MysqlDatabaseConnection
     from src.adapters.repositories.mysql_user_repo import MysqlUserRepository
     from src.adapters.repositories.mysql_dataset_repo import MysqlDatasetRepository
+    from src.adapters.repositories.mysql_dataset_tag_repo import MysqlDatasetTagRepository
     from src.adapters.repositories.windows_file_repo import WindowsFileRepository
 
     db_conn = MysqlDatabaseConnection(database_url=config.DATABASE_URL)
@@ -36,6 +37,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         db_conn.start()
         logger.info("MySQL connected successfully")
         MysqlDatasetRepository(db_conn).init_table()
+        MysqlDatasetTagRepository(db_conn).init_table()
     except RuntimeError as e:
         logger.warning(f"MySQL unavailable, starting in degraded mode: {e}")
 
@@ -43,6 +45,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         user_repo=MysqlUserRepository(db_conn),
         dataset_repo=MysqlDatasetRepository(db_conn),
         file_repo=WindowsFileRepository(),
+        dataset_tag_repo=MysqlDatasetTagRepository(db_conn),
     )
     app.state.db_conn = db_conn
     yield

@@ -126,6 +126,20 @@ class MysqlDatasetRepository(DatasetRepository):
         except Exception:
             return None
 
+    def find_by_owner(self, owner_id: int) -> List[Dataset]:
+        try:
+            with self._session() as session:
+                rows = session.execute(
+                    text(
+                        f"SELECT {self._COLUMNS} FROM datasets "
+                        "WHERE owner_id = :owner_id ORDER BY id DESC"
+                    ),
+                    {"owner_id": owner_id},
+                ).fetchall()
+                return [self._row_to_dataset(r) for r in rows]
+        except Exception:
+            return []
+
     def find_all(self) -> List[Dataset]:
         try:
             with self._session() as session:
