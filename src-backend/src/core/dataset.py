@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Literal, Optional
 
@@ -36,6 +35,12 @@ class DatasetMeta(BaseModel):
         """从 JSON 字符串构建实例，自动校验。"""
         return cls.model_validate_json(data)
 
+import uuid
+from msgspec import Struct
+class DatasetTag(Struct):
+    id: uuid.UUID
+    name: str
+    description: str
 
 class Dataset(BaseModel):
     """数据集实体。"""
