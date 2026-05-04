@@ -305,12 +305,16 @@ class TestDatasetRepositoryAdapter:
 class TestDatasetImportExportService:
 
     def test_import_csv_success(self, import_export_svc):
+        import hashlib
         resp = _import_csv(import_export_svc)
         assert resp.success is True
         assert resp.dataset_id is not None
         assert resp.format == "csv"
-        assert resp.sha256 != ""
-        assert resp.file_size == 28
+        # 从实际文件内容计算预期哈希
+        csv_path = Path(_TEST_DIR) / "test.csv"
+        expected_hash = hashlib.sha256(csv_path.read_bytes()).hexdigest()
+        assert resp.sha256 == expected_hash
+        assert resp.file_size == csv_path.stat().st_size
 
     def test_import_file_not_found(self, import_export_svc):
         req = DatasetImportRequest(name="x", file_path=str(Path(_TEST_DIR) / "nope.csv"))
@@ -336,8 +340,11 @@ class TestDatasetImportExportService:
         dl_req = DatasetDownloadRequest(dataset_id=resp.dataset_id)
         dl = import_export_svc.download(dl_req)
         assert dl.success is True
-        assert dl.sha256 != ""
-        assert dl.file_size == 28
+        import hashlib
+        csv_path = Path(_TEST_DIR) / "test.csv"
+        expected_hash = hashlib.sha256(csv_path.read_bytes()).hexdigest()
+        assert dl.sha256 == expected_hash
+        assert dl.file_size == csv_path.stat().st_size
         assert dl.filename.endswith(".csv")
 
     def test_download_not_found(self, import_export_svc):

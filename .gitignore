@@ -1,36 +1,33 @@
-# tools
-.claude/
+# Ide temp
+.claude
+.planning
+.vscode
+!.vscode/settings.json
+AGENTS.md
 
-# *-lock files
+# Temp files
 node_modules
 .DS_Store
 dist
 dist-ssr
 *.local
 .cursorrules
+*-lock.*
 
 # Auto-generated files
 src/types/import/auto-imports.d.ts
 src/types/import/components.d.ts
 .auto-import.json
 
+# Local data
+data/
 
+# Local envs
 .env
-venv/
-__pycache__/
-*.pyc
-*.pyo
-.venv/
-
-
-# lock
-*-lock.*
 
 # logs
+logs/
 .log
-
-# planning
-.planning/
 
 # art-design-pro-3.0.2
 art-design-pro-3.0.2/

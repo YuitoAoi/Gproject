@@ -95,3 +95,73 @@ class TestChunkedUploadService:
         resp = svc.complete(complete)
         assert resp.success is False
         assert "Hash mismatch" in resp.error
+
+    def test_complete_success(self, tmp_path):
+        """完整上传成功流程：合并分片→校验哈希→落库→建索引→清理"""
+        data = b"col1,col2\nval1,val2\n"
+        data_hash = _compute_sha256(data)
+
+        # 用 SQLite 真实 DB + tmp_path 作为数据集目录
+        from src.db_connections.sqlite import SqliteConnection
+        from src.adapters.repositories.dataset_repo import DatasetRepositoryAdapter
+
+        conn = SqliteConnection("sqlite:///:memory:", echo=False)
+        conn.start()
+        repo = DatasetRepositoryAdapter(conn)
+        repo.init_table()
+
+        ds_dir = tmp_path / "datasets"
+        ds_dir.mkdir()
+        chunks_base = tmp_path / "chunks"
+        chunks_base.mkdir()
+
+        # 需 mock file_repo 让 upload_chunk 不报错
+        mock_file = MagicMock()
+
+        svc = DatasetImportExportService(repo, mock_file)
+
+        # 重定向目录到 tmp_path
+        import src.services.dataset_import_export_service as ie_svc
+        orig_datasets = ie_svc._datasets_dir
+        orig_chunks = ie_svc._chunks_dir
+        ie_svc._datasets_dir = lambda: ds_dir
+
+        def _tmp_chunks_dir(upload_id):
+            p = chunks_base / upload_id
+            p.mkdir(parents=True, exist_ok=True)
+            return p
+        ie_svc._chunks_dir = _tmp_chunks_dir
+
+        try:
+            req = InitiateUploadRequest(
+                filename="test.csv", file_size=len(data),
+                file_hash=data_hash, chunk_size=10 * 1024 * 1024,
+            )
+            initiated = svc.initiate(req)
+            svc.upload_chunk(initiated.upload_id, 0, data)
+
+            complete = CompleteUploadRequest(
+                upload_id=initiated.upload_id, owner_id=1, name="success_test",
+            )
+            resp = svc.complete(complete)
+
+            assert resp.success is True
+            assert resp.dataset_id is not None
+            assert resp.file_path != ""
+
+            # 验证 DB 记录存在
+            ds = repo.find(resp.dataset_id)
+            assert ds is not None
+            assert ds.name == "success_test"
+
+            # 验证文件已创建且内容正确
+            final_path = Path(resp.file_path)
+            assert final_path.exists()
+            assert final_path.read_bytes() == data
+
+            # 验证分片目录已清理
+            assert not chunks_base.exists() or not any(chunks_base.iterdir())
+        finally:
+            ie_svc._datasets_dir = orig_datasets
+            ie_svc._chunks_dir = orig_chunks
+            conn.dispose()

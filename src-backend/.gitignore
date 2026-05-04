@@ -1,9 +1,10 @@
-
-# python caches
+# Python temp
 
 poetry.lock
 __pycache__/
 
-.pytest_cache/
 
-datasets/chunks/
+# Test Files
+
+.pytest_cache/
+.coverage
