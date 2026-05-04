@@ -173,7 +173,7 @@ class TestDatasetAPI:
                 success=True, dataset_id=1, filename="test.json",
                 file_size=1024, format="json", sha256="abc",
             )
-        mock_svc.jwt.return_value._generate_download_token.return_value = "token-xyz"
+        mock_svc.jwt.return_value.generate_download_token.return_value = "token-xyz"
         resp = tc.post("/dataset/download", json={"dataset_id": 1}, **_auth())
         assert resp.status_code == 200
         assert resp.json()["filename"] == "test.json"

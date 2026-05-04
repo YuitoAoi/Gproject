@@ -1,5 +1,8 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
 
 from src.app.dependencies import get_current_user, get_services
 from src.services import (
@@ -189,6 +192,42 @@ def process_dataset(
     return svc.process_dataset().process(request)
 
 
+class ProcessCallbackRequest(BaseModel):
+    job_id: str
+    dataset_id: int
+    status: str = ""
+    output_path: Optional[str] = None
+    error: Optional[str] = None
+
+
+def _is_internal_ip(client_ip: str) -> bool:
+    """仅接受本地回环或私有网络 IP（容器网络）。"""
+    import ipaddress
+    if not client_ip:
+        return False
+    try:
+        addr = ipaddress.ip_address(client_ip)
+        return addr.is_loopback or addr.is_private
+    except ValueError:
+        return False
+
+
+@router.post("/process/callback", response_model=DatasetProcessResponse)
+def process_callback(
+    request: ProcessCallbackRequest,
+    req: Request,
+    svc: ServiceFactory = Depends(get_services),
+):
+    """Celery worker 回调：仅接受本地/容器网络请求。"""
+    client_ip = req.client.host if req.client else ""
+    if not _is_internal_ip(client_ip):
+        return JSONResponse(
+            content={"success": False, "error": "Forbidden"},
+            status_code=403,
+        )
+    return svc.process_dataset().check_job(request.job_id, request.dataset_id)
+
+
 # ══════════════════════════════════════════════════════════
 # 下载
 # ══════════════════════════════════════════════════════════
@@ -208,7 +247,7 @@ def request_download_token(
     if info.error:
         return JSONResponse(content={"error": info.error}, status_code=404)
 
-    token = svc.jwt()._generate_download_token(
+    token = svc.jwt().generate_download_token(
         dataset_id=request.dataset_id,
         user_id=owner_id,
     )

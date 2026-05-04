@@ -144,14 +144,13 @@ from src.app.v1.dataset import download_router  # noqa: E402
 app.include_router(router)
 app.include_router(download_router)
 
-# TODO 修改为更安全的用法
 from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],           # 允许所有来源
-    allow_credentials=True,        # 允许携带 cookies（若使用 "*" 需注意例外情况）
-    allow_methods=["*"],           # 允许所有请求方法 (GET, POST, PUT, DELETE, OPTIONS等)
-    allow_headers=["*"],           # 允许所有请求头
+    allow_origins=config.BACKEND_CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 # ── 启动入口 ──────────────────────────────────────────────
 

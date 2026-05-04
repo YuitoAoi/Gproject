@@ -6,6 +6,7 @@ from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text,
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
+from src.adapters.repositories._utils import ensure_datetime
 from src.core.dataset_tag import DatasetTag
 from src.services.interfaces.dataset_tag_repository import DatasetTagRepository
 from src.services.interfaces.db_conn import DatabaseConnection
@@ -171,13 +172,5 @@ class DatasetTagRepositoryAdapter(DatasetTagRepository):
             name=row.name,
             color=row.color,
             description=row.description or "",
-            created_at=_ensure_datetime(row.created_at),
+            created_at=ensure_datetime(row.created_at),
         )
-
-
-def _ensure_datetime(value) -> datetime:
-    if isinstance(value, datetime):
-        return value
-    if value is not None:
-        return datetime.fromisoformat(str(value))
-    return value

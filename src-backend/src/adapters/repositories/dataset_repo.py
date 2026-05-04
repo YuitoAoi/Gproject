@@ -9,6 +9,7 @@ from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text,
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
+from src.adapters.repositories._utils import ensure_datetime
 from src.core.dataset import Dataset, DatasetMeta
 from src.services.interfaces.dataset_repository import DatasetRepository
 from src.services.interfaces.db_conn import DatabaseConnection
@@ -236,14 +237,6 @@ class DatasetRepositoryAdapter(DatasetRepository):
             meta=meta,
             status=row.status or 0,
             tag_ids=tag_ids,
-            created_at=_ensure_datetime(row.created_at),
-            updated_at=_ensure_datetime(row.updated_at),
+            created_at=ensure_datetime(row.created_at),
+            updated_at=ensure_datetime(row.updated_at),
         )
-
-
-def _ensure_datetime(value) -> datetime:
-    if isinstance(value, datetime):
-        return value
-    if value is not None:
-        return datetime.fromisoformat(str(value))
-    return value

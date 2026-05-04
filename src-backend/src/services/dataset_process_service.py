@@ -5,13 +5,15 @@ import csv
 import io
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
-from src.adapters.graphgen_client import GraphGenClient
 from src.services.interfaces.dataset_repository import DatasetRepository
 from src.services.interfaces.file_repository import FileRepository
+
+if TYPE_CHECKING:
+    from src.adapters.graphgen_client import GraphGenClient
 
 
 # ══════════════════════════════════════════════════════════
@@ -155,7 +157,7 @@ class DatasetProcessService:
             )
 
         input_file = Path(file_path).name
-        payload = request.model_dump()
+        payload = request.model_dump(exclude={"dataset_id"})
         payload["input_file"] = input_file
 
         resp = self._gg.submit_job(payload)
@@ -166,10 +168,47 @@ class DatasetProcessService:
             )
 
         data = resp.json()
+        job_id = data.get("job_id", "")
+
+        # 提交 Celery 异步监控（Celery 不可用时不影响任务提交）
+        if job_id:
+            try:
+                from src.core.celery import celery_app
+                celery_app.send_task(
+                    "dataset.monitor_graphgen",
+                    kwargs={"job_id": job_id, "dataset_id": request.dataset_id},
+                )
+            except Exception:
+                pass
+
         return DatasetProcessResponse(
-            job_id=data.get("job_id", ""),
+            job_id=job_id,
             status=data.get("status", "pending"),
         )
+
+    def check_job(self, job_id: str, dataset_id: int) -> DatasetProcessResponse:
+        """查询 GraphGen 任务状态，完成后自动更新数据集 status 和 output_path。
+
+        status 流转: 0(未处理) → 1(处理中/已提交) → 2(已完成) / -1(失败)
+        """
+        result = self.get_job(job_id)
+        ds = self._dataset_repo.find(dataset_id)
+        if ds is None:
+            return result
+
+        if result.status in ("pending", "running") and ds.status == 0:
+            ds.status = 1
+            self._dataset_repo.update(dataset_id, ds)
+        elif result.status == "done":
+            ds.status = 2
+            if result.output_path:
+                ds.meta.file_path = result.output_path
+            self._dataset_repo.update(dataset_id, ds)
+        elif result.status == "failed":
+            ds.status = -1
+            self._dataset_repo.update(dataset_id, ds)
+
+        return result
 
     def get_job(self, job_id: str) -> DatasetProcessResponse:
         """查询 GraphGen 任务状态。"""
@@ -214,7 +253,13 @@ class DatasetProcessService:
         """从 httpx Response 提取错误信息。"""
         try:
             detail = resp.json()
-            return detail.get("detail", resp.text)
+            if isinstance(detail, dict):
+                return detail.get("detail", resp.text)
+            if isinstance(detail, list):
+                return "; ".join(
+                    d.get("msg", str(d)) for d in detail if isinstance(d, dict)
+                )
+            return str(detail)
         except Exception:
             return resp.text or f"HTTP {resp.status_code}"
 

@@ -3,6 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from src.core.password_encryptor import verify_password
 from src.services.interfaces.user_repository import UserRepository
 from src.services.jwt_service import JWTService
 from src.services.utils import is_valid_email
@@ -49,7 +50,6 @@ class UserLoginService:
         if not user:
             return UserLoginResponse(error="User not found.")
 
-        from src.core.password_encryptor import verify_password
         if not verify_password(request.password, user.password):
             return UserLoginResponse(error="Wrong password.")
 

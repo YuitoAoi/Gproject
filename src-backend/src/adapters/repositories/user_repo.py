@@ -6,6 +6,7 @@ from sqlalchemy import Boolean, Column, DateTime, Integer, MetaData, String, Tab
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
+from src.adapters.repositories._utils import ensure_datetime
 from src.core.user import User
 from src.services.interfaces.db_conn import DatabaseConnection
 from src.services.interfaces.user_repository import UserRepository
@@ -176,15 +177,7 @@ class UserRepositoryAdapter(UserRepository):
             password=row.password,
             is_admin=bool(row.is_admin),
             is_active=bool(row.is_active),
-            created_at=_ensure_datetime(row.created_at),
-            last_login=_ensure_datetime(row.last_login),
+            created_at=ensure_datetime(row.created_at),
+            last_login=ensure_datetime(row.last_login),
             last_login_ip=row.last_login_ip or "",
         )
-
-
-def _ensure_datetime(value) -> datetime:
-    if isinstance(value, datetime):
-        return value
-    if value is not None:
-        return datetime.fromisoformat(str(value))
-    return value

@@ -104,7 +104,7 @@ class JWTService:
 
     # ── 下载令牌 ──────────────────────────────────────────────
 
-    def _generate_download_token(
+    def generate_download_token(
         self, *, dataset_id: int, user_id: int, expire_seconds: int = 900
     ) -> str:
         """生成短时效下载令牌（默认 15 分钟）。"""

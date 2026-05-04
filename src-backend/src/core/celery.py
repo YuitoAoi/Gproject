@@ -1,7 +1,7 @@
-"""Celery 实例 —— 仅负责 broker/backend 连接和任务注册。"""
+"""共享 Celery 实例 —— backend 和 celery worker 共用。"""
 from celery import Celery
 
-from src.core.config import config
+from .config import config
 
 celery_app = Celery(
     "gproject",
@@ -17,9 +17,5 @@ celery_app.conf.update(
     enable_utc=True,
     task_soft_time_limit=25 * 60,
     task_time_limit=30 * 60,
-    worker_pool="solo",
     task_track_started=True,
 )
-
-# 注册任务模块
-import src.tasks.dataset_tasks  # noqa: E402, F401

@@ -193,7 +193,8 @@ class DatasetTagService:
                     error=f"Tag is referenced by: {', '.join(names)}",
                 )
             for ds in ref_datasets:
-                assert ds.id is not None
+                if ds.id is None:
+                    continue
                 ds.tag_ids = [tid for tid in ds.tag_ids if tid != tag_id]
                 self._dataset_repo.update(ds.id, ds)
 

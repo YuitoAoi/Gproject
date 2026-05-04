@@ -36,7 +36,8 @@ class UserUpdateService:
                 return UserUpdateResponse(error="Invalid name.")
             user.name = request.name
         if request.email:
-            if self._user_repo.find_by_email(request.email):
+            existing = self._user_repo.find_by_email(request.email)
+            if existing and existing.id != user.id:
                 return UserUpdateResponse(error="Email already used.")
             user.email = request.email
         if request.old_password and request.password:

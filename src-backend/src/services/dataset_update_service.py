@@ -36,12 +36,12 @@ class DatasetUpdateService:
     """
 
     def __init__(self, dataset_repo: DatasetRepository) -> None:
-        self.repo = dataset_repo
+        self._repo = dataset_repo
 
     def execute(
         self, request: DatasetUpdateRequest, owner_id: int
     ) -> DatasetUpdateResponse:
-        ds = self.repo.find(request.dataset_id)
+        ds = self._repo.find(request.dataset_id)
         if ds is None:
             return DatasetUpdateResponse(error=f"Dataset not found: {request.dataset_id}")
         if ds.owner_id != owner_id:
@@ -63,8 +63,9 @@ class DatasetUpdateService:
 
         if not changed:
             return DatasetUpdateResponse(success=True)
-        assert ds.id is not None
-        err = self.repo.update(ds.id, ds)
+        if ds.id is None:
+            return DatasetUpdateResponse(error="Internal error: dataset has no id")
+        err = self._repo.update(ds.id, ds)
         if err is not None:
             return DatasetUpdateResponse(error=f"Failed to update dataset: {err}")
 

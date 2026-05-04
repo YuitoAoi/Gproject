@@ -57,7 +57,7 @@ class TestUserLoginService:
         mock_jwt.generate_token_pair.return_value = token_pair
 
         with patch(
-            "src.core.password_encryptor.verify_password", return_value=True
+            "src.services.user_login_service.verify_password", return_value=True
         ):
             service = UserLoginService(
                 jwt_service=mock_jwt,
@@ -129,7 +129,7 @@ class TestUserLoginService:
         mock_jwt = MagicMock()
 
         with patch(
-            "src.core.password_encryptor.verify_password", return_value=False
+            "src.services.user_login_service.verify_password", return_value=False
         ):
             service = UserLoginService(
                 jwt_service=mock_jwt,
@@ -154,7 +154,7 @@ class TestUserLoginService:
         mock_jwt.generate_token_pair.return_value = token_pair
 
         with patch(
-            "src.core.password_encryptor.verify_password", return_value=True
+            "src.services.user_login_service.verify_password", return_value=True
         ):
             service = UserLoginService(
                 jwt_service=mock_jwt,
