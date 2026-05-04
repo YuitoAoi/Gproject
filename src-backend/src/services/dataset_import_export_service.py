@@ -250,6 +250,7 @@ class DatasetImportExportService:
             chunk_size=request.chunk_size,
         )
         session = _upload_state.get(upload_id)
+        assert session is not None
         return InitiateUploadResponse(
             upload_id=upload_id,
             chunk_size=request.chunk_size,

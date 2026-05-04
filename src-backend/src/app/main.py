@@ -21,7 +21,7 @@ from src.services import ServiceFactory
 from src.core.config import config
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """应用生命周期：启动时组装服务，MySQL 不可达时降级启动。"""
+    """应用生命周期：启动时组装服务，数据库不可达则退出。"""
     import logging
     logger = logging.getLogger("uvicorn")
 
@@ -33,13 +33,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     db_conn = create_db_connection(config.DATABASE_URL)
 
-    try:
-        db_conn.start()
-        logger.info("Database connected successfully")
-        DatasetRepositoryAdapter(db_conn).init_table()
-        DatasetTagRepositoryAdapter(db_conn).init_table()
-    except RuntimeError as e:
-        logger.warning(f"Database unavailable, starting in degraded mode: {e}")
+    db_conn.start()
+    logger.info("Database connected successfully")
+    DatasetRepositoryAdapter(db_conn).init_table()
+    DatasetTagRepositoryAdapter(db_conn).init_table()
 
     app.state.services = ServiceFactory(
         user_repo=UserRepositoryAdapter(db_conn),

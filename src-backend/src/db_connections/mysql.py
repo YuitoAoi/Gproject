@@ -74,7 +74,6 @@ class MysqlConnection(DatabaseConnection):
                     echo=self._echo,
                     **self._engine_kwargs,
                 )
-                # 验证连接可用
                 with self._engine.connect() as conn:
                     conn.execute(text("SELECT 1"))
                 event.listen(self._engine, "connect", self._on_connect)
@@ -92,7 +91,9 @@ class MysqlConnection(DatabaseConnection):
                         f"MySQL connection attempt {attempt}/{retries} failed, "
                         f"retrying in {wait}s: {e}"
                     )
-                    time.sleep(wait)
+                    # 可中断 sleep：每 0.1s 检查一次，支持 Ctrl+C
+                    for _ in range(int(wait * 10)):
+                        time.sleep(0.1)
 
         logger.error(f"MySQL connection failed after {retries} attempts: {last_error}")
         raise RuntimeError(f"MySQL unavailable after {retries} retries") from last_error
