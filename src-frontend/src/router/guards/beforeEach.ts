@@ -388,7 +388,7 @@ async function fetchUserInfo(): Promise<void> {
     userId: userInfo.id,
     userName: userInfo.name,
     email: userInfo.email,
-    roles: userInfo.is_admin ? ['R_SUPER'] : ['R_USER'],
+    roles: userInfo.is_admin ? ['R_ADMIN', 'R_USER'] : ['R_USER'],
     buttons: [],
     avatar: ''
   })
