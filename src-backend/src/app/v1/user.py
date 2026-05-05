@@ -1,5 +1,8 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from src.app.dependencies import get_current_user, get_services
 from src.services import (
@@ -14,6 +17,19 @@ from src.services import (
 )
 from src.services.jwt_service import TokenPayload
 
+
+class TokenRefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class TokenRefreshResponse(BaseModel):
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+    expires_in: Optional[int] = None
+    success: bool = False
+    error: Optional[str] = None
+
+
 auth_api = APIRouter(prefix="/auth")
 user_api = APIRouter(prefix="/user")
 
@@ -24,7 +40,13 @@ def login_user(
     req: Request,
     svc: ServiceFactory = Depends(get_services),
 ):
+    from src.app.middleware.rate_limiter import login_limiter
     client_ip = req.client.host if req.client else ""
+    if not login_limiter.is_allowed(client_ip):
+        return JSONResponse(
+            content={"success": False, "error": "Too many requests. Please try again later."},
+            status_code=429,
+        )
     result = svc.login_user().execute(req_body, login_ip=client_ip)
     if not result.success:
         err = result.error or ""
@@ -58,12 +80,39 @@ def update_user_info(
     return result
 
 
-@user_api.post("", response_model=UserRegisterResponse, status_code=201)
-def register_user(
-    request: UserRegisterRequest,
+@auth_api.post("/refresh", response_model=TokenRefreshResponse)
+def refresh_token(
+    request: TokenRefreshRequest,
     svc: ServiceFactory = Depends(get_services),
 ):
-    result = svc.register_user().execute(request)
+    token_pair = svc.jwt().refresh_access_token(request.refresh_token)
+    if token_pair is None:
+        return JSONResponse(
+            content={"success": False, "error": "Invalid or expired refresh token"},
+            status_code=401,
+        )
+    return TokenRefreshResponse(
+        access_token=token_pair.access_token,
+        refresh_token=token_pair.refresh_token,
+        expires_in=token_pair.expires_in,
+        success=True,
+    )
+
+
+@user_api.post("", response_model=UserRegisterResponse, status_code=201)
+def register_user(
+    req_body: UserRegisterRequest,
+    req: Request,
+    svc: ServiceFactory = Depends(get_services),
+):
+    from src.app.middleware.rate_limiter import register_limiter
+    client_ip = req.client.host if req.client else ""
+    if not register_limiter.is_allowed(client_ip):
+        return JSONResponse(
+            content={"success": False, "error": "Too many requests. Please try again later."},
+            status_code=429,
+        )
+    result = svc.register_user().execute(req_body)
     if not result.success:
         err = result.error or ""
         status = 409 if "already" in err.lower() else 400

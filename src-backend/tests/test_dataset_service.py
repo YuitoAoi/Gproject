@@ -93,7 +93,7 @@ class TestGetDatasetsService:
 
     def test_get_all_empty(self):
         mock_repo = MagicMock()
-        mock_repo.find_all.return_value = []
+        mock_repo.find_by_owner.return_value = []
 
         svc = GetDatasetsService(dataset_repo=mock_repo)
         resp = svc.get_all(owner_id=1)
@@ -106,7 +106,7 @@ class TestGetDatasetsService:
         ds1 = _make_dataset(owner_id=1, name="my_ds", id=1)
         ds2 = _make_dataset(owner_id=2, name="other_ds", id=2)
         mock_repo = MagicMock()
-        mock_repo.find_all.return_value = [ds1, ds2]
+        mock_repo.find_by_owner.return_value = [ds1]
 
         svc = GetDatasetsService(dataset_repo=mock_repo)
         resp = svc.get_all(owner_id=1)

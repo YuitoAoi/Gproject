@@ -1,4 +1,5 @@
 """标签仓储实现 —— 通过 SQLAlchemy 自动适配 MySQL / SQLite。"""
+import logging
 from datetime import datetime
 from typing import List, Optional, cast
 
@@ -10,6 +11,8 @@ from src.adapters.repositories._utils import ensure_datetime
 from src.core.dataset_tag import DatasetTag
 from src.services.interfaces.dataset_tag_repository import DatasetTagRepository
 from src.services.interfaces.db_conn import DatabaseConnection
+
+_logger = logging.getLogger(__name__)
 
 _metadata = MetaData()
 
@@ -42,6 +45,19 @@ class DatasetTagRepositoryAdapter(DatasetTagRepository):
         self._conn.start()
         assert self._conn.engine is not None
         _metadata.create_all(self._conn.engine)
+
+    def ensure_indexes(self) -> None:
+        """确保标签表存在唯一约束（owner_id + name）。"""
+        with self._session() as s:
+            try:
+                s.execute(text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_dataset_tags_owner_name "
+                    "ON dataset_tags (owner_id, name)"
+                ))
+                s.commit()
+            except Exception:
+                s.rollback()
+                _logger.exception("Failed to ensure tag unique index")
 
     # ── DatasetTagRepository 实现 ─────────────────────────────
 
@@ -81,6 +97,7 @@ class DatasetTagRepositoryAdapter(DatasetTagRepository):
                     return None
                 return self._row_to_tag(row)
         except Exception:
+            _logger.exception("Failed to find tag by id=%s", tag_id)
             return None
 
     def find_by_name(self, owner_id: int, name: str) -> Optional[DatasetTag]:
@@ -97,6 +114,7 @@ class DatasetTagRepositoryAdapter(DatasetTagRepository):
                     return None
                 return self._row_to_tag(row)
         except Exception:
+            _logger.exception("Failed to find tag by owner_id=%s name=%s", owner_id, name)
             return None
 
     def find_by_owner(self, owner_id: int) -> List[DatasetTag]:
@@ -111,6 +129,7 @@ class DatasetTagRepositoryAdapter(DatasetTagRepository):
                 ).fetchall()
                 return [self._row_to_tag(r) for r in rows]
         except Exception:
+            _logger.exception("Failed to find tags by owner_id=%s", owner_id)
             return []
 
     def find_all(self) -> List[DatasetTag]:
@@ -121,6 +140,7 @@ class DatasetTagRepositoryAdapter(DatasetTagRepository):
                 ).fetchall()
                 return [self._row_to_tag(r) for r in rows]
         except Exception:
+            _logger.exception("Failed to find all tags")
             return []
 
     def update_tag(self, tag_id: int, tag: DatasetTag) -> Optional[Exception]:

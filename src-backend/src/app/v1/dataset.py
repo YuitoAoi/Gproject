@@ -46,9 +46,9 @@ download_router = APIRouter(tags=["download"])
 def _check_owner(svc, dataset_id: int, owner_id: int) -> JSONResponse | None:
     ds = svc.dataset_repo.find(dataset_id)
     if ds is None:
-        return JSONResponse({"error": f"Dataset not found: {dataset_id}"}, status_code=404)
+        return JSONResponse({"success": False, "error": f"Dataset not found: {dataset_id}"}, status_code=404)
     if ds.owner_id != owner_id:
-        return JSONResponse({"error": f"Dataset not found: {dataset_id}"}, status_code=404)
+        return JSONResponse({"success": False, "error": f"Dataset not found: {dataset_id}"}, status_code=404)
     return None
 
 
@@ -218,8 +218,14 @@ def process_callback(
     req: Request,
     svc: ServiceFactory = Depends(get_services),
 ):
-    """Celery worker 回调：仅接受本地/容器网络请求。"""
-    client_ip = req.client.host if req.client else ""
+    """Celery worker 回调：仅接受本地/容器网络请求。
+
+    支持反向代理：优先使用 X-Forwarded-For 头获取真实客户端 IP。
+    """
+    forwarded = req.headers.get("X-Forwarded-For", "")
+    client_ip = forwarded.split(",")[0].strip() if forwarded else ""
+    if not client_ip and req.client:
+        client_ip = req.client.host
     if not _is_internal_ip(client_ip):
         return JSONResponse(
             content={"success": False, "error": "Forbidden"},
@@ -245,7 +251,7 @@ def request_download_token(
 
     info = svc.dataset_import_export().download(request)
     if info.error:
-        return JSONResponse(content={"error": info.error}, status_code=404)
+        return JSONResponse(content={"success": False, "error": info.error}, status_code=404)
 
     token = svc.jwt().generate_download_token(
         dataset_id=request.dataset_id,
@@ -268,20 +274,20 @@ def download_by_token(
 ):
     payload = svc.jwt().verify_download_token(token)
     if payload is None:
-        return JSONResponse({"error": "Invalid or expired download token."}, status_code=401)
+        return JSONResponse({"success": False, "error": "Invalid or expired download token."}, status_code=401)
 
     dataset_id = payload["dataset_id"]
     ds = svc.dataset_repo.find(dataset_id)
     if ds is None:
-        return JSONResponse({"error": f"Dataset not found: {dataset_id}"}, status_code=404)
+        return JSONResponse({"success": False, "error": f"Dataset not found: {dataset_id}"}, status_code=404)
 
     file_path = ds.meta.file_path
     if not file_path:
-        return JSONResponse({"error": "File path not set"}, status_code=404)
+        return JSONResponse({"success": False, "error": "File path not set"}, status_code=404)
 
     from pathlib import Path
     if not Path(file_path).exists():
-        return JSONResponse({"error": "File not found on disk"}, status_code=404)
+        return JSONResponse({"success": False, "error": "File not found on disk"}, status_code=404)
 
     return FileResponse(
         path=file_path,

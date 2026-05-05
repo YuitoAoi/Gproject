@@ -36,7 +36,8 @@ class UserRegisterService:
         if not is_safe_name(request.name):
             return UserRegisterResponse(error="Invalid name.")
 
-        # 校验邮箱
+        # 校验邮箱（标准化处理）
+        request.email = request.email.strip().lower()
         if not is_valid_email(request.email):
             return UserRegisterResponse(error="Invalid email.")
 
@@ -49,8 +50,9 @@ class UserRegisterService:
                       "with 2 of: uppercase, lowercase, digit, special char."
             )
 
-        # 检查邮箱是否已被注册
-        if self._user_repo.find_by_email(request.email):
+        # 检查邮箱是否已被注册（大小写不敏感）
+        existing = self._user_repo.find_by_email(request.email)
+        if existing is not None:
             return UserRegisterResponse(error="Email already used.")
 
         # 创建用户实体

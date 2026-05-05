@@ -29,7 +29,10 @@ _user_table = Table(
 
 
 class UserRepositoryAdapter(UserRepository):
-    """用户仓储实现。SQLAlchemy Core Table 自动适配 MySQL / SQLite。"""
+    """用户仓储实现。SQLAlchemy Core Table 自动适配 MySQL / SQLite。
+
+    异常策略：CRUD 操作不捕获异常，直接向上传播给 Service 层处理。
+    """
 
     _COLUMNS = ("id, name, email, password, is_admin, is_active, "
                 "created_at, last_login, last_login_ip")
@@ -65,8 +68,8 @@ class UserRepositoryAdapter(UserRepository):
             result = session.execute(
                 text(
                     "INSERT INTO users "
-                    "(name, email, password, is_admin, is_active, created_at, last_login) "
-                    "VALUES (:name, :email, :password, :is_admin, :is_active, :created_at, :last_login)"
+                    "(name, email, password, is_admin, is_active, created_at, last_login, last_login_ip) "
+                    "VALUES (:name, :email, :password, :is_admin, :is_active, :created_at, :last_login, :last_login_ip)"
                 ),
                 {
                     "name": user.name,
@@ -134,7 +137,8 @@ class UserRepositoryAdapter(UserRepository):
                     "UPDATE users SET "
                     "name = :name, email = :email, password = :password, "
                     "is_admin = :is_admin, is_active = :is_active, "
-                    "created_at = :created_at, last_login = :last_login "
+                    "created_at = :created_at, last_login = :last_login, "
+                    "last_login_ip = :last_login_ip "
                     "WHERE id = :id"
                 ),
                 {

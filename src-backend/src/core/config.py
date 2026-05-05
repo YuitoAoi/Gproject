@@ -1,6 +1,9 @@
 from pydantic_settings import BaseSettings
 
 
+from urllib.parse import urlparse, urlunparse
+
+
 class Config(BaseSettings):
     PROJECT_NAME: str = 'LLaMA-Factory Workstation'
     VERSION: str = '1.0.0'
@@ -20,11 +23,13 @@ class Config(BaseSettings):
 
     @property
     def CELERY_BROKER_URL(self) -> str:
-        return self.REDIS_URL.rsplit("/", 1)[0] + "/1"
+        parsed = urlparse(self.REDIS_URL)
+        return urlunparse(parsed._replace(path="/1"))
 
     @property
     def CELERY_RESULT_BACKEND(self) -> str:
-        return self.REDIS_URL.rsplit("/", 1)[0] + "/2"
+        parsed = urlparse(self.REDIS_URL)
+        return urlunparse(parsed._replace(path="/2"))
 
     SUPER_USER_EMAIL: str = "super@user.net"
     SUPER_USER_PASSWORD: str = "superUser@123"

@@ -32,8 +32,6 @@ class WindowsFileRepository(FileRepository):
         try:
             fd = os.open(full, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
             os.close(fd)
-        except FileExistsError:
-            raise
         except FileNotFoundError:
             self._ensure_parent(full)
             fd = os.open(full, os.O_CREAT | os.O_EXCL | os.O_WRONLY)

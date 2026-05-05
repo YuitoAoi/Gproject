@@ -1,7 +1,10 @@
+import logging
 from typing import Optional
 from datetime import datetime
 
 from pydantic import BaseModel
+
+_logger = logging.getLogger(__name__)
 
 from src.core.password_encryptor import verify_password
 from src.services.interfaces.user_repository import UserRepository
@@ -55,7 +58,9 @@ class UserLoginService:
 
         user.last_login = datetime.now()
         user.last_login_ip = login_ip
-        self._user_repo.update(user.id, user)
+        updated = self._user_repo.update(user.id, user)
+        if updated is None:
+            _logger.warning("Failed to update last_login for user_id=%s", user.id)
 
         # 生成 JWT Token
         token_pair = self._jwt_service.generate_token_pair(

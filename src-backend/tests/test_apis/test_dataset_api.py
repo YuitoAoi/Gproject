@@ -76,8 +76,8 @@ class TestDatasetAPI:
         from src.services.dataset_get_service import GetDatasetsResponse
         now = datetime.now()
         ds = {
-            "id": 1, "owner_id": 1, "name": "test", "desc": None,
-            "meta": {"format": "json", "file_path": "/x.json", "file_size": 1024},
+            "id": 1, "name": "test", "desc": None,
+            "format": "json", "file_size": 1024,
             "status": 0, "tag_ids": [], "created_at": now.isoformat(),
             "updated_at": now.isoformat(),
         }
@@ -94,8 +94,8 @@ class TestDatasetAPI:
         from src.services.dataset_get_service import GetDatasetResponse
         now = datetime.now()
         ds = {
-            "id": 1, "owner_id": 1, "name": "test", "desc": None,
-            "meta": {"format": "json", "file_path": "/x.json", "file_size": 1024},
+            "id": 1, "name": "test", "desc": None,
+            "format": "json", "file_size": 1024,
             "status": 0, "tag_ids": [], "created_at": now.isoformat(),
             "updated_at": now.isoformat(),
         }

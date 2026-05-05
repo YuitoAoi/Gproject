@@ -1,4 +1,6 @@
 import abc
+import asyncio
+import time
 from typing import Any, Mapping, Optional, Self
 
 import httpx
@@ -65,7 +67,7 @@ class HTTPClient(abc.ABC):
         headers: Optional[Mapping[str, str]] = None,
         files: Optional[Mapping[str, Any]] = None,
     ) -> Response:
-        """带自动重试的内部请求方法。仅对 5xx 和网络错误重试。"""
+        """带自动重试的内部请求方法。仅对 5xx 和网络错误重试，带指数退避。"""
         last_exc: Optional[Exception] = None
         for attempt in range(self.config.retries):
             try:
@@ -84,7 +86,7 @@ class HTTPClient(abc.ABC):
                 last_exc = exc
                 if attempt == self.config.retries - 1:
                     raise
-        raise last_exc  # type: ignore[misc]
+                time.sleep(2 ** attempt * 0.1)
 
     # ---- HTTP 方法 ----
 
@@ -214,7 +216,7 @@ class AsyncHTTPClient(abc.ABC):
                 last_exc = exc
                 if attempt == self.config.retries - 1:
                     raise
-        raise last_exc  # type: ignore[misc]
+                await asyncio.sleep(2 ** attempt * 0.1)
 
     # ---- HTTP 方法 ----
 

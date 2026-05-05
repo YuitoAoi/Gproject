@@ -1,6 +1,7 @@
+import re
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from src.services.interfaces.dataset_repository import DatasetRepository
 from src.services.interfaces.dataset_tag_repository import DatasetTagRepository
@@ -30,11 +31,28 @@ class DatasetTagsGetResponse(BaseModel):
     tags: List[DatasetTagInfoGetResponse] = []
 
 
+_HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
+
+
 class DatasetTagCreateRequest(BaseModel):
     """创建标签请求。owner_id 由路由层从 token 注入。"""
-    name: str
-    color: str = "#808080"
-    desc: str = ""
+    name: str = Field(..., min_length=1, max_length=50)
+    color: str = Field(default="#808080", min_length=7, max_length=7)
+    desc: str = Field(default="", max_length=200)
+
+    @field_validator("color")
+    @classmethod
+    def validate_color(cls, v: str) -> str:
+        if not _HEX_COLOR.match(v):
+            raise ValueError("Color must be in #RRGGBB format")
+        return v
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        if re.search(r"[\s'\"]", v):
+            raise ValueError("Name contains invalid characters")
+        return v
 
 
 class DatasetTagCreateResponse(BaseModel):

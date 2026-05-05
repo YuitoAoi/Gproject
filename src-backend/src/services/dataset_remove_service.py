@@ -61,18 +61,18 @@ class DatasetRemoveService:
                 errs.append(f"Dataset does not belong to this user: {ds_id}")
                 continue
 
+            # 先删除 DB 记录，再清理文件（避免幽灵记录）
+            err = self._dataset_repo.remove(ds_id)
+            if err is not None:
+                errs.append(f"Failed to remove dataset {ds_id}: {err}")
+                continue
+
             file_path = ds.meta.file_path
             if file_path:
                 try:
                     self._file_repo.delete(file_path)
                 except Exception as exc:
-                    errs.append(f"Failed to delete file for {ds_id}: {exc}")
-                    continue
-
-            err = self._dataset_repo.remove(ds_id)
-            if err is not None:
-                errs.append(f"Failed to remove dataset {ds_id}: {err}")
-                continue
+                    errs.append(f"Dataset {ds_id} removed but file cleanup failed: {exc}")
 
             deleted.append(ds_id)
 

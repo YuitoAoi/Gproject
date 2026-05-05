@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime
 from typing import List, Optional, cast
 
@@ -13,6 +14,8 @@ from src.adapters.repositories._utils import ensure_datetime
 from src.core.dataset import Dataset, DatasetMeta
 from src.services.interfaces.dataset_repository import DatasetRepository
 from src.services.interfaces.db_conn import DatabaseConnection
+
+_logger = logging.getLogger(__name__)
 
 _metadata = MetaData()
 
@@ -54,24 +57,28 @@ class DatasetRepositoryAdapter(DatasetRepository):
 
     def ensure_indexes(self) -> None:
         with self._session() as s:
-            for idx_def in [
-                "CREATE INDEX IF NOT EXISTS idx_datasets_owner_id ON datasets (owner_id)",
-                "CREATE INDEX IF NOT EXISTS idx_datasets_status ON datasets (status)",
-            ]:
-                try:
+            try:
+                for idx_def in [
+                    "CREATE INDEX IF NOT EXISTS idx_datasets_owner_id ON datasets (owner_id)",
+                    "CREATE INDEX IF NOT EXISTS idx_datasets_status ON datasets (status)",
+                ]:
                     s.execute(text(idx_def))
-                    s.commit()
-                except Exception:
-                    s.rollback()
+                s.commit()
+            except Exception:
+                s.rollback()
+                _logger.exception("Failed to ensure dataset indexes")
+                raise
 
     def drop_indexes(self) -> None:
         with self._session() as s:
-            for idx_name in ["idx_datasets_owner_id", "idx_datasets_status"]:
-                try:
+            try:
+                for idx_name in ["idx_datasets_owner_id", "idx_datasets_status"]:
                     s.execute(text(f"DROP INDEX IF EXISTS {idx_name}"))
-                    s.commit()
-                except Exception:
-                    s.rollback()
+                s.commit()
+            except Exception:
+                s.rollback()
+                _logger.exception("Failed to drop dataset indexes")
+                raise
 
     # ── DatasetRepository 实现 ─────────────────────────────────
 
@@ -112,6 +119,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
                     return None
                 return self._row_to_dataset(row)
         except Exception:
+            _logger.exception("Failed to find dataset by id=%s", id)
             return None
 
     def find_by_owner(self, owner_id: int) -> List[Dataset]:
@@ -126,6 +134,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
                 ).fetchall()
                 return [self._row_to_dataset(r) for r in rows]
         except Exception:
+            _logger.exception("Failed to find datasets by owner_id=%s", owner_id)
             return []
 
     def find_all(self) -> List[Dataset]:
@@ -136,6 +145,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
                 ).fetchall()
                 return [self._row_to_dataset(r) for r in rows]
         except Exception:
+            _logger.exception("Failed to find all datasets")
             return []
 
     def exists(self, id: int) -> bool:
@@ -147,6 +157,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
                 ).fetchone()
                 return r is not None
         except Exception:
+            _logger.exception("Failed to check dataset existence id=%s", id)
             return False
 
     def update(self, id: int, dataset: Dataset) -> Optional[Exception]:

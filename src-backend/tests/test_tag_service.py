@@ -86,13 +86,13 @@ def tag_svc_with_datasets(tag_svc_conn):
 class TestTagService:
 
     def test_create_tag(self, tag_svc):
-        req = DatasetTagCreateRequest(name="red", color="#f00", desc="warm")
+        req = DatasetTagCreateRequest(name="red", color="#ff0000", desc="warm")
         resp = tag_svc.create_tag(req, owner_id=1)
         assert resp.success is True
 
     def test_create_duplicate(self, tag_svc):
-        tag_svc.create_tag(DatasetTagCreateRequest(name="dup", color="#111"), owner_id=1)
-        resp = tag_svc.create_tag(DatasetTagCreateRequest(name="dup", color="#222"), owner_id=1)
+        tag_svc.create_tag(DatasetTagCreateRequest(name="dup", color="#111111"), owner_id=1)
+        resp = tag_svc.create_tag(DatasetTagCreateRequest(name="dup", color="#222222"), owner_id=1)
         assert resp.success is False
         assert "already exists" in resp.error
 
@@ -198,7 +198,7 @@ class TestTagService:
         """force=True 时：从引用该 tag 的所有数据集中移除 tag_id，然后删除标签"""
         svc, fake_ds = tag_svc_with_datasets
         # 创建 tag_id=99 的标签
-        svc.create_tag(DatasetTagCreateRequest(name="cascade_target", color="#111"), owner_id=1)
+        svc.create_tag(DatasetTagCreateRequest(name="cascade_target", color="#111111"), owner_id=1)
         tags = svc.get_tags(owner_id=1)
         tag_id = tags.tags[0].tag_id  # real tag id from DB
 
@@ -234,7 +234,7 @@ class TestTagService:
     def test_delete_force_false_with_refs(self, tag_svc_with_datasets):
         """force=False 且标签被数据集引用时，返回错误不删除"""
         svc, fake_ds = tag_svc_with_datasets
-        svc.create_tag(DatasetTagCreateRequest(name="referenced", color="#f00"), owner_id=1)
+        svc.create_tag(DatasetTagCreateRequest(name="referenced", color="#ff0000"), owner_id=1)
         tags = svc.get_tags(owner_id=1)
         tag_id = tags.tags[0].tag_id
 

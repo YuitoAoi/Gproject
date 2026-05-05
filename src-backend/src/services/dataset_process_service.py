@@ -102,10 +102,12 @@ class DatasetProcessService:
         dataset_repo: DatasetRepository,
         file_repo: FileRepository,
         gg_client: GraphGenClient,
+        celery_client=None,
     ) -> None:
         self._dataset_repo = dataset_repo
         self._file_repo = file_repo
         self._gg = gg_client
+        self._celery = celery_client
 
     # ── 样本预览 ──────────────────────────────────────────────
 
@@ -171,10 +173,9 @@ class DatasetProcessService:
         job_id = data.get("job_id", "")
 
         # 提交 Celery 异步监控（Celery 不可用时不影响任务提交）
-        if job_id:
+        if job_id and self._celery is not None:
             try:
-                from src.adapters.celery_client import celery_client
-                celery_client.send_task(
+                self._celery.send_task(
                     "dataset.monitor_graphgen",
                     kwargs={"job_id": job_id, "dataset_id": request.dataset_id},
                 )

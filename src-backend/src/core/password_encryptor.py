@@ -9,7 +9,12 @@ def hash_password(password: str) -> str:
 
     Returns:
         哈希后的密码字符串
+
+    Raises:
+        ValueError: 密码为空
     """
+    if not password:
+        raise ValueError("Password cannot be empty")
     salt = bcrypt.gensalt()
     hashed = bcrypt.hashpw(password.encode("utf-8"), salt)
     return hashed.decode("utf-8")
@@ -24,6 +29,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         密码是否匹配
     """
+    if not plain_password or not hashed_password:
+        return False
     return bcrypt.checkpw(
         plain_password.encode("utf-8"),
         hashed_password.encode("utf-8"),

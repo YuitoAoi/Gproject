@@ -162,8 +162,10 @@ class ServiceFactory:
         """数据处理服务：样本预览 + 图生成任务 + 下载。"""
         if self._dataset_process is None:
             from src.adapters.graphgen_client import GraphGenClient
+            from src.adapters.celery_client import celery_client
             self._dataset_process = DatasetProcessService(
-                self.dataset_repo, self.file_repo, GraphGenClient()
+                self.dataset_repo, self.file_repo, GraphGenClient(),
+                celery_client=celery_client,
             )
         return self._dataset_process
     def jwt(self) -> JWTService:
@@ -184,7 +186,7 @@ class ServiceFactory:
         return self._user_get
     
     def update_user_info(self) -> UserUpdateService:
-        """获取当前用户信息服务"""
+        """更新用户信息服务"""
         if self._user_update is None:
             self._user_update = UserUpdateService(self.user_repo)
         return self._user_update
@@ -217,11 +219,15 @@ class ServiceFactory:
 
     def dispose(self) -> None:
         """释放所有资源（数据库连接等）。"""
-        if self._dataset_repo is not None:
-            # TODO 实现数据库释放资源业务
-            # self._dataset_repo.dispose()
-            pass
-        
+        if self._conn is not None:
+            self._conn.dispose()
         self._dataset_create = None
         self._dataset_get = None
         self._dataset_process = None
+        self._user_login = None
+        self._user_get = None
+        self._user_update = None
+        self._user_register = None
+        self._dataset_update = None
+        self._datasets_remove = None
+        self._dataset_tag = None

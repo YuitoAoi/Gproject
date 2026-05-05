@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 class DatasetMeta(BaseModel):
     """数据集元信息。"""
 
-    format: Literal["csv", "xlsx", "json"] = Field(..., description="数据格式")
+    format: Literal["csv", "xlsx", "json", "jsonl"] = Field(..., description="数据格式")
     file_path: str
     file_size: int
 

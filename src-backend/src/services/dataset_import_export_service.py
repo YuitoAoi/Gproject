@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import os
 import shutil
 import threading
@@ -9,6 +10,8 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
+
+_logger = logging.getLogger(__name__)
 
 from pydantic import BaseModel, Field
 
@@ -117,6 +120,7 @@ class _UploadSession:
         self._total_chunks = (file_size + chunk_size - 1) // chunk_size
         self.received_chunks: set[int] = set()
         self.created_at = datetime.now()
+        self._finalizing = False
 
     @property
     def is_complete(self) -> bool:
@@ -151,6 +155,15 @@ class _UploadState:
             session.received_chunks.add(chunk_index)
             return True
 
+    def mark_finalizing(self, upload_id: str) -> bool:
+        """原子标记会话为处理中，防止并发重复完成。"""
+        with self._lock:
+            session = self._sessions.get(upload_id)
+            if session is None or session._finalizing:
+                return False
+            session._finalizing = True
+            return True
+
     def remove(self, upload_id: str):
         with self._lock:
             self._sessions.pop(upload_id, None)
@@ -163,6 +176,10 @@ class _UploadState:
             return sorted(session.received_chunks)
 
 
+# ⚠️ 部署限制：上传会话状态存储在进程内存中。
+# 多 worker 部署（uvicorn --workers > 1）时，分块上传请求可能被路由到
+# 不同 worker 导致 session 丢失。生产环境请使用单 worker 部署，或迁移至
+# Redis 共享存储。
 _upload_state = _UploadState()
 
 
@@ -251,6 +268,8 @@ class DatasetImportExportService:
         )
         session = _upload_state.get(upload_id)
         assert session is not None
+        _logger.info("Upload initiated: upload_id=%s filename=%s file_size=%d",
+                      upload_id, request.filename, request.file_size)
         return InitiateUploadResponse(
             upload_id=upload_id,
             chunk_size=request.chunk_size,
@@ -279,9 +298,14 @@ class DatasetImportExportService:
         }
 
     def complete(self, request: CompleteUploadRequest) -> CompleteUploadResponse:
+        if not _upload_state.mark_finalizing(request.upload_id):
+            return CompleteUploadResponse(
+                error=f"Upload already being processed or unknown: {request.upload_id}"
+            )
+        _logger.info("Upload completing: upload_id=%s owner_id=%d",
+                      request.upload_id, request.owner_id)
         session = _upload_state.get(request.upload_id)
-        if session is None:
-            return CompleteUploadResponse(error=f"Unknown upload_id: {request.upload_id}")
+        assert session is not None
         if not session.is_complete:
             return CompleteUploadResponse(
                 error=f"Not all chunks received: {len(session.received_chunks)}/{session._total_chunks}"
@@ -339,10 +363,12 @@ class DatasetImportExportService:
 
         except HashMismatchError as exc:
             _rollback(self._dataset_repo, dataset_id, final_path, indexes_created)
+            _logger.exception("Hash mismatch during upload completion")
             return CompleteUploadResponse(error=str(exc))
-        except Exception as exc:
+        except Exception:
             _rollback(self._dataset_repo, dataset_id, final_path, indexes_created)
-            return CompleteUploadResponse(error=f"Upload failed: {exc}")
+            _logger.exception("Upload failed for upload_id=%s", request.upload_id)
+            return CompleteUploadResponse(error="Upload failed. Please try again.")
 
     # ── 本地导入 ──────────────────────────────────────────────
 
@@ -386,12 +412,13 @@ class DatasetImportExportService:
                 format=file_format, sha256=sha256,
             )
 
-        except Exception as exc:
+        except Exception:
+            _logger.exception("Import failed for file_path=%s", request.file_path)
             if indexes_created:
                 _drop_indexes(self._dataset_repo)
             if dataset_id is not None:
                 self._dataset_repo.remove(dataset_id)
-            return DatasetImportExportResponse(success=False, error=f"Internal error: {exc}")
+            return DatasetImportExportResponse(success=False, error="Import failed. Please try again.")
 
     # ── 下载 ──────────────────────────────────────────────────
 
@@ -406,8 +433,9 @@ class DatasetImportExportService:
 
         try:
             sha256 = _compute_sha256(file_path)
-        except Exception as exc:
-            return DatasetImportExportResponse(success=False, error=f"Failed to compute hash: {exc}")
+        except Exception:
+            _logger.exception("Hash computation failed for file_path=%s", file_path)
+            return DatasetImportExportResponse(success=False, error="Failed to compute file hash.")
 
         return DatasetImportExportResponse(
             success=True, dataset_id=ds.id,
