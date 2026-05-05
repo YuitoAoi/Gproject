@@ -32,31 +32,45 @@ graph LR
     end
     
     subgraph backend[Gproject Backend ⚙]
+    
         user-services[User Services]
         dataset-services[Dataset Services]
+        
         model-services[Model Services]
-        reasoning-service[Reasoning Service]
         inner-api[Backend Call Back Service]
+        reasoning-service[Reasoning Service]
+        
     end
 
     subgraph external-services[External Services]
+        graphgen[GraphGen]
+        redis[Redis]
+        
+        mysql[Mysql]
+        file-system[File System]
         celery-worker[Celery Worker]
         llamafactory[Llamafactory]
-        graphgen[GraphGen]
+        
         vllm[Vllm]
     end
+
+    user-services --> mysql
+    model-services --> mysql
+    model-services --> file-system
+    dataset-services --> mysql
+    dataset-services --> file-system
 
     user <--req & res--> user-services
     dataset <--req & res--> dataset-services
     model <--req & res--> model-services
     reasoning <--req & res--> reasoning-service
-    reasoning-service --req & res--> vllm
-    model-services --handle task of models--> llamafactory
-    dataset-services --handle task of datasets--> graphgen
+    reasoning-service <--req & res--> vllm
+    model-services --handle task of models --> llamafactory
+    dataset-services --handle task of datasets --> graphgen
     dataset-services --handle monitoring task--> celery-worker
     celery-worker --get status--> graphgen
     celery-worker --call back--> dataset-services
-    
+    celery-worker --dependence--> redis
     
 ```
 
@@ -110,13 +124,22 @@ npm run dev
 
 ## $线路图$
 
-- 快速原型-阶段I:
+- 现状调研- 阶段I:
+    - 目的: 
+    - 实现:
+    - 交付:
+
+- 快速原型-阶段II:
     - 目的: 构建具备核心功能的项目原型
     - 实现: 使用Python + TypeScript 实现核心功能
     - 交付: 
 
-- 痛点迭代-阶段II:
-    - 1
+- 痛点迭代-阶段III:
+    - 目的:
+    - 实现:
+    - 交付:
 
-- 生产就绪-阶段III:
-    -1
+- 生产就绪-阶段IV:
+    - 目的:
+    - 实现:
+    - 交付:
