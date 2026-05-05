@@ -1,10 +1,27 @@
 """DatasetTagRepositoryAdapter 集成测试"""
+import uuid
 from datetime import datetime
 
 import pytest
 
 from src.db_connections.sqlite import SqliteConnection
 from src.adapters.repositories.dataset_tag_repo import DatasetTagRepositoryAdapter
+from src.core.dataset_tag import DatasetTag
+
+
+_OWNER = uuid.uuid4()
+_OWNER2 = uuid.uuid4()
+
+
+def _make_tag(name="red", color="#ff0000", desc="warm", owner=_OWNER) -> DatasetTag:
+    return DatasetTag(
+        id=uuid.uuid4(),
+        owner_id=owner,
+        name=name,
+        color=color,
+        description=desc,
+        created_at=datetime.now(),
+    )
 
 
 @pytest.fixture(scope="session")
@@ -31,105 +48,102 @@ def tag_repo(tag_conn):
 class TestTagRepository:
 
     def test_create_success(self, tag_repo):
-        err = tag_repo.create(name="red", color="#ff0000", desc="warm", owner=1)
-        assert err is None
+        tag = _make_tag()
+        tag_repo.create(tag)
+        found = tag_repo.find_by_name(_OWNER, "red")
+        assert found is not None
+        assert found.name == "red"
 
     def test_create_duplicate_name_same_owner(self, tag_repo):
-        tag_repo.create(name="dup", color="#111", desc="", owner=1)
-        err = tag_repo.create(name="dup", color="#222", desc="", owner=1)
-        assert isinstance(err, ValueError)
-        assert "already exists" in str(err)
+        tag_repo.create(_make_tag(name="dup", color="#111111"))
+        with pytest.raises(Exception):  # DB IntegrityError
+            tag_repo.create(_make_tag(name="dup", color="#222222"))
 
     def test_create_same_name_diff_owner(self, tag_repo):
-        err1 = tag_repo.create(name="shared", color="#333", desc="", owner=1)
-        err2 = tag_repo.create(name="shared", color="#444", desc="", owner=2)
-        assert err1 is None
-        assert err2 is None
+        tag_repo.create(_make_tag(name="shared", color="#333333", owner=_OWNER))
+        tag_repo.create(_make_tag(name="shared", color="#444444", owner=_OWNER2))
+        # 不抛异常即通过
 
     def test_find_by_id(self, tag_repo):
-        tag_repo.create(name="green", color="#0f0", desc="", owner=1)
-        tag = tag_repo.find_by_name(1, "green")
+        tag = _make_tag(name="green", color="#00ff00")
+        tag_repo.create(tag)
         found = tag_repo.find_by_id(tag.id)
         assert found is not None
         assert found.name == "green"
-        assert found.color == "#0f0"
+        assert found.color == "#00ff00"
 
     def test_find_by_id_not_found(self, tag_repo):
-        assert tag_repo.find_by_id(999) is None
+        assert tag_repo.find_by_id(uuid.uuid4()) is None
 
     def test_find_by_name(self, tag_repo):
-        tag_repo.create(name="blue", color="#00f", desc="cool", owner=1)
-        found = tag_repo.find_by_name(1, "blue")
+        tag = _make_tag(name="blue", color="#0000ff", desc="cool")
+        tag_repo.create(tag)
+        found = tag_repo.find_by_name(_OWNER, "blue")
         assert found is not None
         assert found.description == "cool"
 
     def test_find_by_name_not_found(self, tag_repo):
-        assert tag_repo.find_by_name(1, "nope") is None
+        assert tag_repo.find_by_name(_OWNER, "nope") is None
 
     def test_find_by_owner(self, tag_repo):
-        tag_repo.create(name="a", color="#aaa", desc="", owner=1)
-        tag_repo.create(name="b", color="#bbb", desc="", owner=1)
-        tag_repo.create(name="c", color="#ccc", desc="", owner=2)
+        tag_repo.create(_make_tag(name="a", color="#aaaaaa", owner=_OWNER))
+        tag_repo.create(_make_tag(name="b", color="#bbbbbb", owner=_OWNER))
+        tag_repo.create(_make_tag(name="c", color="#cccccc", owner=_OWNER2))
 
-        result = tag_repo.find_by_owner(1)
+        result = tag_repo.find_by_owner(_OWNER)
         assert len(result) == 2
         names = {t.name for t in result}
         assert names == {"a", "b"}
 
     def test_find_all(self, tag_repo):
-        tag_repo.create(name="x", color="#111", desc="", owner=1)
-        tag_repo.create(name="y", color="#222", desc="", owner=2)
+        tag_repo.create(_make_tag(name="x", color="#111111", owner=_OWNER))
+        tag_repo.create(_make_tag(name="y", color="#222222", owner=_OWNER2))
         assert len(tag_repo.find_all()) == 2
 
     def test_update_tag(self, tag_repo):
-        tag_repo.create(name="old", color="#000", desc="before", owner=1)
-        tag = tag_repo.find_by_name(1, "old")
+        tag = _make_tag(name="old", color="#000000", desc="before")
+        tag_repo.create(tag)
         tag.name = "new"
-        tag.color = "#fff"
+        tag.color = "#ffffff"
         tag.description = "after"
 
-        err = tag_repo.update_tag(tag.id, tag)
-        assert err is None
+        tag_repo.update_tag(tag.id, tag)
 
         found = tag_repo.find_by_id(tag.id)
         assert found.name == "new"
-        assert found.color == "#fff"
+        assert found.color == "#ffffff"
         assert found.description == "after"
 
     def test_update_tag_not_found(self, tag_repo):
-        from src.core.dataset_tag import DatasetTag
         ghost = DatasetTag(
-            id=999, owner_id=1, name="ghost", color="#000",
+            id=uuid.uuid4(), owner_id=_OWNER, name="ghost", color="#000000",
             description="", created_at=datetime.now(),
         )
-        err = tag_repo.update_tag(999, ghost)
-        assert isinstance(err, ValueError)
+        with pytest.raises(ValueError):
+            tag_repo.update_tag(ghost.id, ghost)
 
     def test_delete_tag(self, tag_repo):
-        tag_repo.create(name="temp", color="#123", desc="", owner=1)
-        tag = tag_repo.find_by_name(1, "temp")
-        err = tag_repo.delete_tag(tag.id)
-        assert err is None
+        tag = _make_tag(name="temp", color="#123456")
+        tag_repo.create(tag)
+        tag_repo.delete_tag(tag.id)
         assert tag_repo.find_by_id(tag.id) is None
 
     def test_delete_tag_not_found(self, tag_repo):
-        err = tag_repo.delete_tag(999)
-        assert isinstance(err, ValueError)
+        with pytest.raises(ValueError):
+            tag_repo.delete_tag(uuid.uuid4())
 
     def test_full_crud_flow(self, tag_repo):
         # create
-        err = tag_repo.create(name="e2e", color="#e2e", desc="test", owner=1)
-        assert err is None
-        tag = tag_repo.find_by_name(1, "e2e")
-        assert tag is not None
+        tag = _make_tag(name="e2e", color="#e2e2e2", desc="test")
+        tag_repo.create(tag)
+        found = tag_repo.find_by_name(_OWNER, "e2e")
+        assert found is not None
 
         # update
-        tag.name = "e2e_updated"
-        err = tag_repo.update_tag(tag.id, tag)
-        assert err is None
-        assert tag_repo.find_by_id(tag.id).name == "e2e_updated"
+        found.name = "e2e_updated"
+        tag_repo.update_tag(found.id, found)
+        assert tag_repo.find_by_id(found.id).name == "e2e_updated"
 
         # delete
-        err = tag_repo.delete_tag(tag.id)
-        assert err is None
-        assert tag_repo.find_by_id(tag.id) is None
+        tag_repo.delete_tag(found.id)
+        assert tag_repo.find_by_id(found.id) is None

@@ -1,17 +1,16 @@
 """数据集仓储实现 —— 通过 SQLAlchemy 自动适配 MySQL / SQLite。"""
+
 from __future__ import annotations
 
-import json
-import logging
-from datetime import datetime
-from typing import List, Optional, cast
+import uuid, logging
+from msgspec import convert, json as msgspec_json
+from typing import cast
 
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, text
-from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from src.adapters.repositories._utils import ensure_datetime
-from src.core.dataset import Dataset, DatasetMeta
+from src.core import Dataset, DatasetMeta
 from src.services.interfaces.dataset_repository import DatasetRepository
 from src.services.interfaces.db_conn import DatabaseConnection
 
@@ -22,8 +21,8 @@ _metadata = MetaData()
 _dataset_table = Table(
     "datasets",
     _metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("owner_id", Integer, nullable=False, default=0),
+    Column("id", String(36), primary_key=True),
+    Column("owner_id", String(36), nullable=False),
     Column("name", String(255), nullable=False),
     Column("description", Text),
     Column("meta", Text, nullable=False, default="{}"),
@@ -37,8 +36,10 @@ _dataset_table = Table(
 class DatasetRepositoryAdapter(DatasetRepository):
     """数据集仓储实现。SQLAlchemy Core Table 自动适配 MySQL / SQLite。"""
 
-    _COLUMNS = ("id, owner_id, name, description, meta, status, tag_ids, "
-                "created_at, updated_at")
+    _COLUMNS = (
+        "id, owner_id, name, description, meta, status, tag_ids, "
+        "created_at, updated_at"
+    )
 
     def __init__(self, connection: DatabaseConnection) -> None:
         self._conn = connection
@@ -82,172 +83,123 @@ class DatasetRepositoryAdapter(DatasetRepository):
 
     # ── DatasetRepository 实现 ─────────────────────────────────
 
-    def create(self, dataset: Dataset) -> Optional[Exception]:
-        try:
-            with self._session() as session:
-                result = session.execute(
-                    text(
-                        "INSERT INTO datasets "
-                        "(owner_id, name, description, meta, status, tag_ids, created_at, updated_at) "
-                        "VALUES (:owner_id, :name, :desc, :meta, :status, :tag_ids, :created_at, :updated_at)"
-                    ),
-                    {
-                        "owner_id": dataset.owner_id,
-                        "name": dataset.name,
-                        "desc": dataset.desc,
-                        "meta": dataset.meta.to_json(),
-                        "status": dataset.status,
-                        "tag_ids": json.dumps(dataset.tag_ids),
-                        "created_at": dataset.created_at,
-                        "updated_at": dataset.updated_at,
-                    },
-                )
-                session.commit()
-                dataset.id = result.lastrowid
+    def create(self, dataset: Dataset) -> None:
+        with self._session() as session:
+            session.execute(
+                text(
+                    "INSERT INTO datasets "
+                    "(id, owner_id, name, description, meta, status, tag_ids, created_at, updated_at) "
+                    "VALUES (:id, :owner_id, :name, :desc, :meta, :status, :tag_ids, :created_at, :updated_at)"
+                ),
+                {
+                    "id": str(dataset.id),
+                    "owner_id": str(dataset.owner_id),
+                    "name": dataset.name,
+                    "desc": dataset.desc,
+                    "meta": dataset.meta.to_json(),
+                    "status": dataset.status,
+                    "tag_ids": msgspec_json.encode([str(t) for t in dataset.tag_ids]),
+                    "created_at": dataset.created_at,
+                    "updated_at": dataset.updated_at,
+                },
+            )
+            session.commit()
+
+    def find_by_id(self, id: uuid.UUID) -> Dataset | None:
+        with self._session() as session:
+            row = session.execute(
+                text(f"SELECT {self._COLUMNS} FROM datasets WHERE id = :id"),
+                {"id": str(id)},
+            ).fetchone()
+            if row is None:
                 return None
-        except Exception as exc:
-            return exc
+            return self._row_to_dataset(row)
 
-    def find(self, id: int) -> Optional[Dataset]:
-        try:
-            with self._session() as session:
-                row = session.execute(
-                    text(f"SELECT {self._COLUMNS} FROM datasets WHERE id = :id"),
-                    {"id": id},
-                ).fetchone()
-                if row is None:
-                    return None
-                return self._row_to_dataset(row)
-        except Exception:
-            _logger.exception("Failed to find dataset by id=%s", id)
-            return None
+    def find_by_owner(self, owner_id: uuid.UUID) -> list[Dataset]:
+        with self._session() as session:
+            rows = session.execute(
+                text(
+                    f"SELECT {self._COLUMNS} FROM datasets "
+                    "WHERE owner_id = :owner_id ORDER BY id DESC"
+                ),
+                {"owner_id": str(owner_id)},
+            ).fetchall()
+            return [self._row_to_dataset(r) for r in rows]
 
-    def find_by_owner(self, owner_id: int) -> List[Dataset]:
-        try:
-            with self._session() as session:
-                rows = session.execute(
-                    text(
-                        f"SELECT {self._COLUMNS} FROM datasets "
-                        "WHERE owner_id = :owner_id ORDER BY id DESC"
-                    ),
-                    {"owner_id": owner_id},
-                ).fetchall()
-                return [self._row_to_dataset(r) for r in rows]
-        except Exception:
-            _logger.exception("Failed to find datasets by owner_id=%s", owner_id)
-            return []
+    def find_all(self) -> list[Dataset]:
+        with self._session() as session:
+            rows = session.execute(
+                text(f"SELECT {self._COLUMNS} FROM datasets ORDER BY id DESC"),
+            ).fetchall()
+            return [self._row_to_dataset(r) for r in rows]
 
-    def find_all(self) -> List[Dataset]:
-        try:
-            with self._session() as session:
-                rows = session.execute(
-                    text(f"SELECT {self._COLUMNS} FROM datasets ORDER BY id DESC"),
-                ).fetchall()
-                return [self._row_to_dataset(r) for r in rows]
-        except Exception:
-            _logger.exception("Failed to find all datasets")
-            return []
+    def exists(self, id: uuid.UUID) -> bool:
+        with self._session() as session:
+            r = session.execute(
+                text("SELECT 1 FROM datasets WHERE id = :id"),
+                {"id": str(id)},
+            ).fetchone()
+            return r is not None
 
-    def exists(self, id: int) -> bool:
-        try:
-            with self._session() as session:
-                r = session.execute(
-                    text("SELECT 1 FROM datasets WHERE id = :id"),
-                    {"id": id},
-                ).fetchone()
-                return r is not None
-        except Exception:
-            _logger.exception("Failed to check dataset existence id=%s", id)
-            return False
+    def update(self, id: uuid.UUID, dataset: Dataset) -> None:
+        with self._session() as session:
+            session.execute(
+                text(
+                    "UPDATE datasets SET "
+                    "owner_id = :owner_id, "
+                    "name = :name, description = :desc, meta = :meta, "
+                    "status = :status, tag_ids = :tag_ids, "
+                    "created_at = :created_at, updated_at = :updated_at "
+                    "WHERE id = :id"
+                ),
+                {
+                    "id": str(id),
+                    "owner_id": str(dataset.owner_id),
+                    "name": dataset.name,
+                    "desc": dataset.desc,
+                    "meta": dataset.meta.to_json(),
+                    "status": dataset.status,
+                    "tag_ids": msgspec_json.encode([str(t) for t in dataset.tag_ids]),
+                    "created_at": dataset.created_at,
+                    "updated_at": dataset.updated_at,
+                },
+            )
+            session.commit()
 
-    def update(self, id: int, dataset: Dataset) -> Optional[Exception]:
-        try:
-            with self._session() as session:
-                result = cast(CursorResult, session.execute(
-                    text(
-                        "UPDATE datasets SET "
-                        "owner_id = :owner_id, "
-                        "name = :name, description = :desc, meta = :meta, "
-                        "status = :status, tag_ids = :tag_ids, "
-                        "created_at = :created_at, updated_at = :updated_at "
-                        "WHERE id = :id"
-                    ),
-                    {
-                        "id": id,
-                        "owner_id": dataset.owner_id,
-                        "name": dataset.name,
-                        "desc": dataset.desc,
-                        "meta": dataset.meta.to_json(),
-                        "status": dataset.status,
-                        "tag_ids": json.dumps(dataset.tag_ids),
-                        "created_at": dataset.created_at,
-                        "updated_at": dataset.updated_at,
-                    },
-                ))
-                session.commit()
-                if result.rowcount == 0:
-                    return ValueError(f"Dataset not found: {id}")
-                return None
-        except Exception as exc:
-            return exc
+    def remove(self, id: uuid.UUID) -> None:
+        with self._session() as session:
+            session.execute(
+                text("DELETE FROM datasets WHERE id = :id"),
+                {"id": str(id)},
+            )
+            session.commit()
 
-    def remove(self, id: int) -> Optional[Exception]:
-        try:
-            dataset = self.find(id)
-            if dataset is None:
-                return ValueError(f"Dataset not found: {id}")
-            with self._session() as session:
-                session.execute(
-                    text("DELETE FROM datasets WHERE id = :id"),
-                    {"id": id},
-                )
-                session.commit()
-            return None
-        except Exception as exc:
-            return exc
-
-    def remove_batch(self, ids: List[int]) -> Optional[List[Exception]]:
-        if not ids:
-            return None
-        try:
-            with self._session() as session:
-                placeholders = ",".join(f":id_{i}" for i in range(len(ids)))
-                params = {f"id_{i}": id_ for i, id_ in enumerate(ids)}
-                session.execute(
-                    text(f"DELETE FROM datasets WHERE id IN ({placeholders})"),
-                    params,
-                )
-                session.commit()
-            return None
-        except Exception as exc:
-            return [exc]
+    def remove_batch(self, ids: list[uuid.UUID]) -> list[Exception]:
+        with self._session() as session:
+            placeholders = ",".join(f":id_{i}" for i in range(len(ids)))
+            params = {f"id_{i}": id_ for i, id_ in enumerate(ids)}
+            session.execute(
+                text(f"DELETE FROM datasets WHERE id IN ({placeholders})"),
+                params,
+            )
+            session.commit()
+        return []
 
     # ── 内部工具 ───────────────────────────────────────────────
 
     @staticmethod
     def _row_to_dataset(row) -> Dataset:
-        meta_raw = row.meta
-        if isinstance(meta_raw, str):
-            meta = DatasetMeta.from_json(meta_raw)
-        else:
-            meta = DatasetMeta.from_dict(meta_raw)
-
-        tag_ids_raw = row.tag_ids
-        if isinstance(tag_ids_raw, str):
-            tag_ids = json.loads(tag_ids_raw) if tag_ids_raw else []
-        elif isinstance(tag_ids_raw, list):
-            tag_ids = tag_ids_raw
-        else:
-            tag_ids = []
+        from msgspec import json
+        import uuid
 
         return Dataset(
-            id=row.id,
-            owner_id=row.owner_id,
+            id=uuid.UUID(row.id),
+            owner_id=uuid.UUID(row.owner_id),
             name=row.name,
             desc=row.description,
-            meta=meta,
+            meta=DatasetMeta.from_json(row.meta),
             status=row.status or 0,
-            tag_ids=tag_ids,
+            tag_ids=json.decode(row.tag_ids, type=list[uuid.UUID]),
             created_at=ensure_datetime(row.created_at),
             updated_at=ensure_datetime(row.updated_at),
         )

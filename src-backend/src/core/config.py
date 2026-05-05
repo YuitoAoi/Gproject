@@ -1,25 +1,22 @@
 from pydantic_settings import BaseSettings
-
-
 from urllib.parse import urlparse, urlunparse
 
 
 class Config(BaseSettings):
-    PROJECT_NAME: str = 'LLaMA-Factory Workstation'
-    VERSION: str = '1.0.0'
+    PROJECT_NAME: str = "LLaMA-Factory Workstation"
+    VERSION: str = "1.0.0"
     model_config = {"extra": "ignore", "env_file": ".env"}
 
     CACHE_DIR: str = "./cache"
     LOG_DIR: str = "./logs"
     DATASETS_DIR: str = "data/datasets"
 
-    HOST: str = '0.0.0.0'
+    HOST: str = "0.0.0.0"
     PORT: int = 8088
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 
-
     DATABASE_URL: str = "sqlite:///data/gproject.db"
-    REDIS_URL: str = 'redis://localhost:6379/0'
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     @property
     def CELERY_BROKER_URL(self) -> str:

@@ -1,9 +1,11 @@
 """标签仓储实现 —— 通过 SQLAlchemy 自动适配 MySQL / SQLite。"""
+
 import logging
 from datetime import datetime
-from typing import List, Optional, cast
+from typing import cast
+import uuid
 
-from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, text
+from sqlalchemy import Column, DateTime, MetaData, String, Table, Text, UniqueConstraint, text
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
@@ -19,19 +21,20 @@ _metadata = MetaData()
 _tag_table = Table(
     "dataset_tags",
     _metadata,
-    Column("id", Integer, primary_key=True, autoincrement=True),
-    Column("owner_id", Integer, nullable=False, default=0),
+    Column("id", String(36), primary_key=True),
+    Column("owner_id", String(36), nullable=False),
     Column("name", String(255), nullable=False),
     Column("color", String(50), nullable=False, default="#808080"),
     Column("description", Text),
     Column("created_at", DateTime, nullable=False),
+    UniqueConstraint("owner_id", "name", name="uq_dataset_tags_owner_name"),
 )
 
 
 class DatasetTagRepositoryAdapter(DatasetTagRepository):
     """标签仓储实现。SQLAlchemy Core Table 自动适配 MySQL / SQLite。"""
 
-    _COLUMNS = ("id, owner_id, name, color, description, created_at")
+    _COLUMNS = "id, owner_id, name, color, description, created_at"
 
     def __init__(self, connection: DatabaseConnection) -> None:
         self._conn = connection
@@ -50,10 +53,12 @@ class DatasetTagRepositoryAdapter(DatasetTagRepository):
         """确保标签表存在唯一约束（owner_id + name）。"""
         with self._session() as s:
             try:
-                s.execute(text(
-                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_dataset_tags_owner_name "
-                    "ON dataset_tags (owner_id, name)"
-                ))
+                s.execute(
+                    text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS uq_dataset_tags_owner_name "
+                        "ON dataset_tags (owner_id, name)"
+                    )
+                )
                 s.commit()
             except Exception:
                 s.rollback()
@@ -61,134 +66,110 @@ class DatasetTagRepositoryAdapter(DatasetTagRepository):
 
     # ── DatasetTagRepository 实现 ─────────────────────────────
 
-    def create(self, name: str, color: str, desc: str, owner: int) -> Optional[Exception]:
-        try:
-            existing = self.find_by_name(owner, name)
-            if existing is not None:
-                return ValueError(f"Tag name already exists for this user: {name}")
-            with self._session() as session:
-                session.execute(
-                    text(
-                        "INSERT INTO dataset_tags "
-                        "(owner_id, name, color, description, created_at) "
-                        "VALUES (:owner_id, :name, :color, :description, :created_at)"
-                    ),
-                    {
-                        "owner_id": owner,
-                        "name": name,
-                        "color": color,
-                        "description": desc,
-                        "created_at": datetime.now(),
-                    },
-                )
-                session.commit()
+    def create(self, tag: DatasetTag) -> None:
+        with self._session() as session:
+            session.execute(
+                text(
+                    "INSERT INTO dataset_tags "
+                    "(id, owner_id, name, color, description, created_at) "
+                    "VALUES (:id, :owner_id, :name, :color, :description, :created_at)"
+                ),
+                {
+                    "id": str(tag.id),
+                    "owner_id": str(tag.owner_id),
+                    "name": tag.name,
+                    "color": tag.color,
+                    "description": tag.description,
+                    "created_at": datetime.now(),
+                },
+            )
+            session.commit()
+
+    def check_duplicate(self, tag: DatasetTag) -> None:
+        """检查同用户下是否存在同名标签，存在则抛出 ValueError。"""
+        existing = self.find_by_name(tag.owner_id, tag.name)
+        if existing is not None and existing.id != tag.id:
+            raise ValueError(f"Tag name already exists for this user: {tag.name}")
+
+    def find_by_id(self, tag_id: uuid.UUID) -> DatasetTag | None:
+        with self._session() as session:
+            row = session.execute(
+                text(f"SELECT {self._COLUMNS} FROM dataset_tags WHERE id = :id"),
+                {"id": str(tag_id)},
+            ).fetchone()
+            if row is None:
                 return None
-        except Exception as exc:
-            return exc
+            return self._row_to_tag(row)
 
-    def find_by_id(self, tag_id: int) -> Optional[DatasetTag]:
-        try:
-            with self._session() as session:
-                row = session.execute(
-                    text(f"SELECT {self._COLUMNS} FROM dataset_tags WHERE id = :id"),
-                    {"id": tag_id},
-                ).fetchone()
-                if row is None:
-                    return None
-                return self._row_to_tag(row)
-        except Exception:
-            _logger.exception("Failed to find tag by id=%s", tag_id)
-            return None
-
-    def find_by_name(self, owner_id: int, name: str) -> Optional[DatasetTag]:
-        try:
-            with self._session() as session:
-                row = session.execute(
-                    text(
-                        f"SELECT {self._COLUMNS} FROM dataset_tags "
-                        "WHERE owner_id = :owner_id AND name = :name"
-                    ),
-                    {"owner_id": owner_id, "name": name},
-                ).fetchone()
-                if row is None:
-                    return None
-                return self._row_to_tag(row)
-        except Exception:
-            _logger.exception("Failed to find tag by owner_id=%s name=%s", owner_id, name)
-            return None
-
-    def find_by_owner(self, owner_id: int) -> List[DatasetTag]:
-        try:
-            with self._session() as session:
-                rows = session.execute(
-                    text(
-                        f"SELECT {self._COLUMNS} FROM dataset_tags "
-                        "WHERE owner_id = :owner_id ORDER BY id DESC"
-                    ),
-                    {"owner_id": owner_id},
-                ).fetchall()
-                return [self._row_to_tag(r) for r in rows]
-        except Exception:
-            _logger.exception("Failed to find tags by owner_id=%s", owner_id)
-            return []
-
-    def find_all(self) -> List[DatasetTag]:
-        try:
-            with self._session() as session:
-                rows = session.execute(
-                    text(f"SELECT {self._COLUMNS} FROM dataset_tags ORDER BY id DESC"),
-                ).fetchall()
-                return [self._row_to_tag(r) for r in rows]
-        except Exception:
-            _logger.exception("Failed to find all tags")
-            return []
-
-    def update_tag(self, tag_id: int, tag: DatasetTag) -> Optional[Exception]:
-        try:
-            with self._session() as session:
-                result = cast(CursorResult, session.execute(
-                    text(
-                        "UPDATE dataset_tags SET "
-                        "owner_id = :owner_id, name = :name, color = :color, "
-                        "description = :description "
-                        "WHERE id = :id"
-                    ),
-                    {
-                        "id": tag_id,
-                        "owner_id": tag.owner_id,
-                        "name": tag.name,
-                        "color": tag.color,
-                        "description": tag.description,
-                    },
-                ))
-                session.commit()
-                if result.rowcount == 0:
-                    return ValueError(f"Tag not found: {tag_id}")
+    def find_by_name(self, owner_id: uuid.UUID, name: str) -> DatasetTag | None:
+        with self._session() as session:
+            row = session.execute(
+                text(
+                    f"SELECT {self._COLUMNS} FROM dataset_tags "
+                    "WHERE owner_id = :owner_id AND name = :name"
+                ),
+                {"owner_id": str(owner_id), "name": name},
+            ).fetchone()
+            if row is None:
                 return None
-        except Exception as exc:
-            return exc
+            return self._row_to_tag(row)
 
-    def delete_tag(self, tag_id: int) -> Optional[Exception]:
-        try:
-            with self._session() as session:
-                result = cast(CursorResult, session.execute(
-                    text("DELETE FROM dataset_tags WHERE id = :id"),
-                    {"id": tag_id},
-                ))
-                session.commit()
-                if result.rowcount == 0:
-                    return ValueError(f"Tag not found: {tag_id}")
-                return None
-        except Exception as exc:
-            return exc
+    def find_by_owner(self, owner_id: uuid.UUID) -> list[DatasetTag]:
+        with self._session() as session:
+            rows = session.execute(
+                text(
+                    f"SELECT {self._COLUMNS} FROM dataset_tags "
+                    "WHERE owner_id = :owner_id ORDER BY id DESC"
+                ),
+                {"owner_id": str(owner_id)},
+            ).fetchall()
+            return [self._row_to_tag(r) for r in rows]
+
+    def find_all(self) -> list[DatasetTag]:
+        with self._session() as session:
+            rows = session.execute(
+                text(f"SELECT {self._COLUMNS} FROM dataset_tags ORDER BY id DESC"),
+            ).fetchall()
+            return [self._row_to_tag(r) for r in rows]
+
+    def update_tag(self, tag_id: uuid.UUID, tag: DatasetTag) -> None:
+        with self._session() as session:
+            result = cast(CursorResult, session.execute(
+                text(
+                    "UPDATE dataset_tags SET "
+                    "owner_id = :owner_id, name = :name, color = :color, "
+                    "description = :description "
+                    "WHERE id = :id"
+                ),
+                {
+                    "id": str(tag_id),
+                    "owner_id": str(tag.owner_id),
+                    "name": tag.name,
+                    "color": tag.color,
+                    "description": tag.description,
+                },
+            ))
+            if result.rowcount == 0:
+                raise ValueError(f"Tag not found: {tag_id}")
+            session.commit()
+
+    def delete_tag(self, tag_id: uuid.UUID) -> None:
+        with self._session() as session:
+            result = cast(CursorResult, session.execute(
+                text("DELETE FROM dataset_tags WHERE id = :id"),
+                {"id": str(tag_id)},
+            ))
+            session.commit()
+            if result.rowcount == 0:
+                raise ValueError(f"Tag not found: {tag_id}")
 
     # ── 内部工具 ───────────────────────────────────────────────
 
     @staticmethod
     def _row_to_tag(row) -> DatasetTag:
         return DatasetTag(
-            id=row.id,
-            owner_id=row.owner_id,
+            id=uuid.UUID(row.id),
+            owner_id=uuid.UUID(row.owner_id),
             name=row.name,
             color=row.color,
             description=row.description or "",

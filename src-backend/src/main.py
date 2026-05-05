@@ -9,6 +9,7 @@ if __name__ == "__main__":
 
     import uvicorn
     from src.core.config import config
+
     uvicorn.run("src.main:app", host=config.HOST, port=int(config.PORT), reload=True)
 
 # poetry run python -m src.main # 配置生效, 默认监听0.0.0.0:8088

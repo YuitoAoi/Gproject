@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
 
@@ -29,7 +31,7 @@ def list_tags(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     return svc.dataset_tag().get_tags(owner_id)
 
 
@@ -43,10 +45,10 @@ def get_tag(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     result = svc.dataset_tag().get_tag(owner_id, request.tag_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=404)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=404)
     return result
 
 
@@ -60,10 +62,10 @@ def create_tag(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     result = svc.dataset_tag().create_tag(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=400)
     return result
 
 
@@ -77,10 +79,10 @@ def update_tag(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     result = svc.dataset_tag().update_tag(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=404)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=404)
     return result
 
 
@@ -94,8 +96,8 @@ def delete_tag(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     result = svc.dataset_tag().delete_tag(owner_id, request.tag_id, force=request.force)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=400)
     return result

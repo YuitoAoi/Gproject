@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 
 import pytest
@@ -8,7 +9,7 @@ from src.core.user import User
 def _make_user(name="alice", email="alice@test.com", password="secret") -> User:
     now = datetime.now()
     return User(
-        id=0,  # auto-increment，创建时占位
+        id=uuid.uuid4(),
         name=name,
         email=email,
         password=password,
@@ -24,21 +25,17 @@ class TestUserRepositoryAdapter:
 
     # ── create ─────────────────────────────────────────────────
 
-    def test_create_returns_id(self, repo):
-        """create 应返回自增主键"""
+    def test_create_returns_none(self, repo):
+        """create 现在返回 None（void），异常向上传播"""
         user = _make_user()
-        pk = repo.create(user)
-
-        assert pk is not None
-        assert pk > 0
+        result = repo.create(user)
+        assert result is None
 
     def test_create_duplicate_name_allowed(self, repo):
         """重复 name 允许（name 上无唯一约束）"""
-        pk1 = repo.create(_make_user(name="bob", email="bob1@test.com"))
-        pk2 = repo.create(_make_user(name="bob", email="bob2@test.com"))
-        assert pk1 is not None
-        assert pk2 is not None
-        assert pk1 != pk2
+        repo.create(_make_user(name="bob", email="bob1@test.com"))
+        repo.create(_make_user(name="bob", email="bob2@test.com"))
+        # 不抛异常即通过
 
     def test_create_duplicate_email_raises(self, repo):
         """重复 email 应触发数据库唯一约束"""
@@ -50,30 +47,16 @@ class TestUserRepositoryAdapter:
 
     def test_find_by_id_found(self, repo):
         user = _make_user()
-        pk = repo.create(user)
-        found = repo.find_by_id(pk)
+        repo.create(user)
+        found = repo.find_by_id(user.id)
 
         assert found is not None
-        assert found.id == pk
+        assert found.id == user.id
         assert found.name == user.name
         assert found.email == user.email
 
     def test_find_by_id_not_found(self, repo):
-        found = repo.find_by_id(99999)
-        assert found is None
-
-    # ── find_by_name ───────────────────────────────────────────
-
-    def test_find_by_name_found(self, repo):
-        user = _make_user(name="dave")
-        repo.create(user)
-        found = repo.find_by_name("dave")
-
-        assert found is not None
-        assert found.name == "dave"
-
-    def test_find_by_name_not_found(self, repo):
-        found = repo.find_by_name("nobody")
+        found = repo.find_by_id(uuid.uuid4())
         assert found is None
 
     # ── find_by_email ──────────────────────────────────────────
@@ -108,49 +91,44 @@ class TestUserRepositoryAdapter:
     # ── exists ─────────────────────────────────────────────────
 
     def test_exists_true(self, repo):
-        pk = repo.create(_make_user())
-        assert repo.exists(pk) is True
+        user = _make_user()
+        repo.create(user)
+        assert repo.exists(user.id) is True
 
     def test_exists_false(self, repo):
-        assert repo.exists(99999) is False
+        assert repo.exists(uuid.uuid4()) is False
 
     # ── update ─────────────────────────────────────────────────
 
     def test_update_success(self, repo):
-        pk = repo.create(_make_user(name="frank", email="frank@test.com"))
+        user = _make_user(name="frank", email="frank@test.com")
+        repo.create(user)
+
         updated_data = _make_user(name="frank_new", email="frank_new@test.com", password="newpass")
+        updated_data.id = user.id
+        repo.update(user.id, updated_data)
 
-        result = repo.update(pk, updated_data)
-
-        assert result is not None
-        assert result.id == pk
-        assert result.name == "frank_new"
-        assert result.email == "frank_new@test.com"
-        assert result.password == "newpass"
-
-        # 确认持久化
-        refetched = repo.find_by_id(pk)
+        refetched = repo.find_by_id(user.id)
         assert refetched.name == "frank_new"
+        assert refetched.email == "frank_new@test.com"
+        assert refetched.password == "newpass"
 
     def test_update_not_found(self, repo):
-        result = repo.update(99999, _make_user())
-        assert result is None
+        with pytest.raises(ValueError):
+            repo.update(uuid.uuid4(), _make_user())
 
     # ── remove ─────────────────────────────────────────────────
 
     def test_remove_success(self, repo):
-        pk = repo.create(_make_user(name="grace"))
-        removed = repo.remove(pk)
-
-        assert removed is not None
-        assert removed.id == pk
-        assert removed.name == "grace"
+        user = _make_user(name="grace")
+        repo.create(user)
+        repo.remove(user.id)
 
         # 确认已删除
-        assert repo.find_by_id(pk) is None
+        assert repo.find_by_id(user.id) is None
 
     def test_remove_not_found(self, repo):
-        assert repo.remove(99999) is None
+        assert repo.remove(uuid.uuid4()) is None
 
     # ── 端到端流程 ────────────────────────────────────────────
 
@@ -158,22 +136,24 @@ class TestUserRepositoryAdapter:
         """创建 → 查找 → 更新 → 删除 完整链路"""
         # create
         user = _make_user(name="e2e", email="e2e@test.com", password="pwd")
-        pk = repo.create(user)
-        assert pk is not None
+        repo.create(user)
 
         # find_by_id
-        found = repo.find_by_id(pk)
+        found = repo.find_by_id(user.id)
         assert found.name == "e2e"
 
         # exists
-        assert repo.exists(pk) is True
+        assert repo.exists(user.id) is True
 
         # update
         updated = _make_user(name="e2e_updated", email="e2e_new@test.com")
-        result = repo.update(pk, updated)
-        assert result.name == "e2e_updated"
+        updated.id = user.id
+        repo.update(user.id, updated)
+
+        found2 = repo.find_by_id(user.id)
+        assert found2.name == "e2e_updated"
 
         # remove
-        removed = repo.remove(pk)
-        assert removed.name == "e2e_updated"
-        assert repo.exists(pk) is False
+        repo.remove(user.id)
+        assert repo.find_by_id(user.id) is None
+        assert repo.exists(user.id) is False

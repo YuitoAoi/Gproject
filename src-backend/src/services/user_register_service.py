@@ -1,16 +1,22 @@
+import uuid
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
 
 from src.core.user import User
 from src.core.password_encryptor import hash_password
 from src.services.interfaces.user_repository import UserRepository
-from src.services.utils import is_safe_name, is_safe_password, is_valid_email, is_strong_password
+from src.services.utils import (
+    is_safe_name,
+    is_safe_password,
+    is_valid_email,
+    is_strong_password,
+)
 
 
 class UserRegisterRequest(BaseModel):
     """注册请求"""
+
     name: str
     email: str
     password: str
@@ -18,11 +24,12 @@ class UserRegisterRequest(BaseModel):
 
 class UserRegisterResponse(BaseModel):
     """注册响应"""
-    user_id: Optional[int] = None
-    name: Optional[str] = None
-    email: Optional[str] = None
+
+    user_id: uuid.UUID | None = None
+    name: str | None = None
+    email: str | None = None
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class UserRegisterService:
@@ -47,7 +54,7 @@ class UserRegisterService:
         if not is_strong_password(request.password):
             return UserRegisterResponse(
                 error="Password must be at least 8 characters "
-                      "with 2 of: uppercase, lowercase, digit, special char."
+                "with 2 of: uppercase, lowercase, digit, special char."
             )
 
         # 检查邮箱是否已被注册（大小写不敏感）
@@ -57,8 +64,9 @@ class UserRegisterService:
 
         # 创建用户实体
         now = datetime.now()
+        user_id = uuid.uuid4()
         user = User(
-            id=0,
+            id=user_id,
             name=request.name,
             email=request.email,
             password=hash_password(request.password),
@@ -68,14 +76,13 @@ class UserRegisterService:
             last_login=now,
         )
 
-        new_id = self._user_repo.create(user)
-        if new_id is None:
-            return UserRegisterResponse(
-                error="Failed to create user."
-            )
+        try:
+            self._user_repo.create(user)
+        except Exception as e:
+            return UserRegisterResponse(error=f"Failed to create user: {e}")
 
         return UserRegisterResponse(
-            user_id=new_id,
+            user_id=user_id,
             name=user.name,
             email=user.email,
             success=True,

@@ -1,4 +1,5 @@
 """DatasetProcessService 单元测试"""
+import uuid
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -39,8 +40,8 @@ class TestProcessService:
     # ── get_sample ────────────────────────────────────────
 
     def test_sample_not_found(self, svc, mock_ds_repo):
-        mock_ds_repo.find.return_value = None
-        resp = svc.get_sample(SampleRequest(dataset_id=1, limit=10))
+        mock_ds_repo.find_by_id.return_value = None
+        resp = svc.get_sample(SampleRequest(dataset_id=uuid.uuid4(), limit=10))
         assert resp.error is not None
         assert "not found" in resp.error
 
@@ -49,28 +50,28 @@ class TestProcessService:
     def test_sample_csv(self, mock_io, mock_csv, svc, mock_ds_repo, mock_file_repo):
         ds = MagicMock()
         ds.meta = DatasetMeta(format="csv", file_path="/t.csv", file_size=100)
-        mock_ds_repo.find.return_value = ds
+        mock_ds_repo.find_by_id.return_value = ds
 
         mock_csv.reader.return_value = iter([["name", "age"], ["Alice", "30"]])
         mock_file_repo.read.return_value = b"name,age\nAlice,30\n"
 
-        resp = svc.get_sample(SampleRequest(dataset_id=1, limit=10))
+        resp = svc.get_sample(SampleRequest(dataset_id=uuid.uuid4(), limit=10))
         assert resp.columns == ["name", "age"]
 
     def test_sample_file_not_found(self, svc, mock_ds_repo, mock_file_repo):
         ds = MagicMock()
         ds.meta = DatasetMeta(format="csv", file_path="/missing.csv", file_size=0)
-        mock_ds_repo.find.return_value = ds
+        mock_ds_repo.find_by_id.return_value = ds
         mock_file_repo.exists.return_value = False
 
-        resp = svc.get_sample(SampleRequest(dataset_id=1, limit=10))
+        resp = svc.get_sample(SampleRequest(dataset_id=uuid.uuid4(), limit=10))
         assert "not found" in resp.error
 
 
     # ── process ───────────────────────────────────────────
 
     def test_process_not_found(self, svc, mock_ds_repo):
-        mock_ds_repo.find.return_value = None
+        mock_ds_repo.find_by_id.return_value = None
         req = _make_process_req()
         resp = svc.process(req)
         assert resp.status == "failed"
@@ -79,7 +80,7 @@ class TestProcessService:
     def test_process_already_processed(self, svc, mock_ds_repo):
         ds = MagicMock()
         ds.status = 1
-        mock_ds_repo.find.return_value = ds
+        mock_ds_repo.find_by_id.return_value = ds
         req = _make_process_req()
         resp = svc.process(req)
         assert resp.status == "failed"
@@ -89,7 +90,7 @@ class TestProcessService:
         ds = MagicMock()
         ds.status = 0
         ds.meta = DatasetMeta(format="csv", file_path="/t.csv", file_size=100)
-        mock_ds_repo.find.return_value = ds
+        mock_ds_repo.find_by_id.return_value = ds
 
         mock_resp = MagicMock()
         mock_resp.is_error = False
@@ -104,7 +105,7 @@ class TestProcessService:
         ds = MagicMock()
         ds.status = 0
         ds.meta = DatasetMeta(format="csv", file_path="/missing.csv", file_size=0)
-        mock_ds_repo.find.return_value = ds
+        mock_ds_repo.find_by_id.return_value = ds
         mock_file_repo.exists.return_value = False
 
         resp = svc.process(_make_process_req())
@@ -115,7 +116,7 @@ class TestProcessService:
         ds = MagicMock()
         ds.status = 0
         ds.meta = DatasetMeta(format="csv", file_path="/t.csv", file_size=100)
-        mock_ds_repo.find.return_value = ds
+        mock_ds_repo.find_by_id.return_value = ds
 
         mock_resp = MagicMock()
         mock_resp.is_error = True
@@ -181,6 +182,6 @@ class TestProcessService:
 
 def _make_process_req():
     return DatasetProcessRequest(
-        dataset_id=1, api_key="k", synthesizer_url="u",
+        dataset_id=uuid.uuid4(), api_key="k", synthesizer_url="u",
         synthesizer_model="m", mode="atomic", data_format="Alpaca",
     )

@@ -1,37 +1,33 @@
-from typing import List, Optional
-import abc
+import abc, uuid
 
 from src.core.user import User
 
+
 class UserRepository(abc.ABC):
     @abc.abstractmethod
-    def create(self, user: User) -> Optional[int]:
+    def create(self, user: User) -> None:
         pass
 
     @abc.abstractmethod
-    def find_by_id(self,id: int) -> Optional[User]:
+    def find_by_id(self, id: uuid.UUID) -> User | None:
         pass
 
     @abc.abstractmethod
-    def find_by_name(self,name: str) -> Optional[User]:
-        pass
-    
-    @abc.abstractmethod
-    def find_by_email(self,email: str) -> Optional[User]:
+    def find_by_email(self, email: str) -> User | None:
         pass
 
     @abc.abstractmethod
-    def find_all(self) -> List[User]:
+    def find_all(self) -> list[User]:
         pass
 
     @abc.abstractmethod
-    def exists(self,id: int) -> bool:
+    def exists(self, id: uuid.UUID) -> bool:
         pass
 
     @abc.abstractmethod
-    def update(self, id: int, user: User) -> Optional[User]:
+    def update(self, id: uuid.UUID, user: User) -> None:
         pass
 
     @abc.abstractmethod
-    def remove(self, id: int) -> Optional[User]:
+    def remove(self, id: uuid.UUID) -> None:
         pass

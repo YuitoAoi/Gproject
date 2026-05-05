@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
@@ -43,12 +44,20 @@ datasets_router = APIRouter(prefix="/datasets", tags=["dataset"])
 download_router = APIRouter(tags=["download"])
 
 
-def _check_owner(svc, dataset_id: int, owner_id: int) -> JSONResponse | None:
-    ds = svc.dataset_repo.find(dataset_id)
+def _check_owner(
+    svc, dataset_id: uuid.UUID, owner_id: uuid.UUID
+) -> JSONResponse | None:
+    ds = svc.dataset_repo.find_by_id(dataset_id)
     if ds is None:
-        return JSONResponse({"success": False, "error": f"Dataset not found: {dataset_id}"}, status_code=404)
+        return JSONResponse(
+            {"success": False, "error": f"Dataset not found: {dataset_id}"},
+            status_code=404,
+        )
     if ds.owner_id != owner_id:
-        return JSONResponse({"success": False, "error": f"Dataset not found: {dataset_id}"}, status_code=404)
+        return JSONResponse(
+            {"success": False, "error": f"Dataset not found: {dataset_id}"},
+            status_code=404,
+        )
     return None
 
 
@@ -56,12 +65,13 @@ def _check_owner(svc, dataset_id: int, owner_id: int) -> JSONResponse | None:
 # 查询
 # ══════════════════════════════════════════════════════════
 
+
 @datasets_router.get("", response_model=GetDatasetsResponse)
 def list_datasets(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     return svc.get_datasets().get_all(owner_id=owner_id)
 
 
@@ -71,10 +81,10 @@ def get_dataset(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     result = svc.get_datasets().get_by_id(request.dataset_id, owner_id)
     if result.error:
-        return JSONResponse(content=result.model_dump(), status_code=404)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=404)
     return result
 
 
@@ -82,22 +92,24 @@ def get_dataset(
 # 导入
 # ══════════════════════════════════════════════════════════
 
+
 @router.post("/import", response_model=DatasetImportExportResponse, status_code=201)
 def import_dataset(
     request: DatasetImportRequest,
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     result = svc.dataset_import_export().import_dataset(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=400)
     return result
 
 
 # ══════════════════════════════════════════════════════════
 # 分块上传
 # ══════════════════════════════════════════════════════════
+
 
 @router.post("/upload/initiate", response_model=InitiateUploadResponse)
 def initiate_upload(
@@ -119,7 +131,7 @@ def upload_chunk(
     data = file.file.read()
     result = svc.chunked_upload().upload_chunk(upload_id, chunk_index, data)
     if result.error:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=400)
     return result
 
 
@@ -138,10 +150,10 @@ def complete_upload(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    request.owner_id = int(current_user.user_id)
+    request.owner_id = uuid.UUID(current_user.user_id)
     result = svc.chunked_upload().complete(request)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=400)
     return result
 
 
@@ -149,16 +161,17 @@ def complete_upload(
 # 更新
 # ══════════════════════════════════════════════════════════
 
+
 @router.patch("", response_model=DatasetUpdateResponse)
 def update_dataset(
     request: DatasetUpdateRequest,
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     result = svc.update_dataset().execute(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=404)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=404)
     return result
 
 
@@ -166,13 +179,14 @@ def update_dataset(
 # 样本 & 处理
 # ══════════════════════════════════════════════════════════
 
+
 @router.post("/sample", response_model=SampleResponse)
 def get_dataset_sample(
     request: SampleRequest,
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     err = _check_owner(svc, request.dataset_id, owner_id)
     if err:
         return err
@@ -185,7 +199,7 @@ def process_dataset(
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     err = _check_owner(svc, request.dataset_id, owner_id)
     if err:
         return err
@@ -194,15 +208,16 @@ def process_dataset(
 
 class ProcessCallbackRequest(BaseModel):
     job_id: str
-    dataset_id: int
+    dataset_id: uuid.UUID
     status: str = ""
-    output_path: Optional[str] = None
-    error: Optional[str] = None
+    output_path: str | None = None
+    error: str | None = None
 
 
 def _is_internal_ip(client_ip: str) -> bool:
     """仅接受本地回环或私有网络 IP（容器网络）。"""
     import ipaddress
+
     if not client_ip:
         return False
     try:
@@ -238,24 +253,27 @@ def process_callback(
 # 下载
 # ══════════════════════════════════════════════════════════
 
+
 @router.post("/download", response_model=DatasetDownloadTokenResponse)
 def request_download_token(
     request: DatasetDownloadRequest,
     svc: ServiceFactory = Depends(get_services),
     current_user: TokenPayload = Depends(get_current_user),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     err = _check_owner(svc, request.dataset_id, owner_id)
     if err:
         return err
 
     info = svc.dataset_import_export().download(request)
     if info.error:
-        return JSONResponse(content={"success": False, "error": info.error}, status_code=404)
+        return JSONResponse(
+            content={"success": False, "error": info.error}, status_code=404
+        )
 
     token = svc.jwt().generate_download_token(
-        dataset_id=request.dataset_id,
-        user_id=owner_id,
+        dataset_id=str(request.dataset_id),
+        user_id=str(owner_id),
     )
     return DatasetDownloadTokenResponse(
         download_token=token,
@@ -274,20 +292,31 @@ def download_by_token(
 ):
     payload = svc.jwt().verify_download_token(token)
     if payload is None:
-        return JSONResponse({"success": False, "error": "Invalid or expired download token."}, status_code=401)
+        return JSONResponse(
+            {"success": False, "error": "Invalid or expired download token."},
+            status_code=401,
+        )
 
     dataset_id = payload["dataset_id"]
-    ds = svc.dataset_repo.find(dataset_id)
+    ds = svc.dataset_repo.find_by_id(dataset_id)
     if ds is None:
-        return JSONResponse({"success": False, "error": f"Dataset not found: {dataset_id}"}, status_code=404)
+        return JSONResponse(
+            {"success": False, "error": f"Dataset not found: {dataset_id}"},
+            status_code=404,
+        )
 
     file_path = ds.meta.file_path
     if not file_path:
-        return JSONResponse({"success": False, "error": "File path not set"}, status_code=404)
+        return JSONResponse(
+            {"success": False, "error": "File path not set"}, status_code=404
+        )
 
     from pathlib import Path
+
     if not Path(file_path).exists():
-        return JSONResponse({"success": False, "error": "File not found on disk"}, status_code=404)
+        return JSONResponse(
+            {"success": False, "error": "File not found on disk"}, status_code=404
+        )
 
     return FileResponse(
         path=file_path,
@@ -300,14 +329,15 @@ def download_by_token(
 # 删除
 # ══════════════════════════════════════════════════════════
 
+
 @datasets_router.delete("", response_model=DatasetRemoveResponse)
 def delete_dataset(
     request: DatasetRemoveRequest,
     current_user: TokenPayload = Depends(get_current_user),
     svc: ServiceFactory = Depends(get_services),
 ):
-    owner_id = int(current_user.user_id)
+    owner_id = uuid.UUID(current_user.user_id)
     result = svc.remove_datasets().execute(request, owner_id)
     if not result.deleted:
-        return JSONResponse(content=result.model_dump(), status_code=404)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=404)
     return result

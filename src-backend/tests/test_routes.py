@@ -1,12 +1,23 @@
 """用户和标签路由集成测试"""
+import uuid
 from unittest.mock import MagicMock
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+_UID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+_UID_S = str(_UID)
+_TID = uuid.UUID("00000000-0000-0000-0000-0000000000b1")
+_TID_S = str(_TID)
+_ZID = uuid.UUID(int=0)
+_ZID_S = str(_ZID)
+_NF = uuid.UUID("00000000-0000-0000-0000-000000000999")
 
-def _make_token_payload(user_id="1"):
+_NF_S = str(_NF)
+
+
+def _make_token_payload(user_id=_UID_S):
     from src.services.jwt_service import TokenPayload
     return TokenPayload(user_id=user_id, email="admin@test.com", exp=9999999999)
 
@@ -54,7 +65,7 @@ class TestAuthRoutes:
         tc, mock_svc = client
         from src.services import UserLoginResponse
         mock_svc.login_user.return_value.execute.return_value = \
-            UserLoginResponse(success=True, user_id=1, access_token="t")
+            UserLoginResponse(success=True, user_id=_UID, access_token="t")
         resp = tc.post("/auth/login", json={"email": "a@b.com", "password": "x"})
         assert resp.status_code == 200
 
@@ -75,7 +86,7 @@ class TestUserRoutes:
         from datetime import datetime
         now = datetime.now()
         mock_svc.get_user_info.return_value.execute.return_value = \
-            UserInfoResponse(id=1, name="Alice", email="a@b.com",
+            UserInfoResponse(id=_UID, name="Alice", email="a@b.com",
                              is_admin=False, is_active=True,
                              created_at=now, last_login=now)
         resp = tc.get("/user", **_auth())
@@ -88,7 +99,7 @@ class TestUserRoutes:
         from datetime import datetime
         d = datetime(2000, 1, 1)
         mock_svc.get_user_info.return_value.execute.return_value = \
-            UserInfoResponse(id=0, name="", email="", is_admin=False, is_active=False,
+            UserInfoResponse(id=_ZID, name="", email="", is_admin=False, is_active=False,
                              created_at=d, last_login=d,
                              error="User not found")
         resp = tc.get("/user", **_auth())
@@ -114,7 +125,7 @@ class TestUserRoutes:
         tc, mock_svc = client
         from src.services import UserRegisterResponse
         mock_svc.register_user.return_value.execute.return_value = \
-            UserRegisterResponse(success=True, user_id=1)
+            UserRegisterResponse(success=True, user_id=_UID)
         resp = tc.post("/user", json={"name": "New", "email": "n@b.com", "password": "pw"})
         assert resp.status_code == 201
 
@@ -141,9 +152,9 @@ class TestTagRoutes:
         tc, mock_svc = client
         from src.services.dataset_tag_service import DatasetTagInfoGetResponse
         mock_svc.dataset_tag.return_value.get_tag.return_value = \
-            DatasetTagInfoGetResponse(success=True, tag_id=1, tag_name="red",
+            DatasetTagInfoGetResponse(success=True, tag_id=_TID, tag_name="red",
                                       tag_color="#f00", tag_desc="", tag_created_at="")
-        resp = tc.post("/tag/get", json={"tag_id": 1}, **_auth())
+        resp = tc.post("/tag/get", json={"tag_id": _TID_S}, **_auth())
         assert resp.status_code == 200
 
     def test_get_tag_not_found(self, client):
@@ -151,9 +162,9 @@ class TestTagRoutes:
         from src.services.dataset_tag_service import DatasetTagInfoGetResponse
         mock_svc.dataset_tag.return_value.get_tag.return_value = \
             DatasetTagInfoGetResponse(success=False, error="Tag not found",
-                                      tag_id=0, tag_name="", tag_color="",
+                                      tag_id=_ZID, tag_name="", tag_color="",
                                       tag_desc="", tag_created_at="")
-        resp = tc.post("/tag/get", json={"tag_id": 999}, **_auth())
+        resp = tc.post("/tag/get", json={"tag_id": _NF_S}, **_auth())
         assert resp.status_code == 404
 
     def test_create_tag(self, client):
@@ -177,7 +188,7 @@ class TestTagRoutes:
         from src.services.dataset_tag_service import DatasetTagUpdateResponse
         mock_svc.dataset_tag.return_value.update_tag.return_value = \
             DatasetTagUpdateResponse(success=True)
-        resp = tc.patch("/tag", json={"tag_id": 1, "tag_name": "new"}, **_auth())
+        resp = tc.patch("/tag", json={"tag_id": _TID_S, "tag_name": "new"}, **_auth())
         assert resp.status_code == 200
 
     def test_update_not_found(self, client):
@@ -185,7 +196,7 @@ class TestTagRoutes:
         from src.services.dataset_tag_service import DatasetTagUpdateResponse
         mock_svc.dataset_tag.return_value.update_tag.return_value = \
             DatasetTagUpdateResponse(success=False, error="Tag not found")
-        resp = tc.patch("/tag", json={"tag_id": 999}, **_auth())
+        resp = tc.patch("/tag", json={"tag_id": _NF_S}, **_auth())
         assert resp.status_code == 404
 
     def test_delete_tag(self, client):
@@ -193,7 +204,7 @@ class TestTagRoutes:
         from src.services.dataset_tag_service import DatasetTagDeleteResponse
         mock_svc.dataset_tag.return_value.delete_tag.return_value = \
             DatasetTagDeleteResponse(success=True)
-        resp = tc.request("DELETE", "/tag", json={"tag_id": 1}, **_auth())
+        resp = tc.request("DELETE", "/tag", json={"tag_id": _TID_S}, **_auth())
         assert resp.status_code == 200
 
     def test_delete_ref_error(self, client):
@@ -201,5 +212,5 @@ class TestTagRoutes:
         from src.services.dataset_tag_service import DatasetTagDeleteResponse
         mock_svc.dataset_tag.return_value.delete_tag.return_value = \
             DatasetTagDeleteResponse(success=False, error="Tag is referenced by")
-        resp = tc.request("DELETE", "/tag", json={"tag_id": 1}, **_auth())
+        resp = tc.request("DELETE", "/tag", json={"tag_id": _TID_S}, **_auth())
         assert resp.status_code == 400

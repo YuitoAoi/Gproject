@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+import uuid
 from datetime import datetime
 
 from pydantic import BaseModel
@@ -20,12 +20,12 @@ class UserLoginRequest(BaseModel):
 
 class UserLoginResponse(BaseModel):
     """登录响应"""
-    user_id: Optional[int] = None
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
-    expires_in: Optional[int] = None
+    user_id: uuid.UUID | None = None
+    access_token: str | None = None
+    refresh_token: str | None = None
+    expires_in: int | None = None
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class UserLoginService:
@@ -58,9 +58,10 @@ class UserLoginService:
 
         user.last_login = datetime.now()
         user.last_login_ip = login_ip
-        updated = self._user_repo.update(user.id, user)
-        if updated is None:
-            _logger.warning("Failed to update last_login for user_id=%s", user.id)
+        try:
+            self._user_repo.update(user.id, user)
+        except Exception:
+            _logger.exception("Failed to update last_login for user_id=%s", user.id)
 
         # 生成 JWT Token
         token_pair = self._jwt_service.generate_token_pair(

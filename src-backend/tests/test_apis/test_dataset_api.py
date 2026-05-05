@@ -1,5 +1,6 @@
 """Dataset API 端点集成测试"""
 import sys
+import uuid
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -11,12 +12,16 @@ from fastapi.testclient import TestClient
 _PROJECT = Path(__file__).resolve().parent.parent.parent
 if str(_PROJECT) not in sys.path:
     sys.path.insert(0, str(_PROJECT))
-_SVC = str(_PROJECT / "src" / "services")
-if _SVC not in sys.path:
-    sys.path.insert(0, _SVC)
+
+_UID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+_UID_S = str(_UID)
+_DID = uuid.UUID("00000000-0000-0000-0000-0000000000a1")
+_DID_S = str(_DID)
+_NF = uuid.UUID("00000000-0000-0000-0000-000000000999")
+_NF_S = str(_NF)
 
 
-def _make_token_payload(user_id="1"):
+def _make_token_payload(user_id=_UID_S):
     from src.services.jwt_service import TokenPayload
     return TokenPayload(user_id=user_id, email="admin@test.com", exp=9999999999)
 
@@ -76,7 +81,7 @@ class TestDatasetAPI:
         from src.services.dataset_get_service import GetDatasetsResponse
         now = datetime.now()
         ds = {
-            "id": 1, "name": "test", "desc": None,
+            "id": _DID_S, "name": "test", "desc": None,
             "format": "json", "file_size": 1024,
             "status": 0, "tag_ids": [], "created_at": now.isoformat(),
             "updated_at": now.isoformat(),
@@ -94,14 +99,14 @@ class TestDatasetAPI:
         from src.services.dataset_get_service import GetDatasetResponse
         now = datetime.now()
         ds = {
-            "id": 1, "name": "test", "desc": None,
+            "id": _DID_S, "name": "test", "desc": None,
             "format": "json", "file_size": 1024,
             "status": 0, "tag_ids": [], "created_at": now.isoformat(),
             "updated_at": now.isoformat(),
         }
         mock_svc.get_datasets.return_value.get_by_id.return_value = \
             GetDatasetResponse(dataset=ds)
-        resp = tc.post("/dataset/get", json={"dataset_id": 1}, **_auth())
+        resp = tc.post("/dataset/get", json={"dataset_id": _DID_S}, **_auth())
         assert resp.status_code == 200
         assert resp.json()["dataset"]["name"] == "test"
 
@@ -110,7 +115,7 @@ class TestDatasetAPI:
         from src.services.dataset_get_service import GetDatasetResponse
         mock_svc.get_datasets.return_value.get_by_id.return_value = \
             GetDatasetResponse(error="Dataset not found: 999")
-        resp = tc.post("/dataset/get", json={"dataset_id": 999}, **_auth())
+        resp = tc.post("/dataset/get", json={"dataset_id": _NF_S}, **_auth())
         assert resp.status_code == 404
 
     # ═══ POST /dataset/upload/initiate ══════════════════════
@@ -131,10 +136,10 @@ class TestDatasetAPI:
     def test_get_sample(self, client):
         tc, mock_svc = client
         from src.services.dataset_process_service import SampleResponse
-        mock_svc.dataset_repo.find.return_value = MagicMock(owner_id=1)
+        mock_svc.dataset_repo.find_by_id.return_value = MagicMock(owner_id=_UID)
         mock_svc.process_dataset.return_value.get_sample.return_value = \
             SampleResponse(columns=["Q", "A"], rows=[{"Q": "x", "A": "y"}], total_rows=100)
-        resp = tc.post("/dataset/sample", json={"dataset_id": 1, "limit": 50}, **_auth())
+        resp = tc.post("/dataset/sample", json={"dataset_id": _DID_S, "limit": 50}, **_auth())
         assert resp.status_code == 200
         assert resp.json()["columns"] == ["Q", "A"]
 
@@ -143,11 +148,11 @@ class TestDatasetAPI:
     def test_process_clean(self, client):
         tc, mock_svc = client
         from src.services.dataset_process_service import DatasetProcessResponse
-        mock_svc.dataset_repo.find.return_value = MagicMock(owner_id=1)
+        mock_svc.dataset_repo.find_by_id.return_value = MagicMock(owner_id=_UID)
         mock_svc.process_dataset.return_value.process.return_value = \
             DatasetProcessResponse(job_id="task-123", status="pending")
         resp = tc.post("/dataset/process", json={
-            "dataset_id": 1,
+            "dataset_id": _DID_S,
             "api_key": "sk-xxx",
             "synthesizer_url": "https://api.example.com/v1",
             "synthesizer_model": "Qwen/Qwen2.5-7B-Instruct",
@@ -167,14 +172,14 @@ class TestDatasetAPI:
     def test_request_download_token(self, client):
         tc, mock_svc = client
         from src.services.dataset_import_export_service import DatasetImportExportResponse
-        mock_svc.dataset_repo.find.return_value = MagicMock(owner_id=1)
+        mock_svc.dataset_repo.find_by_id.return_value = MagicMock(owner_id=_UID)
         mock_svc.dataset_import_export.return_value.download.return_value = \
             DatasetImportExportResponse(
-                success=True, dataset_id=1, filename="test.json",
+                success=True, dataset_id=_DID, filename="test.json",
                 file_size=1024, format="json", sha256="abc",
             )
         mock_svc.jwt.return_value.generate_download_token.return_value = "token-xyz"
-        resp = tc.post("/dataset/download", json={"dataset_id": 1}, **_auth())
+        resp = tc.post("/dataset/download", json={"dataset_id": _DID_S}, **_auth())
         assert resp.status_code == 200
         assert resp.json()["filename"] == "test.json"
 
@@ -195,17 +200,17 @@ class TestDatasetAPI:
         tc, mock_svc = client
         from src.services.dataset_remove_service import DatasetRemoveResponse
         mock_svc.remove_datasets.return_value.execute.return_value = \
-            DatasetRemoveResponse(success=True, deleted=[1])
-        resp = tc.request("DELETE", "/datasets", json={"dataset_ids": [1]}, **_auth())
+            DatasetRemoveResponse(success=True, deleted=[_DID])
+        resp = tc.request("DELETE", "/datasets", json={"dataset_ids": [_DID_S]}, **_auth())
         assert resp.status_code == 200
-        assert resp.json()["deleted"] == [1]
+        assert resp.json()["deleted"] == [_DID_S]
 
     def test_delete_not_found(self, client):
         tc, mock_svc = client
         from src.services.dataset_remove_service import DatasetRemoveResponse
         mock_svc.remove_datasets.return_value.execute.return_value = \
-            DatasetRemoveResponse(success=False, errors=["Dataset not found: 999"])
-        resp = tc.request("DELETE", "/datasets", json={"dataset_ids": [999]}, **_auth())
+            DatasetRemoveResponse(success=False, errors=[f"Dataset not found: {_NF}"])
+        resp = tc.request("DELETE", "/datasets", json={"dataset_ids": [_NF_S]}, **_auth())
         assert resp.status_code == 404
 
     # ═══ GET /down_dataset/{token} ═════════════════════════

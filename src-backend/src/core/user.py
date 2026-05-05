@@ -1,12 +1,14 @@
 from datetime import datetime
-from pydantic import BaseModel, field_serializer
+import uuid
+from pydantic import field_serializer
+from .entity_base import EntityBase
 
 
-class User(BaseModel):
-    id: int
+class User(EntityBase):
+    id: uuid.UUID
     name: str
     email: str
-    password: str   # 加密后密码，禁止明文存储，DTO字段时转换为******隐藏
+    password: str  # 加密后密码，禁止明文存储，DTO字段时转换为******隐藏
     is_admin: bool
     is_active: bool
     created_at: datetime

@@ -25,14 +25,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     DatasetRepositoryAdapter(db_conn).init_table()
     DatasetTagRepositoryAdapter(db_conn).init_table()
 
-    # ── 超级用户初始化：id=0 表首位 ──────────────────────────
+    # ── 超级用户初始化（固定 UUID） ──────────────────────────
+    import uuid
     from datetime import datetime
     from src.core.password_encryptor import hash_password
     from sqlalchemy import text
 
+    SUPER_USER_ID = uuid.UUID("00000000-0000-0000-0000-000000000001")
+
     user_repo = UserRepositoryAdapter(db_conn)
     user_repo.init_table()
-    existing = user_repo.find_by_id(0)
+    existing = user_repo.find_by_id(SUPER_USER_ID)
 
     if existing is None:
         now = datetime.now()
@@ -40,8 +43,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         try:
             s.execute(text(
                 "INSERT INTO users (id, name, email, password, is_admin, is_active, created_at, last_login, last_login_ip) "
-                "VALUES (0, :name, :email, :password, 1, 1, :now, :now, :ip)"
+                "VALUES (:id, :name, :email, :password, 1, 1, :now, :now, :ip)"
             ), {
+                "id": SUPER_USER_ID,
                 "name": "super",
                 "email": config.SUPER_USER_EMAIL,
                 "password": hash_password(config.SUPER_USER_PASSWORD),
@@ -51,12 +55,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             s.commit()
         finally:
             s.close()
-        logger.info(f"Super user created at id=0: {config.SUPER_USER_EMAIL}")
+        logger.info(f"Super user created: {config.SUPER_USER_EMAIL}")
     else:
         existing.email = config.SUPER_USER_EMAIL
         existing.password = hash_password(config.SUPER_USER_PASSWORD)
-        user_repo.update(0, existing)
-        logger.info(f"Super user updated at id=0: {config.SUPER_USER_EMAIL}")
+        user_repo.update(SUPER_USER_ID, existing)
+        logger.info(f"Super user updated: {config.SUPER_USER_EMAIL}")
 
     app.state.services = ServiceFactory(
         user_repo=UserRepositoryAdapter(db_conn),

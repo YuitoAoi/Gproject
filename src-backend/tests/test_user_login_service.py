@@ -1,4 +1,5 @@
 import sys
+import uuid
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -22,7 +23,7 @@ def _make_user(
 ) -> User:
     now = datetime.now()
     return User(
-        id=1,
+        id=uuid.uuid4(),
         name=name,
         email=email,
         password=password,

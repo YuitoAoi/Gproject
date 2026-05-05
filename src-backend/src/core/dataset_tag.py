@@ -1,9 +1,11 @@
-from pydantic import BaseModel
 from datetime import datetime
+from uuid import UUID
+from .entity_base import EntityBase
 
-class DatasetTag(BaseModel):
-    id: int
-    owner_id: int
+
+class DatasetTag(EntityBase):
+    id: UUID
+    owner_id: UUID
     name: str
     color: str
     description: str

@@ -1,5 +1,5 @@
 """更新用户信息服务。"""
-from typing import Optional
+import uuid
 
 from pydantic import BaseModel
 
@@ -9,15 +9,15 @@ from src.services.utils import is_safe_name, is_safe_password
 
 class UserUpdateRequest(BaseModel):
     """更新用户请求 —— user_id 由路由层从 token 注入，不由客户端传入。"""
-    name: Optional[str] = None
-    email: Optional[str] = None
-    old_password: Optional[str] = None   # 原密码，修改密码时必填
-    password: Optional[str] = None       # 新密码
+    name: str | None = None
+    email: str | None = None
+    old_password: str | None = None   # 原密码，修改密码时必填
+    password: str | None = None       # 新密码
 
 
 class UserUpdateResponse(BaseModel):
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class UserUpdateService:
@@ -26,7 +26,7 @@ class UserUpdateService:
     def __init__(self, user_repo: UserRepository) -> None:
         self._user_repo = user_repo
 
-    def execute(self, user_id: int, request: UserUpdateRequest) -> UserUpdateResponse:
+    def execute(self, user_id: uuid.UUID, request: UserUpdateRequest) -> UserUpdateResponse:
         user = self._user_repo.find_by_id(user_id)
         if user is None:
             return UserUpdateResponse(error="User not found.")
@@ -48,5 +48,8 @@ class UserUpdateService:
                 return UserUpdateResponse(error="Old password is incorrect.")
             user.password = hash_password(request.password)
 
-        self._user_repo.update(user.id, user)
+        try:
+            self._user_repo.update(user.id, user)
+        except Exception as e:
+            return UserUpdateResponse(error=f"Failed to update user: {e}")
         return UserUpdateResponse(success=True)

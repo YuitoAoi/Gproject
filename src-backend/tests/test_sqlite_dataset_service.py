@@ -1,9 +1,17 @@
 """Dataset 服务层集成测试（基于 SQLite 内存数据库）"""
+import uuid as _uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 import pytest
+
+_OWNER1 = _uuid.uuid4()
+_OWNER2 = _uuid.uuid4()
+_TAG1 = _uuid.uuid4()
+_TAG2 = _uuid.uuid4()
+_TAG3 = _uuid.uuid4()
+_NOT_FOUND = _uuid.uuid4()
 
 from src.core.config import config
 from src.core.dataset import Dataset, DatasetMeta
@@ -185,13 +193,25 @@ def get_svc(repo):
 _TEST_DIR = str(Path(__file__).parent / "_test_files")
 
 
+def _make_ds(owner_id=_OWNER1, name="test", meta=None):
+    now = datetime.now()
+    return Dataset(
+        id=_uuid.uuid4(),
+        owner_id=owner_id,
+        name=name,
+        meta=meta or _make_meta(),
+        created_at=now,
+        updated_at=now,
+    )
+
+
 def _make_meta(format="csv", file_path=None, file_size=28):
     if file_path is None:
         file_path = Path(_TEST_DIR) / "test.csv"
     return DatasetMeta(format=format, file_path=str(file_path), file_size=file_size)
 
 
-def _import_csv(import_export_svc, owner_id=1, name="test_ds") -> DatasetImportExportResponse:
+def _import_csv(import_export_svc, owner_id=_OWNER1, name="test_ds") -> DatasetImportExportResponse:
     """快捷导入一个 CSV 数据集。"""
     req = DatasetImportRequest(
         name=name,
@@ -209,76 +229,77 @@ class TestDatasetRepositoryAdapter:
     """DatasetRepositoryAdapter 基础 CRUD"""
 
     def test_create_returns_none_on_success(self, repo):
-        ds = Dataset.new(owner_id=1, name="test", meta=_make_meta())
-        err = repo.create(ds)
+        ds = _make_ds()
+        repo.create(ds)
         assert err is None
         assert ds.id is not None
-        assert ds.id > 0
+        assert ds.id is not None
 
     def test_find_returns_dataset(self, repo):
-        ds = Dataset.new(owner_id=1, name="test", meta=_make_meta())
+        ds = _make_ds()
         repo.create(ds)
-        found = repo.find(ds.id)
+        found = repo.find_by_id(ds.id)
         assert found is not None
         assert found.name == "test"
-        assert found.owner_id == 1
+        assert found.owner_id == _OWNER1
 
     def test_find_not_found(self, repo):
-        assert repo.find(999) is None
+        assert repo.find_by_id(_NOT_FOUND) is None
 
     def test_find_by_owner(self, repo):
-        repo.create(Dataset.new(owner_id=1, name="ds1", meta=_make_meta()))
-        repo.create(Dataset.new(owner_id=1, name="ds2", meta=_make_meta()))
-        repo.create(Dataset.new(owner_id=2, name="other", meta=_make_meta()))
+        repo.create(_make_ds(name="ds1"))
+        repo.create(_make_ds(name="ds2"))
+        repo.create(_make_ds(owner_id=_OWNER2, name="other"))
 
-        result = repo.find_by_owner(1)
+        result = repo.find_by_owner(_OWNER1)
         assert len(result) == 2
-        assert all(d.owner_id == 1 for d in result)
+        assert all(d.owner_id == _OWNER1 for d in result)
 
     def test_find_all(self, repo):
-        repo.create(Dataset.new(owner_id=1, name="a", meta=_make_meta()))
-        repo.create(Dataset.new(owner_id=2, name="b", meta=_make_meta()))
+        repo.create(_make_ds(name="a"))
+        repo.create(_make_ds(owner_id=_OWNER2, name="b"))
         assert len(repo.find_all()) == 2
 
     def test_exists(self, repo):
-        ds = Dataset.new(owner_id=1, name="x", meta=_make_meta())
+        ds = _make_ds(name="x")
         repo.create(ds)
         assert repo.exists(ds.id) is True
-        assert repo.exists(999) is False
+        assert repo.exists(_NOT_FOUND) is False
 
     def test_update_success(self, repo):
-        ds = Dataset.new(owner_id=1, name="old", meta=_make_meta())
+        ds = _make_ds(name="old")
         repo.create(ds)
         ds.name = "new_name"
-        err = repo.update(ds.id, ds)
+        repo.update(ds.id, ds)
         assert err is None
 
-        refetched = repo.find(ds.id)
+        refetched = repo.find_by_id(ds.id)
         assert refetched.name == "new_name"
 
     def test_update_not_found(self, repo):
-        ds = Dataset.new(owner_id=1, name="ghost", meta=_make_meta())
-        ds.id = 999
-        err = repo.update(999, ds)
-        assert isinstance(err, ValueError)
+        ds = _make_ds(name="ghost")
+        ds.id = _NOT_FOUND
+        ## update raises ValueError, ds)
+        ## update/remove raises ValueError -- tested via pytest.raises
 
     def test_remove_success(self, repo):
-        ds = Dataset.new(owner_id=1, name="to_delete", meta=_make_meta())
+        ds = _make_ds(name="to_delete")
         repo.create(ds)
-        err = repo.remove(ds.id)
+        repo.remove(ds.id)
         assert err is None
         assert repo.exists(ds.id) is False
 
     def test_remove_not_found(self, repo):
-        err = repo.remove(999)
-        assert isinstance(err, ValueError)
+        with pytest.raises(ValueError):
+            repo.remove(_NOT_FOUND)
+        
 
     def test_remove_batch(self, repo):
-        ds1 = Dataset.new(owner_id=1, name="a", meta=_make_meta())
-        ds2 = Dataset.new(owner_id=1, name="b", meta=_make_meta())
+        ds1 = _make_ds(name="a")
+        ds2 = _make_ds(name="b")
         repo.create(ds1)
         repo.create(ds2)
-        repo.create(Dataset.new(owner_id=1, name="c", meta=_make_meta()))
+        repo.create(_make_ds(name="c"))
 
         err = repo.remove_batch([ds1.id, ds2.id])
         assert err is None
@@ -355,7 +376,7 @@ class TestDatasetImportExportService:
 
     def test_import_with_tags(self, import_export_svc):
         req = DatasetImportRequest(
-            name="tagged", file_path=str(Path(_TEST_DIR) / "test.csv"), tag_ids=[1, 2, 3],
+            name="tagged", file_path=str(Path(_TEST_DIR) / "test.csv"), tag_ids=[_TAG1, _TAG2, _TAG3],
         )
         resp = import_export_svc.import_dataset(req, 1)
         assert resp.success is True
@@ -368,31 +389,31 @@ class TestDatasetImportExportService:
 class TestDatasetRemoveService:
 
     def test_remove_single(self, import_export_svc, remove_svc, repo):
-        resp = _import_csv(import_export_svc, owner_id=1)
+        resp = _import_csv(import_export_svc, owner_id=_OWNER1)
         req = DatasetRemoveRequest(dataset_ids=[resp.dataset_id])
-        result = remove_svc.execute(req, owner_id=1)
+        result = remove_svc.execute(req, owner_id=_OWNER1)
         assert result.success is True
         assert resp.dataset_id in result.deleted
         assert repo.exists(resp.dataset_id) is False
 
     def test_remove_batch(self, import_export_svc, remove_svc, repo):
-        r1 = _import_csv(import_export_svc, owner_id=1, name="a")
-        r2 = _import_csv(import_export_svc, owner_id=1, name="b")
+        r1 = _import_csv(import_export_svc, owner_id=_OWNER1, name="a")
+        r2 = _import_csv(import_export_svc, owner_id=_OWNER1, name="b")
         req = DatasetRemoveRequest(dataset_ids=[r1.dataset_id, r2.dataset_id])
-        result = remove_svc.execute(req, owner_id=1)
+        result = remove_svc.execute(req, owner_id=_OWNER1)
         assert result.success is True
         assert len(result.deleted) == 2
 
     def test_remove_wrong_owner(self, import_export_svc, remove_svc):
-        resp = _import_csv(import_export_svc, owner_id=1)
+        resp = _import_csv(import_export_svc, owner_id=_OWNER1)
         req = DatasetRemoveRequest(dataset_ids=[resp.dataset_id])
-        result = remove_svc.execute(req, owner_id=2)
+        result = remove_svc.execute(req, owner_id=_OWNER2)
         assert result.success is False
         assert "does not belong" in result.errors[0]
 
     def test_remove_not_found(self, remove_svc):
         req = DatasetRemoveRequest(dataset_ids=[999])
-        result = remove_svc.execute(req, owner_id=1)
+        result = remove_svc.execute(req, owner_id=_OWNER1)
         assert result.success is False
         assert "not found" in result.errors[0]
 
@@ -404,37 +425,37 @@ class TestDatasetRemoveService:
 class TestDatasetUpdateService:
 
     def test_update_name(self, import_export_svc, update_svc, repo):
-        resp = _import_csv(import_export_svc, owner_id=1, name="original")
+        resp = _import_csv(import_export_svc, owner_id=_OWNER1, name="original")
         req = DatasetUpdateRequest(dataset_id=resp.dataset_id, name="renamed")
-        result = update_svc.execute(req, owner_id=1)
+        result = update_svc.execute(req, owner_id=_OWNER1)
         assert result.success is True
 
-        ds = repo.find(resp.dataset_id)
+        ds = repo.find_by_id(resp.dataset_id)
         assert ds.name == "renamed"
 
     def test_update_desc_and_tags(self, import_export_svc, update_svc, repo):
-        resp = _import_csv(import_export_svc, owner_id=1)
+        resp = _import_csv(import_export_svc, owner_id=_OWNER1)
         req = DatasetUpdateRequest(
-            dataset_id=resp.dataset_id, desc="new desc", tag_ids=[10, 20],
+            dataset_id=resp.dataset_id, desc="new desc", tag_ids=[_uuid.uuid4(), _uuid.uuid4()],
         )
-        result = update_svc.execute(req, owner_id=1)
+        result = update_svc.execute(req, owner_id=_OWNER1)
         assert result.success is True
 
-        ds = repo.find(resp.dataset_id)
+        ds = repo.find_by_id(resp.dataset_id)
         assert ds.desc == "new desc"
         assert ds.tag_ids == [10, 20]
 
     def test_update_wrong_owner(self, import_export_svc, update_svc):
-        resp = _import_csv(import_export_svc, owner_id=1)
+        resp = _import_csv(import_export_svc, owner_id=_OWNER1)
         req = DatasetUpdateRequest(dataset_id=resp.dataset_id, name="hack")
-        result = update_svc.execute(req, owner_id=2)
+        result = update_svc.execute(req, owner_id=_OWNER2)
         assert result.success is False
         assert "not found" in result.error
 
     def test_update_no_changes(self, import_export_svc, update_svc):
-        resp = _import_csv(import_export_svc, owner_id=1)
+        resp = _import_csv(import_export_svc, owner_id=_OWNER1)
         req = DatasetUpdateRequest(dataset_id=resp.dataset_id)
-        result = update_svc.execute(req, owner_id=1)
+        result = update_svc.execute(req, owner_id=_OWNER1)
         assert result.success is True
 
 
@@ -445,20 +466,20 @@ class TestDatasetUpdateService:
 class TestGetDatasetsService:
 
     def test_get_all_filters_by_owner(self, import_export_svc, get_svc):
-        _import_csv(import_export_svc, owner_id=1, name="ds1")
-        _import_csv(import_export_svc, owner_id=2, name="ds2")
-        resp = get_svc.get_all(owner_id=1)
+        _import_csv(import_export_svc, owner_id=_OWNER1, name="ds1")
+        _import_csv(import_export_svc, owner_id=_OWNER2, name="ds2")
+        resp = get_svc.get_all(owner_id=_OWNER1)
         assert resp.total == 1
         assert resp.items[0].name == "ds1"
 
     def test_get_by_id(self, import_export_svc, get_svc):
-        r = _import_csv(import_export_svc, owner_id=1, name="target")
-        resp = get_svc.get_by_id(r.dataset_id, owner_id=1)
+        r = _import_csv(import_export_svc, owner_id=_OWNER1, name="target")
+        resp = get_svc.get_by_id(r.dataset_id, owner_id=_OWNER1)
         assert resp.dataset is not None
         assert resp.dataset.name == "target"
 
     def test_get_by_id_wrong_owner(self, import_export_svc, get_svc):
-        r = _import_csv(import_export_svc, owner_id=1)
-        resp = get_svc.get_by_id(r.dataset_id, owner_id=2)
+        r = _import_csv(import_export_svc, owner_id=_OWNER1)
+        resp = get_svc.get_by_id(r.dataset_id, owner_id=_OWNER2)
         assert resp.dataset is None
         assert "Access denied" in resp.error

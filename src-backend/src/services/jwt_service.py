@@ -105,7 +105,7 @@ class JWTService:
     # ── 下载令牌 ──────────────────────────────────────────────
 
     def generate_download_token(
-        self, *, dataset_id: int, user_id: int, expire_seconds: int = 900
+        self, *, dataset_id: str, user_id: str, expire_seconds: int = 900
     ) -> str:
         """生成短时效下载令牌（默认 15 分钟）。"""
         now = int(time.time())
@@ -127,7 +127,7 @@ class JWTService:
             if payload.get("type") != "download":
                 return None
             return {
-                "user_id": int(payload["sub"]),
+                "user_id": payload["sub"],
                 "dataset_id": payload["dataset_id"],
             }
         except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, KeyError):

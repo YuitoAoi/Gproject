@@ -1,51 +1,46 @@
 """数据集更新服务：name / desc / tag_ids 可编辑，meta 不可编辑。"""
+
 from __future__ import annotations
 
-from typing import List, Optional
+import uuid
 
 from pydantic import BaseModel, Field
 
 from src.services.interfaces.dataset_repository import DatasetRepository
 
 
-# ══════════════════════════════════════════════════════════
-# 模型
-# ══════════════════════════════════════════════════════════
-
 class DatasetUpdateRequest(BaseModel):
     """数据集更新请求。仅传要修改的字段。"""
-    dataset_id: int
-    name: Optional[str] = Field(None, min_length=1, max_length=100)
-    desc: Optional[str] = Field(None, max_length=500)
-    tag_ids: Optional[List[int]] = None
+
+    dataset_id: uuid.UUID
+    name: str | None = Field(None, min_length=1, max_length=100)
+    desc: str | None = Field(None, max_length=500)
+    tag_ids: list[uuid.UUID] | None = None
 
 
 class DatasetUpdateResponse(BaseModel):
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
-
-# ══════════════════════════════════════════════════════════
-# 服务
-# ══════════════════════════════════════════════════════════
 
 class DatasetUpdateService:
-    """数据集更新服务。
-
-    meta / owner_id / status / created_at / updated_at 不可通过此接口修改。
-    """
+    """数据集更新服务。"""
 
     def __init__(self, dataset_repo: DatasetRepository) -> None:
         self._repo = dataset_repo
 
     def execute(
-        self, request: DatasetUpdateRequest, owner_id: int
+        self, request: DatasetUpdateRequest, owner_id: uuid.UUID
     ) -> DatasetUpdateResponse:
-        ds = self._repo.find(request.dataset_id)
+        ds = self._repo.find_by_id(request.dataset_id)
         if ds is None:
-            return DatasetUpdateResponse(error=f"Dataset not found: {request.dataset_id}")
+            return DatasetUpdateResponse(
+                error=f"Dataset not found: {request.dataset_id}"
+            )
         if ds.owner_id != owner_id:
-            return DatasetUpdateResponse(error=f"Dataset not found: {request.dataset_id}")
+            return DatasetUpdateResponse(
+                error=f"Dataset not found: {request.dataset_id}"
+            )
 
         changed = False
 
@@ -63,10 +58,6 @@ class DatasetUpdateService:
 
         if not changed:
             return DatasetUpdateResponse(success=True)
-        if ds.id is None:
-            return DatasetUpdateResponse(error="Internal error: dataset has no id")
-        err = self._repo.update(ds.id, ds)
-        if err is not None:
-            return DatasetUpdateResponse(error=f"Failed to update dataset: {err}")
 
+        self._repo.update(ds.id, ds)
         return DatasetUpdateResponse(success=True)
