@@ -1,18 +1,3 @@
-"""
-GProject FastAPI 入口。
-
-启动方式::
-
-    # Linux / macOS
-    cd backend && PYTHONPATH=src uvicorn src.app.main:app --reload
-
-    # Windows PowerShell
-    cd backend; $env:PYTHONPATH="src"; uvicorn src.app.main:app --reload
-
-    # 或直接运行
-    cd backend && python src/app/main.py
-"""
-
 from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import AsyncIterator
@@ -20,6 +5,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from src.services import ServiceFactory
 from src.core.config import config
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """应用生命周期：启动时组装服务，数据库不可达则退出。"""
@@ -138,8 +124,8 @@ def health(request: Request):
 # ── 路由注册 ──────────────────────────────────────────────
 
 
-from src.app.router import router  # noqa: E402
-from src.app.v1.dataset import download_router  # noqa: E402
+from src.app.router import router
+from src.app.v1.dataset import download_router
 
 app.include_router(router)
 app.include_router(download_router)
@@ -152,20 +138,3 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept"],
 )
-# ── 启动入口 ──────────────────────────────────────────────
-
-
-if __name__ == "__main__":
-    import sys
-    from pathlib import Path
-
-    # 确保 src/ 在 sys.path 中（支持 python src/app/main.py 直接运行）
-    _src = Path(__file__).resolve().parents[1]
-    if str(_src) not in sys.path:
-        sys.path.insert(0, str(_src))
-
-    import uvicorn
-
-    uvicorn.run("src.app.main:app", host="0.0.0.0", port=8000, reload=True)
-
-# poetry run uvicorn src.app.main:app --reload

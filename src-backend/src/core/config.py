@@ -13,8 +13,8 @@ class Config(BaseSettings):
     LOG_DIR: str = "./logs"
     DATASETS_DIR: str = "data/datasets"
 
-    BACKEND_HOST: str = '0.0.0.0'
-    BACKEND_PORT: str = '8000'
+    HOST: str = '0.0.0.0'
+    PORT: int = 8088
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 
 

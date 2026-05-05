@@ -109,7 +109,10 @@ poetry install
 
 which python    # 再次检查Python环境
 
-poetry run uvicorn src.app.main:app --reload    # 启动后端
+poetry run uvicorn src.main:app --host 0.0.0.0 --port 8088 --reload   # 启动后端
+
+#或者
+poetry run python -m src.main # 带环境变量启动
 ```
 ```bash
 # 前端依赖安装-启动
