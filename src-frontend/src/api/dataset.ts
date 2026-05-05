@@ -264,6 +264,24 @@ export async function getTags(): Promise<TagsGetResponse> {
   }
 }
 
+export async function updateDataset(data: {
+  dataset_id: number
+  name?: string
+  desc?: string
+  tag_ids?: number[]
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await request.request<{ success: boolean; error?: string }>({
+      url: '/dataset',
+      method: 'PATCH',
+      data
+    })
+    return response
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to update dataset' }
+  }
+}
+
 export async function createTag(
   name: string,
   color: string,
@@ -277,6 +295,19 @@ export async function createTag(
     return response
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to create tag' }
+  }
+}
+
+export async function deleteTag(tagId: number): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await request.request<{ success: boolean; error?: string }>({
+      url: '/tag',
+      method: 'DELETE',
+      data: { tag_id: tagId, force: false }
+    })
+    return response
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to delete tag' }
   }
 }
 

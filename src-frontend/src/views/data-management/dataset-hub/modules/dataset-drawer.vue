@@ -88,13 +88,6 @@
                 </span>
               </div>
             </ElFormItem>
-            <ElFormItem label="状态">
-              <ElSelect v-model="editForm.status" style="width: 200px">
-                <ElOption label="待清洗" :value="0" />
-                <ElOption label="清洗中" :value="1" />
-                <ElOption label="已就绪" :value="3" />
-              </ElSelect>
-            </ElFormItem>
             <ElFormItem label="描述">
               <ElInput
                 v-model="editForm.desc"
@@ -159,19 +152,32 @@
         <div class="mb-4">
           <div class="text-sm text-g-500 mb-3">已有标签（点击选择）</div>
           <div class="tag-list-wrap">
-            <ElTag
-              v-for="tag in allTags"
+            <div
+              v-for="tag in tagStore.tags"
               :key="tag.tag_id"
-              size="small"
-              :style="{ backgroundColor: tag.tag_color, borderColor: tag.tag_color }"
-              effect="dark"
-              class="mr-1 mb-1 cursor-pointer"
-              :class="{ 'tag-selected': newTagForm.tag_id === tag.tag_id }"
-              @click="selectExistingTag(tag)"
+              class="tag-item-wrap"
+              @mouseenter="hoveredTagId = tag.tag_id"
+              @mouseleave="hoveredTagId = null"
             >
-              {{ tag.tag_name }}
-            </ElTag>
-            <span v-if="allTags.length === 0" class="text-xs text-g-400">暂无可用标签</span>
+              <ElTag
+                size="small"
+                :style="{ backgroundColor: tag.tag_color, borderColor: tag.tag_color }"
+                effect="dark"
+                class="mr-1 mb-1 cursor-pointer"
+                :class="{ 'tag-selected': newTagForm.tag_id === tag.tag_id }"
+                @click="selectExistingTag(tag)"
+              >
+                {{ tag.tag_name }}
+              </ElTag>
+              <span
+                v-show="hoveredTagId === tag.tag_id"
+                class="tag-delete-btn"
+                @click.stop="handleDeleteTag(tag)"
+              >
+                <ArtSvgIcon icon="ri-close-line" />
+              </span>
+            </div>
+            <span v-if="tagStore.tags.length === 0" class="text-xs text-g-400">暂无可用标签</span>
           </div>
         </div>
         <div class="tag-form">
@@ -210,13 +216,12 @@
   import { useRouter } from 'vue-router'
   import { ElMessage } from 'element-plus'
   import {
-    getTags,
-    createTag,
     getDatasetSample,
     requestDownloadToken,
-    type Dataset,
-    type TagInfo
+    updateDataset,
+    type Dataset
   } from '@/api/dataset'
+  import { useTagStore, type TagInfo } from '@/store/modules/tag'
 
   interface Props {
     visible: boolean
@@ -242,15 +247,15 @@
   const editForm = reactive({
     name: '',
     desc: '',
-    status: 0,
     tag_ids: [] as number[]
   })
 
-  const allTags = ref<TagInfo[]>([])
+  const tagStore = useTagStore()
   const samples = ref<Record<string, any>[]>([])
   const sampleLoading = ref(false)
   const saveLoading = ref(false)
   const tagLoading = ref(false)
+  const hoveredTagId = ref<number | null>(null)
 
   const formatTagType = computed(() => {
     const fmt = props.dataset?.meta?.format
@@ -260,8 +265,9 @@
   })
 
   const statusText = computed(() => {
-    if (props.dataset?.status === 3) return '已就绪'
-    if (props.dataset?.status === 1 || props.dataset?.status === 2) return '清洗中'
+    if (props.dataset?.status === 2) return '已就绪'
+    if (props.dataset?.status === 1) return '清洗中'
+    if (props.dataset?.status === -1) return '异常'
     return '待清洗'
   })
 
@@ -279,8 +285,20 @@
   }
 
   const resolvedTags = computed(() => {
-    return allTags.value.filter((t) => (editForm.tag_ids || []).includes(t.tag_id))
+    return tagStore.tags.filter((t) => (editForm.tag_ids || []).includes(t.tag_id))
   })
+
+  watch(
+    () => props.dataset,
+    (dataset) => {
+      if (dataset) {
+        editForm.name = dataset.name || ''
+        editForm.desc = dataset.desc || ''
+        editForm.tag_ids = [...(dataset.tag_ids || [])]
+      }
+    },
+    { immediate: true }
+  )
 
   const handleBeforeClose = () => {
     drawerVisible.value = false
@@ -307,12 +325,25 @@
     if (!props.dataset) return
     editForm.name = props.dataset.name || ''
     editForm.desc = props.dataset.desc || ''
-    editForm.status = props.dataset.status
     editForm.tag_ids = [...(props.dataset.tag_ids || [])]
   }
 
   const handleSave = async () => {
-    ElMessage.info('更新 API 暂未上线，保存功能待后端对接后启用')
+    saveLoading.value = true
+    const res = await updateDataset({
+      dataset_id: props.dataset!.id,
+      ...(editForm.name.trim() ? { name: editForm.name.trim() } : {}),
+      desc: editForm.desc,
+      tag_ids: editForm.tag_ids
+    })
+    saveLoading.value = false
+    if (res.success) {
+      ElMessage.success('保存成功')
+      emit('refresh')
+      drawerVisible.value = false
+    } else {
+      ElMessage.error(res.error || '保存失败')
+    }
   }
 
   const removeTag = (tagId: number) => {
@@ -348,6 +379,29 @@
     newTagForm.color = tag.tag_color
   }
 
+  const handleDeleteTag = async (tag: TagInfo) => {
+    try {
+      await ElMessageBox.confirm(
+        `确定要删除标签「${tag.tag_name}」吗？删除后不可恢复。`,
+        '删除标签',
+        { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
+      )
+      const res = await tagStore.removeTag(tag.tag_id)
+      if (res.success) {
+        ElMessage.success('标签已删除')
+        if (newTagForm.tag_id === tag.tag_id) {
+          newTagForm.tag_id = null
+          newTagForm.name = ''
+          newTagForm.color = '#67C23A'
+        }
+      } else {
+        ElMessage.error(res.error || '删除标签失败')
+      }
+    } catch {
+      // user cancelled
+    }
+  }
+
   const handleAddTag = async () => {
     if (!newTagForm.name.trim()) {
       ElMessage.warning('请输入标签名称')
@@ -363,17 +417,13 @@
       return
     }
     tagLoading.value = true
-    const res = await createTag(newTagForm.name, newTagForm.color)
+    const res = await tagStore.addTag(newTagForm.name, newTagForm.color)
     tagLoading.value = false
     if (res.success) {
       ElMessage.success('标签创建成功')
-      const tagRes = await getTags()
-      if (tagRes.success) {
-        allTags.value = tagRes.tags
-        const created = tagRes.tags.find((t) => t.tag_name === newTagForm.name)
-        if (created && !editForm.tag_ids.includes(created.tag_id)) {
-          editForm.tag_ids.push(created.tag_id)
-        }
+      const created = tagStore.tags.find((t) => t.tag_name === newTagForm.name)
+      if (created && !editForm.tag_ids.includes(created.tag_id)) {
+        editForm.tag_ids.push(created.tag_id)
       }
       tagDialogVisible.value = false
       newTagForm.tag_id = null
@@ -384,12 +434,8 @@
     }
   }
 
-  onMounted(async () => {
-    const tagRes = await getTags()
-    if (tagRes.success) {
-      allTags.value = tagRes.tags
-    }
-    handleReset()
+  onMounted(() => {
+    tagStore.fetchTags()
   })
 
   defineExpose({ setActiveTab })
@@ -504,6 +550,32 @@
     flex-wrap: wrap;
     align-items: center;
     min-height: 32px;
+  }
+
+  .tag-item-wrap {
+    position: relative;
+    display: inline-block;
+
+    .tag-delete-btn {
+      position: absolute;
+      top: -6px;
+      right: -4px;
+      width: 14px;
+      height: 14px;
+      background: var(--el-color-info);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      cursor: pointer;
+      z-index: 1;
+
+      &:hover {
+        background: var(--el-color-danger);
+      }
+    }
   }
 
   .tag-selected {

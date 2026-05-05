@@ -325,13 +325,12 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useTable } from '@/hooks/core/useTable'
+  import { useTagStore } from '@/store/modules/tag'
   import {
     getDatasets,
     deleteDataset as apiDeleteDataset,
     uploadDataset,
-    type Dataset,
-    getTags,
-    type TagInfo
+    type Dataset
   } from '@/api/dataset'
   import DatasetUpload from './modules/dataset-upload.vue'
   import DatasetDrawer from './modules/dataset-drawer.vue'
@@ -343,8 +342,7 @@
   defineOptions({ name: 'DatasetHubPage' })
 
   const drawerRef = vueRef<{ setActiveTab: (tab: string) => void } | null>(null)
-
-  const allTags = shallowRef<TagInfo[]>([])
+  const tagStore = useTagStore()
 
   // 上传弹窗
   const uploadVisible = ref(false)
@@ -409,7 +407,7 @@
   }
 
   const resolveTags = (tagIds: number[]) => {
-    return allTags.value.filter((t) => tagIds.includes(t.tag_id))
+    return tagStore.tags.filter((t) => tagIds.includes(t.tag_id))
   }
 
   const applyLocalFilters = (records: Dataset[]): Dataset[] => {
@@ -472,17 +470,17 @@
       apiFn: getDatasets,
       columnsFactory: () => [
         { type: 'selection' },
-        { type: 'index', width: 55, label: '#' },
+        { type: 'index', width: 50, label: '#' },
         {
           prop: 'name',
           label: '数据集名称',
-          width: 280,
+          width: 210,
           formatter: (row: Dataset) => {
             return h(
               'span',
               {
                 class: 'text-sm font-medium truncate cursor-pointer hover:text-primary',
-                onClick: () => handleEdit(row)
+                onClick: () => openDatasetDrawer(row)
               },
               row.name
             )
@@ -511,7 +509,7 @@
         {
           prop: 'tag_ids',
           label: '标签',
-          width: 180,
+          width: 210,
           formatter: (row: Dataset) => {
             const tags = resolveTags(row.tag_ids || [])
             if (tags.length === 0) {
@@ -576,7 +574,7 @@
             h('div', { class: 'flex gap-1' }, [
               h(ArtButtonTable, {
                 type: 'edit',
-                onClick: () => handleEdit(row)
+                onClick: () => openDatasetDrawer(row, 'edit')
               }),
               h(ArtButtonTable, {
                 type: 'delete',
@@ -617,18 +615,15 @@
     refreshSoft()
   }
 
-  onMounted(async () => {
-    const tagRes = await getTags()
-    if (tagRes.success) {
-      allTags.value = tagRes.tags
-    }
+  onMounted(() => {
+    tagStore.fetchTags()
   })
 
-  const handleEdit = (row: Dataset) => {
+  const openDatasetDrawer = (row: Dataset, tab: string = 'meta') => {
     currentDataset.value = row
     drawerVisible.value = true
     nextTick(() => {
-      drawerRef.value?.setActiveTab('edit')
+      drawerRef.value?.setActiveTab(tab)
     })
   }
 
