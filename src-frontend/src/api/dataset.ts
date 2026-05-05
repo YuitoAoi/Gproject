@@ -1,4 +1,3 @@
-import axios from 'axios'
 import request from '@/utils/http'
 
 export interface DatasetMeta {
@@ -43,13 +42,15 @@ export interface UploadInitiateResponse {
   upload_id: string
   chunk_size: number
   total_chunks: number
+  uploaded_chunks: number[]
+  is_instant_complete: boolean
 }
 
 export interface UploadChunkResponse {
   upload_id: string
-  chunk_number: number
+  chunk_index: number
   received: boolean
-  message: string
+  error?: string
 }
 
 export interface UploadCompleteResponse {
@@ -87,16 +88,38 @@ export interface SampleResponse {
   total: number
 }
 
+export interface DownloadTokenResponse {
+  download_token: string
+  filename: string
+  file_size: number
+  format: string
+  sha256?: string
+}
+
 const CHUNK_SIZE = 5 * 1024 * 1024
 
-export async function initiateUpload(filename: string, fileSize: number, fileFormat: string): Promise<UploadInitiateResponse> {
-  const response = await axios.post('/api/v1/dataset/upload/initiate', {
-    filename,
-    file_size: fileSize,
-    file_hash: '',
-    chunk_size: CHUNK_SIZE
+async function computeFileHash(file: File): Promise<string> {
+  const buffer = await file.arrayBuffer()
+  const hashBuffer = await crypto.subtle.digest('SHA-256', buffer)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+export async function initiateUpload(
+  filename: string,
+  fileSize: number,
+  fileHash: string
+): Promise<UploadInitiateResponse> {
+  const response = await request.post<UploadInitiateResponse>({
+    url: '/dataset/upload/initiate',
+    data: {
+      filename,
+      file_size: fileSize,
+      file_hash: fileHash,
+      chunk_size: CHUNK_SIZE
+    }
   })
-  return response.data
+  return response
 }
 
 export async function uploadChunk(
@@ -105,16 +128,15 @@ export async function uploadChunk(
   chunk: Blob
 ): Promise<UploadChunkResponse> {
   const formData = new FormData()
+  formData.append('upload_id', uploadId)
+  formData.append('chunk_index', String(chunkNumber))
   formData.append('file', chunk)
 
-  const response = await axios.post<UploadChunkResponse>(
-    `/api/v1/dataset/upload/chunk?upload_id=${uploadId}&chunk_index=${chunkNumber}`,
-    formData,
-    {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    }
-  )
-  return response.data
+  const response = await request.post<UploadChunkResponse>({
+    url: '/dataset/upload/chunk',
+    data: formData
+  })
+  return response
 }
 
 export async function completeUpload(
@@ -123,44 +145,49 @@ export async function completeUpload(
   fileFormat: string,
   fileSize: number
 ): Promise<UploadCompleteResponse> {
-  const response = await axios.post('/api/v1/dataset/upload/complete', {
-    upload_id: uploadId,
-    name: filename.replace(/\.[^.]+$/, ''),
-    file_format: fileFormat,
-    file_size: fileSize
+  const response = await request.post<UploadCompleteResponse>({
+    url: '/dataset/upload/complete',
+    data: {
+      upload_id: uploadId,
+      owner_id: 0,
+      name: filename.replace(/\.[^.]+$/, ''),
+      file_format: fileFormat,
+      file_size: fileSize
+    }
   })
-  return response.data
+  return response
 }
 
 export async function uploadDataset(
   file: File,
-  onProgress?: (percent: number, phase: string) => void
+  onProgress?: (percent: number, phase: string, detail?: Record<string, any>) => void
 ): Promise<UploadCompleteResponse> {
   const format = file.name.split('.').pop() || 'csv'
 
-  onProgress?.(0, 'initiating')
-  const initResponse = await initiateUpload(file.name, file.size, format)
+  onProgress?.(0, 'hashing')
+  const fileHash = await computeFileHash(file)
+  onProgress?.(5, 'hash_complete', { hash: fileHash })
+
+  onProgress?.(10, 'initiating')
+  const initResponse = await initiateUpload(file.name, file.size, fileHash)
   const { upload_id, chunk_size, total_chunks } = initResponse
 
   const chunks: Blob[] = []
   let start = 0
-  let chunkNum = 0
   while (start < file.size) {
     const end = Math.min(start + chunk_size, file.size)
     chunks.push(file.slice(start, end))
     start = end
-    chunkNum++
   }
 
   const chunkProgress: number[] = new Array(total_chunks).fill(0)
-  let completedChunks = 0
 
   const uploadChunkWithProgress = async (chunk: Blob, num: number): Promise<void> => {
     await uploadChunk(upload_id, num, chunk)
-    completedChunks++
     chunkProgress[num] = 100
     const avgProgress = chunkProgress.reduce((a, b) => a + b, 0) / total_chunks
-    onProgress?.(Math.round(avgProgress), 'uploading')
+    const percent = 15 + Math.round(avgProgress * 80)
+    onProgress?.(percent, 'uploading', { current: num + 1, total: total_chunks })
   }
 
   const batchSize = 3
@@ -169,41 +196,37 @@ export async function uploadDataset(
     await Promise.all(batch.map((chunk, idx) => uploadChunkWithProgress(chunk, i + idx)))
   }
 
-  onProgress?.(100, 'completing')
+  onProgress?.(95, 'completing')
   const completeResponse = await completeUpload(upload_id, file.name, format, file.size)
 
-  onProgress?.(100, 'complete')
+  onProgress?.(100, 'complete', { datasetId: completeResponse.dataset_id })
   return completeResponse
 }
 
-export interface GetDatasetsParams {
-  skip?: number
-  limit?: number
-}
-
-export async function getDatasets(params: GetDatasetsParams = {}): Promise<{
+export async function getDatasets(): Promise<{
   records: Dataset[]
   current: number
   size: number
   total: number
 }> {
-  const { skip = 0, limit = 100 } = params
-  const response = await axios.get<DatasetListResponse>('/api/v1/dataset', {
-    params: { skip, limit }
+  const response = await request.get<DatasetListResponse>({
+    url: '/datasets'
   })
-  const items = response.data.items || []
   return {
-    records: items,
+    records: response.items || [],
     current: 1,
-    size: limit,
-    total: response.data.total || items.length
+    size: response.items?.length || 0,
+    total: response.total || 0
   }
 }
 
 export async function getDatasetDetail(id: number): Promise<Dataset | null> {
   try {
-    const response = await axios.get(`/api/v1/dataset/${id}`)
-    return response.data.dataset || null
+    const response = await request.post<{ dataset: Dataset | null; error?: string }>({
+      url: '/dataset/get',
+      data: { dataset_id: id }
+    })
+    return response.dataset || null
   } catch {
     return null
   }
@@ -211,59 +234,76 @@ export async function getDatasetDetail(id: number): Promise<Dataset | null> {
 
 export async function deleteDataset(id: number): Promise<void> {
   return request.del({
-    url: `/dataset/${id}`
+    url: '/datasets',
+    data: { dataset_ids: [id] }
   })
 }
 
-export async function processDataset(datasetId: number, requestParams: ProcessRequest): Promise<ProcessResponse> {
+export async function processDataset(
+  datasetId: number,
+  requestParams: ProcessRequest
+): Promise<ProcessResponse> {
   return request.post<ProcessResponse>({
-    url: `/dataset/${datasetId}/process`,
-    data: requestParams
+    url: '/dataset/process',
+    data: { dataset_id: datasetId, ...requestParams }
   })
 }
 
-export async function getTaskStatus(taskId: string): Promise<TaskStatusResponse> {
+export async function getTaskStatus(_taskId: string): Promise<TaskStatusResponse> {
   return Promise.reject(new Error('Task status is provided via WebSocket, not HTTP polling'))
 }
 
 export async function getTags(): Promise<TagsGetResponse> {
   try {
-    const response = await axios.get<TagsGetResponse>('/api/v1/tags')
-    return response.data
+    const response = await request.get<TagsGetResponse>({
+      url: '/tags'
+    })
+    return response
   } catch {
     return { success: false, error: 'Failed to fetch tags', tags: [] }
   }
 }
 
-export async function createTag(name: string, color: string, desc: string = ''): Promise<{ success: boolean; error?: string }> {
+export async function createTag(
+  name: string,
+  color: string,
+  desc: string = ''
+): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await axios.post('/api/v1/tag/', { name, color, desc })
-    return response.data
+    const response = await request.post<{ success: boolean; error?: string }>({
+      url: '/tag',
+      data: { name, color, desc }
+    })
+    return response
   } catch (err: any) {
-    return { success: false, error: err.response?.data?.error || 'Failed to create tag' }
+    return { success: false, error: err.message || 'Failed to create tag' }
   }
 }
 
-export async function getDatasetSample(datasetId: number, limit: number = 20): Promise<SampleResponse> {
+export async function getDatasetSample(
+  datasetId: number,
+  limit: number = 20
+): Promise<SampleResponse> {
   try {
-    const response = await axios.get<SampleResponse>(`/api/v1/dataset/${datasetId}/sample`, {
-      params: { limit }
+    const response = await request.post<SampleResponse>({
+      url: '/dataset/sample',
+      data: { dataset_id: datasetId, limit }
     })
-    return response.data
+    return response
   } catch {
     return { headers: [], samples: [], total: 0 }
   }
 }
 
-export async function requestDownloadToken(datasetId: number): Promise<{
-  download_token: string
-  filename: string
-  file_size: number
-  format: string
-} | null> {
+export async function requestDownloadToken(
+  datasetId: number
+): Promise<DownloadTokenResponse | null> {
   try {
-    const response = await axios.post(`/api/v1/dataset/${datasetId}/download`)
-    return response.data
+    const response = await request.post<DownloadTokenResponse>({
+      url: '/dataset/download',
+      data: { dataset_id: datasetId }
+    })
+    return response
   } catch {
     return null
   }

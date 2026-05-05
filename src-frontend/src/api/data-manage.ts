@@ -1,30 +1,60 @@
 import request from '@/utils/http'
-import { DATASET_TABLE_DATA, CLEANING_SAMPLES, MOCK_PROCESSING_LOGS, DEFAULT_CLEANING_CONFIG } from '@/mock/temp/formData'
+import {
+  DATASET_TABLE_DATA,
+  CLEANING_SAMPLES,
+  MOCK_PROCESSING_LOGS,
+  DEFAULT_CLEANING_CONFIG
+} from '@/mock/temp/formData'
 
-/** 获取数据集列表 */
 export function fetchGetDatasetList(params: Api.DataManage.DatasetSearchParams) {
-  return request.get<Api.DataManage.DatasetList>({
-    url: '/api/dataset/list',
+  return request.get<{
+    items: any[]
+    total: number
+    error?: string
+  }>({
+    url: '/datasets',
     params
   })
 }
 
-/** 获取数据集详情 */
 export function fetchGetDatasetDetail(id: number) {
-  return request.get<Api.DataManage.DatasetListItem>({
-    url: `/api/dataset/detail/${id}`
+  return request.post<{
+    dataset: any
+    error?: string
+  }>({
+    url: '/dataset/get',
+    data: { dataset_id: id }
   })
 }
 
-/** 删除数据集 */
 export function fetchDeleteDataset(id: number) {
   return request.del({
-    url: `/api/dataset/delete/${id}`
+    url: '/datasets',
+    data: { dataset_ids: [id] }
   })
 }
 
-/** Mock: 获取数据集列表（静态开发用，后端就绪后替换为 fetchGetDatasetList） */
-export function fetchGetDatasetListMock(params: Api.DataManage.DatasetSearchParams): Promise<Api.DataManage.DatasetList> {
+export function fetchDeleteDatasetBatch(ids: number[]) {
+  return request.del({
+    url: '/datasets',
+    data: { dataset_ids: ids }
+  })
+}
+
+export function fetchGetDatasetSample(datasetId: number, limit: number = 20) {
+  return request.post<{
+    headers: string[]
+    samples: any[]
+    total: number
+  }>({
+    url: '/dataset/sample',
+    data: { dataset_id: datasetId, limit }
+  })
+}
+
+export function fetchGetDatasetListMock(
+  params: Api.DataManage.DatasetSearchParams
+): Promise<Api.DataManage.DatasetList> {
   return new Promise((resolve) => {
     setTimeout(() => {
       let filtered = [...DATASET_TABLE_DATA]
@@ -32,7 +62,8 @@ export function fetchGetDatasetListMock(params: Api.DataManage.DatasetSearchPara
       if (params.name) {
         const keyword = params.name.toLowerCase()
         filtered = filtered.filter(
-          (d) => d.name.toLowerCase().includes(keyword) || d.description.toLowerCase().includes(keyword)
+          (d) =>
+            d.name.toLowerCase().includes(keyword) || d.description.toLowerCase().includes(keyword)
         )
       }
       if (params.format) {
@@ -63,8 +94,9 @@ export function fetchGetDatasetListMock(params: Api.DataManage.DatasetSearchPara
   })
 }
 
-/** Mock: 获取清洗预览样本 */
-export function fetchGetCleaningSamplesMock(): Promise<Api.DataManage.DataProcessing.CleaningSample[]> {
+export function fetchGetCleaningSamplesMock(): Promise<
+  Api.DataManage.DataProcessing.CleaningSample[]
+> {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve(CLEANING_SAMPLES as Api.DataManage.DataProcessing.CleaningSample[])
@@ -72,8 +104,9 @@ export function fetchGetCleaningSamplesMock(): Promise<Api.DataManage.DataProces
   })
 }
 
-/** Mock: 刷新样本（随机重排） */
-export function fetchRefreshCleaningSamplesMock(): Promise<Api.DataManage.DataProcessing.CleaningSample[]> {
+export function fetchRefreshCleaningSamplesMock(): Promise<
+  Api.DataManage.DataProcessing.CleaningSample[]
+> {
   return new Promise((resolve) => {
     setTimeout(() => {
       const shuffled = [...CLEANING_SAMPLES].sort(() => Math.random() - 0.5)
@@ -82,8 +115,9 @@ export function fetchRefreshCleaningSamplesMock(): Promise<Api.DataManage.DataPr
   })
 }
 
-/** Mock: 提交清洗任务 */
-export function fetchSubmitCleaningTaskMock(config: Api.DataManage.DataProcessing.CleaningConfig): Promise<{ taskId: string }> {
+export function fetchSubmitCleaningTaskMock(
+  _config: Api.DataManage.DataProcessing.CleaningConfig
+): Promise<{ taskId: string }> {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({ taskId: `cln_${Date.now().toString(36)}` })
@@ -91,8 +125,9 @@ export function fetchSubmitCleaningTaskMock(config: Api.DataManage.DataProcessin
   })
 }
 
-/** Mock: 获取处理任务状态 */
-export function fetchGetProcessingTaskMock(taskId: string): Promise<Api.DataManage.DataProcessing.ProcessingTask> {
+export function fetchGetProcessingTaskMock(
+  taskId: string
+): Promise<Api.DataManage.DataProcessing.ProcessingTask> {
   return new Promise((resolve) => {
     const mockProgress = Math.min(Math.floor(Math.random() * 30) + 50, 95)
     setTimeout(() => {
@@ -111,16 +146,18 @@ export function fetchGetProcessingTaskMock(taskId: string): Promise<Api.DataMana
   })
 }
 
-/** Mock: 获取处理任务日志 */
-export function fetchGetProcessingLogsMock(_taskId: string): Promise<Api.DataManage.DataProcessing.ProcessingLog[]> {
+export function fetchGetProcessingLogsMock(
+  _taskId: string
+): Promise<Api.DataManage.DataProcessing.ProcessingLog[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve(MOCK_PROCESSING_LOGS as Api.DataManage.DataProcessing.ProcessingLog[])
+      resolve(
+        MOCK_PROCESSING_LOGS as Api.DataManage.DataProcessing.ProcessingLog[]
+      )
     }, 300)
   })
 }
 
-/** Mock: 获取默认清洗配置 */
 export function fetchGetDefaultCleaningConfigMock(): Promise<Api.DataManage.DataProcessing.CleaningConfig> {
   return new Promise((resolve) => {
     setTimeout(() => {

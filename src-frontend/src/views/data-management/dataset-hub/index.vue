@@ -5,7 +5,9 @@
       <div class="flex items-center justify-between">
         <div>
           <h1 class="page-header__title">数据集管理</h1>
-          <p class="page-header__subtitle">这里是您的预训练数据资产池，支持多格式解析与断点续传。</p>
+          <p class="page-header__subtitle"
+            >这里是您的预训练数据资产池，支持多格式解析与断点续传。</p
+          >
         </div>
         <ElButton class="page-header__button" size="large" @click="uploadVisible = true" v-ripple>
           <span class="ri:add-line mr-1"></span>导入数据集
@@ -65,7 +67,9 @@
               </span>
               <template v-if="uploadTasks.length > 0">
                 <span class="text-xs text-g-500">
-                  ({{ runningCount }}个执行中<template v-if="errorCount > 0">, {{ errorCount }}个异常</template>)
+                  ({{ runningCount }}个执行中<template v-if="errorCount > 0"
+                    >, {{ errorCount }}个异常</template
+                  >)
                 </span>
               </template>
               <template v-else>
@@ -87,7 +91,9 @@
           <div v-if="uploadTasks.length === 0" class="task-empty">
             <ArtSvgIcon icon="ri:file-list-3-line" class="text-4xl text-g-400 mb-2" />
             <p class="text-sm text-g-600">暂无上传任务</p>
-            <p class="text-xs text-g-500 mt-1">点击上方「导入新数据集」开始扩充您的预训练资产池。</p>
+            <p class="text-xs text-g-500 mt-1"
+              >点击上方「导入新数据集」开始扩充您的预训练资产池。</p
+            >
           </div>
 
           <!-- 场景B：有上传任务 -->
@@ -112,7 +118,9 @@
                 <div class="task-info">
                   <div class="flex items-center justify-between mb-1">
                     <span class="task-name truncate">{{ task.name }}</span>
-                    <span v-if="task.status !== 'error'" class="task-percent">{{ task.progress }}%</span>
+                    <span v-if="task.status !== 'error'" class="task-percent"
+                      >{{ task.progress }}%</span
+                    >
                     <ElTag v-else size="small" type="danger" effect="plain" class="!py-0">
                       网络异常
                     </ElTag>
@@ -125,7 +133,13 @@
                         :percentage="task.progress"
                         :stroke-width="4"
                         :show-text="false"
-                        :color="task.status === 'completed' ? '#67C23A' : task.status === 'paused' ? '#E6A23C' : '#409EFF'"
+                        :color="
+                          task.status === 'completed'
+                            ? '#67C23A'
+                            : task.status === 'paused'
+                              ? '#E6A23C'
+                              : '#409EFF'
+                        "
                       />
                     </div>
                     <div class="task-meta">
@@ -142,8 +156,12 @@
                         已暂停
                       </span>
                       <span class="text-g-400">|</span>
-                      <span v-if="task.status === 'uploading'" class="text-g-600">剩余 {{ task.remaining }}</span>
-                      <span v-else-if="task.status === 'paused'" class="text-g-600">点击恢复继续上传</span>
+                      <span v-if="task.status === 'uploading'" class="text-g-600"
+                        >剩余 {{ task.remaining }}</span
+                      >
+                      <span v-else-if="task.status === 'paused'" class="text-g-600"
+                        >点击恢复继续上传</span
+                      >
                     </div>
                   </template>
                   <template v-else>
@@ -157,22 +175,55 @@
                 <!-- 操作按钮 -->
                 <div class="task-actions">
                   <template v-if="task.status === 'uploading'">
-                    <ElButton text size="small" class="!p-2 hover:!bg-blue-50" @click="pauseTask(task)" title="暂停">
-                      <ArtSvgIcon icon="ri:pause-line" class="text-lg text-g-500 hover:!text-blue-500" />
+                    <ElButton
+                      text
+                      size="small"
+                      class="!p-2 hover:!bg-blue-50"
+                      @click="pauseTask(task)"
+                      title="暂停"
+                    >
+                      <ArtSvgIcon
+                        icon="ri:pause-line"
+                        class="text-lg text-g-500 hover:!text-blue-500"
+                      />
                     </ElButton>
                   </template>
                   <template v-if="task.status === 'paused'">
-                    <ElButton text size="small" class="!p-2 hover:!bg-blue-50" @click="resumeTask(task)" title="恢复">
-                      <ArtSvgIcon icon="ri:play-line" class="text-lg text-success hover:!text-blue-500" />
+                    <ElButton
+                      text
+                      size="small"
+                      class="!p-2 hover:!bg-blue-50"
+                      @click="resumeTask(task)"
+                      title="恢复"
+                    >
+                      <ArtSvgIcon
+                        icon="ri:play-line"
+                        class="text-lg text-success hover:!text-blue-500"
+                      />
                     </ElButton>
                   </template>
                   <template v-if="task.status === 'error'">
-                    <ElButton text size="small" class="!p-2 hover:!bg-blue-50" @click="resumeTask(task)" title="重试">
+                    <ElButton
+                      text
+                      size="small"
+                      class="!p-2 hover:!bg-blue-50"
+                      @click="resumeTask(task)"
+                      title="重试"
+                    >
                       <ArtSvgIcon icon="ri:refresh-line" class="text-lg text-blue-500" />
                     </ElButton>
                   </template>
-                  <ElButton text size="small" class="!p-2 hover:!bg-red-50" @click="removeTask(task)" title="移除">
-                    <ArtSvgIcon icon="ri:close-line" class="text-lg text-g-500 hover:!text-danger" />
+                  <ElButton
+                    text
+                    size="small"
+                    class="!p-2 hover:!bg-red-50"
+                    @click="removeTask(task)"
+                    title="移除"
+                  >
+                    <ArtSvgIcon
+                      icon="ri:close-line"
+                      class="text-lg text-g-500 hover:!text-danger"
+                    />
                   </ElButton>
                 </div>
               </div>
@@ -185,7 +236,9 @@
     <!-- ========== 模块三：数据集列表看板 ========== -->
     <ElCard class="art-card !p-0" shadow="never">
       <!-- 工具栏：搜索筛选（左） + 批量操作（右） -->
-      <div class="toolbar flex items-center justify-between flex-wrap gap-3 px-5 py-3 border-b border-g-100">
+      <div
+        class="toolbar flex items-center justify-between flex-wrap gap-3 px-5 py-3 border-b border-g-100"
+      >
         <!-- 左侧：搜索筛选 -->
         <div class="flex items-center gap-2 flex-wrap">
           <ElInput
@@ -199,12 +252,7 @@
               <span class="ri:search-line text-g-400"></span>
             </template>
           </ElInput>
-          <ElSelect
-            v-model="filterTag"
-            placeholder="标签: 全部"
-            class="!w-28"
-            clearable
-          >
+          <ElSelect v-model="filterTag" placeholder="标签: 全部" class="!w-28" clearable>
             <ElOption label="高质量" value="高质量" />
             <ElOption label="指令微调" value="指令微调" />
             <ElOption label="对话" value="对话" />
@@ -212,25 +260,15 @@
             <ElOption label="垂直领域" value="垂直领域" />
             <ElOption label="预训练" value="预训练" />
           </ElSelect>
-          <ElSelect
-            v-model="filterFormat"
-            placeholder="格式: 全部"
-            class="!w-28"
-            clearable
-          >
+          <ElSelect v-model="filterFormat" placeholder="格式: 全部" class="!w-28" clearable>
             <ElOption label="JSON" value="JSON" />
             <ElOption label="CSV" value="CSV" />
             <ElOption label="TXT" value="TXT" />
           </ElSelect>
-          <ElSelect
-            v-model="filterStatus"
-            placeholder="状态: 全部"
-            class="!w-28"
-            clearable
-          >
+          <ElSelect v-model="filterStatus" placeholder="状态: 全部" class="!w-28" clearable>
             <ElOption label="已就绪" value="ready" />
-            <ElOption label="处理中" value="processing" />
-            <ElOption label="已禁用" value="disabled" />
+            <ElOption label="清洗中" value="processing" />
+            <ElOption label="待清洗" value="pending" />
             <ElOption label="异常" value="error" />
           </ElSelect>
           <ElButton type="primary" @click="handleToolbarSearch">
@@ -243,21 +281,14 @@
 
         <!-- 右侧：批量操作 -->
         <div class="flex items-center gap-2 flex-wrap">
-          <ElButton
-            :disabled="selectedRows.length === 0"
-            @click="handleBatchDelete"
-          >
+          <ElButton :disabled="selectedRows.length === 0" @click="handleBatchDelete">
             <span class="ri:delete-bin-line mr-1"></span>批量删除
             <template v-if="selectedRows.length > 0">({{ selectedRows.length }})</template>
           </ElButton>
-          <ElButton
-            :disabled="selectedRows.length === 0"
-          >
+          <ElButton :disabled="selectedRows.length === 0">
             <span class="ri:git-merge-line mr-1"></span>合并数据集
           </ElButton>
-          <ElButton
-            :disabled="selectedRows.length === 0"
-          >
+          <ElButton :disabled="selectedRows.length === 0">
             <span class="ri:price-tag-3-line mr-1"></span>批量打标签
           </ElButton>
         </div>
@@ -278,10 +309,7 @@
     </ElCard>
 
     <!-- 上传弹窗 -->
-    <DatasetUpload
-      v-model:visible="uploadVisible"
-      @upload-start="handleUploadStart"
-    />
+    <DatasetUpload v-model:visible="uploadVisible" @upload-start="handleUploadStart" />
 
     <!-- 数据集抽屉 -->
     <DatasetDrawer
@@ -339,7 +367,7 @@
     id: number
     name: string
     progress: number
-    status: 'uploading' | 'paused' | 'completed' | 'error'
+    status: 'preparing' | 'uploading' | 'paused' | 'completed' | 'error'
     speed: string
     remaining: string
     file?: File
@@ -347,7 +375,9 @@
 
   const uploadTasks = ref<UploadTaskItem[]>([])
 
-  const runningCount = computed(() => uploadTasks.value.filter((t) => t.status === 'uploading').length)
+  const runningCount = computed(
+    () => uploadTasks.value.filter((t) => t.status === 'uploading').length
+  )
   const errorCount = computed(() => uploadTasks.value.filter((t) => t.status === 'error').length)
 
   // 任务图标
@@ -372,8 +402,9 @@
   }
 
   const getStatusConfig = (status: number) => {
-    if (status === 3) return { type: 'success' as const, text: '已就绪', dot: '#67C23A' }
-    if (status === 1 || status === 2) return { type: 'warning' as const, text: '清洗中', dot: '#409EFF' }
+    if (status === 2) return { type: 'success' as const, text: '已就绪', dot: '#67C23A' }
+    if (status === 1) return { type: 'warning' as const, text: '清洗中', dot: '#409EFF' }
+    if (status === -1) return { type: 'danger' as const, text: '异常', dot: '#F56C6C' }
     return { type: 'info' as const, text: '待清洗', dot: '#E6A23C' }
   }
 
@@ -381,9 +412,47 @@
     return allTags.value.filter((t) => tagIds.includes(t.tag_id))
   }
 
+  const applyLocalFilters = (records: Dataset[]): Dataset[] => {
+    let result = records
+    const params = searchParams as Record<string, any>
+
+    if (params.name) {
+      const keyword = params.name.toLowerCase()
+      result = result.filter((d) => d.name.toLowerCase().includes(keyword))
+    }
+
+    if (params.format) {
+      result = result.filter((d) => d.meta.format.toUpperCase() === params.format)
+    }
+
+    if (params.status) {
+      const statusMap: Record<string, number> = {
+        ready: 2,
+        processing: 1,
+        pending: 0,
+        error: -1
+      }
+      const targetStatus = statusMap[params.status]
+      if (targetStatus !== undefined) {
+        result = result.filter((d) => d.status === targetStatus)
+      }
+    }
+
+    if (params.tag) {
+      const tag = allTags.value.find((t) => t.tag_name === params.tag)
+      if (tag) {
+        result = result.filter((d) => d.tag_ids.includes(tag.tag_id))
+      }
+    }
+
+    return result
+  }
+
   const formatSize = (size: number): string => {
-    if (size >= 1024) return `${(size / 1024).toFixed(2)} GB`
-    return `${size.toFixed(1)} MB`
+    if (size >= 1024 * 1024 * 1024) return `${(size / (1024 * 1024 * 1024)).toFixed(2)} GB`
+    if (size >= 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`
+    if (size >= 1024) return `${(size / 1024).toFixed(1)} KB`
+    return `${size} B`
   }
 
   const {
@@ -396,15 +465,11 @@
     searchParams,
     handleSizeChange,
     handleCurrentChange,
-    refreshData
+    refreshData,
+    refreshSoft
   } = useTable({
     core: {
       apiFn: getDatasets,
-      apiParams: {
-        skip: 0,
-        limit: 10
-      },
-      paginationKey: { current: 'current', size: 'size' },
       columnsFactory: () => [
         { type: 'selection' },
         { type: 'index', width: 55, label: '#' },
@@ -431,7 +496,12 @@
               ElTag,
               {
                 size: 'small',
-                type: row.meta.format === 'json' ? 'primary' : row.meta.format === 'csv' ? 'warning' : 'info',
+                type:
+                  row.meta.format === 'json'
+                    ? 'primary'
+                    : row.meta.format === 'csv'
+                      ? 'warning'
+                      : 'info',
                 effect: 'plain'
               },
               () => row.meta.format.toUpperCase()
@@ -447,13 +517,20 @@
             if (tags.length === 0) {
               return h('span', { class: 'text-xs text-g-400' }, '—')
             }
-            return h('div', { class: 'flex flex-wrap gap-1' },
+            return h(
+              'div',
+              { class: 'flex flex-wrap gap-1' },
               tags.map((t) =>
-                h(ElTag, {
-                  size: 'small',
-                  effect: 'dark',
-                  style: { backgroundColor: t.tag_color, borderColor: t.tag_color }
-                }, () => t.tag_name))
+                h(
+                  ElTag,
+                  {
+                    size: 'small',
+                    effect: 'dark',
+                    style: { backgroundColor: t.tag_color, borderColor: t.tag_color }
+                  },
+                  () => t.tag_name
+                )
+              )
             )
           }
         },
@@ -483,7 +560,11 @@
           sortable: true,
           formatter: (row: Dataset) => {
             const date = new Date(row.created_at)
-            return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+            return date.toLocaleDateString('zh-CN', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit'
+            })
           }
         },
         {
@@ -506,20 +587,19 @@
       ]
     },
     transform: {
-      dataTransformer: (records) => records
+      dataTransformer: (records: Dataset[]) => applyLocalFilters(records)
     }
   })
 
   // 工具栏搜索
   const handleToolbarSearch = () => {
-    // 始终显式设置所有筛选字段，空值用 undefined 清除已有条件
     Object.assign(searchParams, {
       name: searchKeyword.value || undefined,
       tag: filterTag.value || undefined,
       format: filterFormat.value || undefined,
       status: filterStatus.value || undefined
     })
-    getData()
+    refreshSoft()
   }
 
   // 工具栏重置
@@ -528,14 +608,13 @@
     filterTag.value = ''
     filterFormat.value = ''
     filterStatus.value = ''
-    // 清空搜索参数并刷新
     Object.assign(searchParams, {
       name: undefined,
       tag: undefined,
       format: undefined,
       status: undefined
     })
-    getData()
+    refreshSoft()
   }
 
   onMounted(async () => {
@@ -559,56 +638,73 @@
       id: Date.now(),
       name: fileInfo.name,
       progress: 0,
-      status: 'uploading',
-      speed: '0 MB/s',
-      remaining: '计算中...',
+      status: 'preparing',
+      speed: '—',
+      remaining: '等待中...',
       file: fileInfo.raw
     }
     uploadTasks.value.unshift(task)
 
-    // 在后台执行实际上传，不阻塞UI
-    uploadDataset(fileInfo.raw, (percent, phase) => {
+    uploadDataset(fileInfo.raw, (percent, phase, detail) => {
       const idx = uploadTasks.value.findIndex((t) => t.id === task.id)
       if (idx === -1) return
 
       const updatedTask = { ...uploadTasks.value[idx] }
       updatedTask.progress = percent
 
-      if (phase === 'initiating') {
-        updatedTask.remaining = '初始化中...'
-      } else if (phase === 'uploading') {
-        updatedTask.remaining = '上传中...'
-      } else if (phase === 'completing') {
-        updatedTask.remaining = '处理中...'
-      } else if (phase === 'complete') {
-        // HTTP分块上传完成，等待Celery合并文件
-        updatedTask.progress = 100
-        updatedTask.remaining = '文件合并中...'
+      switch (phase) {
+        case 'hashing':
+          updatedTask.status = 'preparing'
+          updatedTask.remaining = '计算哈希...'
+          updatedTask.speed = '—'
+          break
+        case 'hash_complete':
+          updatedTask.remaining = '开始上传...'
+          break
+        case 'initiating':
+          updatedTask.status = 'uploading'
+          updatedTask.remaining = '初始化中...'
+          break
+        case 'uploading':
+          updatedTask.status = 'uploading'
+          if (detail) {
+            updatedTask.remaining = `上传分片 ${detail.current}/${detail.total}`
+          }
+          break
+        case 'completing':
+          updatedTask.remaining = '合并文件中...'
+          break
+        case 'complete':
+          updatedTask.progress = 100
+          updatedTask.status = 'completed'
+          updatedTask.remaining = '—'
+          updatedTask.speed = '—'
+          break
       }
 
       uploadTasks.value[idx] = updatedTask
-    }).then((response: any) => {
-      // 分块上传完成，获取 Celery task_id 并连接 WebSocket 追踪文件合并进度
-      const celTaskId = response?.task_id
-      if (celTaskId) {
-        handleTrackCeleryProgress(task.id, celTaskId)
-      } else {
-        // 无法获取 task_id 时，直接标记完成
-        completeUploadTask(task.id)
-        ElMessage.success(`数据集「${fileInfo.name}」上传完成`)
-        refreshData()
-      }
-    }).catch((err: any) => {
-      const idx = uploadTasks.value.findIndex((t) => t.id === task.id)
-      if (idx !== -1) {
-        uploadTasks.value[idx] = {
-          ...uploadTasks.value[idx],
-          status: 'error',
-          remaining: err.response?.data?.detail || err.message || '上传失败'
-        }
-      }
-      ElMessage.error('上传失败: ' + (err.response?.data?.detail || err.message || '未知错误'))
     })
+      .then((response: any) => {
+        const celTaskId = response?.task_id
+        if (celTaskId) {
+          handleTrackCeleryProgress(task.id, celTaskId)
+        } else {
+          completeUploadTask(task.id)
+          ElMessage.success(`数据集「${fileInfo.name}」上传完成`)
+          refreshData()
+        }
+      })
+      .catch((err: any) => {
+        const idx = uploadTasks.value.findIndex((t) => t.id === task.id)
+        if (idx !== -1) {
+          uploadTasks.value[idx] = {
+            ...uploadTasks.value[idx],
+            status: 'error',
+            remaining: err.message || '上传失败'
+          }
+        }
+        ElMessage.error('上传失败: ' + (err.message || '未知错误'))
+      })
   }
 
   // 通过 WebSocket 追踪 Celery 任务进度
@@ -630,11 +726,12 @@
 
         const updatedTask = { ...uploadTasks.value[idx] }
         updatedTask.progress = data.percentage || updatedTask.progress
-        updatedTask.remaining = data.phase === 'merging'
-          ? `合并中 ${data.current}/${data.total}`
-          : data.phase === 'saving'
-            ? '保存中...'
-            : data.message || data.phase
+        updatedTask.remaining =
+          data.phase === 'merging'
+            ? `合并中 ${data.current}/${data.total}`
+            : data.phase === 'saving'
+              ? '保存中...'
+              : data.message || data.phase
 
         if (data.status === 'success') {
           updatedTask.progress = 100
@@ -745,26 +842,28 @@
         }
 
         uploadTasks.value[i] = updated
-      }).then((response: any) => {
-        const celTaskId = response?.task_id
-        if (celTaskId) {
-          handleTrackCeleryProgress(task.id, celTaskId)
-        } else {
-          completeUploadTask(task.id)
-          ElMessage.success(`数据集「${task.name}」上传完成`)
-          refreshData()
-        }
-      }).catch((err: any) => {
-        const i = uploadTasks.value.findIndex((t) => t.id === task.id)
-        if (i !== -1) {
-          uploadTasks.value[i] = {
-            ...uploadTasks.value[i],
-            status: 'error',
-            remaining: err.response?.data?.detail || err.message || '上传失败'
-          }
-        }
-        ElMessage.error('上传失败: ' + (err.response?.data?.detail || err.message || '未知错误'))
       })
+        .then((response: any) => {
+          const celTaskId = response?.task_id
+          if (celTaskId) {
+            handleTrackCeleryProgress(task.id, celTaskId)
+          } else {
+            completeUploadTask(task.id)
+            ElMessage.success(`数据集「${task.name}」上传完成`)
+            refreshData()
+          }
+        })
+        .catch((err: any) => {
+          const i = uploadTasks.value.findIndex((t) => t.id === task.id)
+          if (i !== -1) {
+            uploadTasks.value[i] = {
+              ...uploadTasks.value[i],
+              status: 'error',
+              remaining: err.response?.data?.detail || err.message || '上传失败'
+            }
+          }
+          ElMessage.error('上传失败: ' + (err.response?.data?.detail || err.message || '未知错误'))
+        })
     } else if (task.status === 'paused') {
       uploadTasks.value[idx] = { ...task, status: 'uploading' }
     }
@@ -778,9 +877,7 @@
   }
 
   const clearCompletedTasks = () => {
-    uploadTasks.value = uploadTasks.value.filter(
-      (t) => t.status !== 'completed'
-    )
+    uploadTasks.value = uploadTasks.value.filter((t) => t.status !== 'completed')
   }
 
   // 批量删除

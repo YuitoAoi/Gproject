@@ -7,7 +7,7 @@ export const workbenchRoutes: AppRouteRecord = {
   meta: {
     title: 'menus.workbench.title',
     icon: 'ri:settings-4-line',
-    roles: ['R_SUPER', 'R_ADMIN']
+    roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
   },
   children: [
     {
@@ -19,7 +19,7 @@ export const workbenchRoutes: AppRouteRecord = {
         icon: 'ri:home-smile-2-line',
         keepAlive: false,
         fixedTab: true,
-        roles: ['R_SUPER', 'R_ADMIN']
+        roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
       }
     },
     {
@@ -30,7 +30,7 @@ export const workbenchRoutes: AppRouteRecord = {
         title: 'menus.workbench.computeStorage',
         icon: 'ri:computer-line',
         keepAlive: false,
-        roles: ['R_SUPER', 'R_ADMIN']
+        roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
       }
     },
     {
@@ -41,7 +41,7 @@ export const workbenchRoutes: AppRouteRecord = {
         title: 'menus.workbench.taskDispatch',
         icon: 'ri:timer-flash-line',
         keepAlive: false,
-        roles: ['R_SUPER', 'R_ADMIN']
+        roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
       }
     }
   ]
@@ -54,7 +54,7 @@ export const dataManagementRoutes: AppRouteRecord = {
   meta: {
     title: 'menus.dataManagement.title',
     icon: 'ri:folder-open-line',
-    roles: ['R_SUPER', 'R_ADMIN']
+    roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
   },
   children: [
     {
@@ -65,7 +65,7 @@ export const dataManagementRoutes: AppRouteRecord = {
         title: 'menus.dataManagement.datasetHub',
         icon: 'ri:database-2-line',
         keepAlive: false,
-        roles: ['R_SUPER', 'R_ADMIN']
+        roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
       }
     },
     {
@@ -76,7 +76,7 @@ export const dataManagementRoutes: AppRouteRecord = {
         title: 'menus.dataManagement.dataProcessing',
         icon: 'ri:refresh-line',
         keepAlive: true,
-        roles: ['R_SUPER', 'R_ADMIN']
+        roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
       }
     }
   ]
@@ -89,7 +89,7 @@ export const modelFactoryRoutes: AppRouteRecord = {
   meta: {
     title: 'menus.modelFactory.title',
     icon: 'ri:cpu-line',
-    roles: ['R_SUPER', 'R_ADMIN']
+    roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
   },
   children: [
     {
@@ -100,7 +100,7 @@ export const modelFactoryRoutes: AppRouteRecord = {
         title: 'menus.modelFactory.newTraining',
         icon: 'ri:rocket-line',
         keepAlive: false,
-        roles: ['R_SUPER', 'R_ADMIN']
+        roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
       }
     },
     {
@@ -111,7 +111,7 @@ export const modelFactoryRoutes: AppRouteRecord = {
         title: 'menus.modelFactory.modelRegistry',
         icon: 'ri:archive-line',
         keepAlive: false,
-        roles: ['R_SUPER', 'R_ADMIN']
+        roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
       }
     }
   ]
@@ -124,7 +124,7 @@ export const taskMonitoringRoutes: AppRouteRecord = {
   meta: {
     title: 'menus.taskMonitoring.title',
     icon: 'ri:line-chart-line',
-    roles: ['R_SUPER', 'R_ADMIN']
+    roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
   }
 }
 
@@ -135,7 +135,7 @@ export const modelInferenceRoutes: AppRouteRecord = {
   meta: {
     title: 'menus.modelInference.title',
     icon: 'ri:chat-3-line',
-    roles: ['R_SUPER', 'R_ADMIN']
+    roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
   }
 }
 
