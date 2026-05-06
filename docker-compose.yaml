@@ -129,24 +129,32 @@ services:
   llamafactory:
     image: hiyouga/llamafactory:latest
     container_name: llamafactory
-    ports:
-      - "7860:7860"
-      - "8000:8000"
-    ipc: host
-    tty: true
-    stdin_open: true
-    volumes:
-      - model_data:/app/models
-      - model_data/.cache:/root/.cache/huggingface/hub
-      - dataset_data:/app/data
-      
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: "all"
-              capabilities: [ gpu ]
+              count: all
+              capabilities: [gpu]
+    # 如果上面的 deploy 写法不生效，可以改用 runtime: nvidia（需要 compose v2.3）
+    # runtime: nvidia
+    ports:
+      - "7860:7860"   # Web UI
+      - "8000:8000"   # API 服务
+    volumes:
+      # 挂载你的数据/模型/配置目录
+      - ./data:/app/data
+      - ./examples:/app/examples   # 如果希望使用自定义的推理配置文件
+    environment:
+      - API_PORT=8000
+      - GRADIO_SERVER_PORT=7860
+      - HF_TOKEN=${HF_TOKEN}
+      - USE_MODELSCOPE_HUB=0
+      # - CUDA_VISIBLE_DEVICES=0,1 # 如需指定显卡
+    command: ["llamafactory-cli", "api", "examples/inference/llama3_lora_sft.yaml"]
+    # 如果需要交互式 shell 而不是自动启动服务，可以注释掉 command
+    # stdin_open: true
+    # tty: true
     restart: unless-stopped
     networks:
       - gproject-net

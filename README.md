@@ -45,13 +45,10 @@ graph LR
     subgraph external-services[External Services]
         graphgen[GraphGen]
         redis[Redis]
-        
         mysql[Mysql]
         file-system[File System]
-        celery-worker[Celery Worker]
         llamafactory[Llamafactory]
-        
-        vllm[Vllm]
+        celery-worker[Celery Worker]
     end
 
     user-services --> mysql
@@ -64,7 +61,7 @@ graph LR
     dataset <--req & res--> dataset-services
     model <--req & res--> model-services
     reasoning <--req & res--> reasoning-service
-    reasoning-service <--req & res--> vllm
+    reasoning-service <--req & res--> llamafactory
     model-services --handle task of models --> llamafactory
     dataset-services --handle task of datasets --> graphgen
     dataset-services --handle monitoring task--> celery-worker
