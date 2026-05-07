@@ -218,13 +218,13 @@ class TestDatasetRepositoryAdapter:
     def test_find_returns_dataset(self, repo):
         ds = Dataset.new(owner_id=1, name="test", meta=_make_meta())
         repo.create(ds)
-        found = repo.find(ds.id)
+        found = repo.find_by_id(ds.id)
         assert found is not None
         assert found.name == "test"
         assert found.owner_id == 1
 
     def test_find_not_found(self, repo):
-        assert repo.find(999) is None
+        assert repo.find_by_id(999) is None
 
     def test_find_by_owner(self, repo):
         repo.create(Dataset.new(owner_id=1, name="ds1", meta=_make_meta()))
@@ -253,7 +253,7 @@ class TestDatasetRepositoryAdapter:
         err = repo.update(ds.id, ds)
         assert err is None
 
-        refetched = repo.find(ds.id)
+        refetched = repo.find_by_id(ds.id)
         assert refetched.name == "new_name"
 
     def test_update_not_found(self, repo):
@@ -409,7 +409,7 @@ class TestDatasetUpdateService:
         result = update_svc.execute(req, owner_id=1)
         assert result.success is True
 
-        ds = repo.find(resp.dataset_id)
+        ds = repo.find_by_id(resp.dataset_id)
         assert ds.name == "renamed"
 
     def test_update_desc_and_tags(self, import_export_svc, update_svc, repo):
@@ -420,7 +420,7 @@ class TestDatasetUpdateService:
         result = update_svc.execute(req, owner_id=1)
         assert result.success is True
 
-        ds = repo.find(resp.dataset_id)
+        ds = repo.find_by_id(resp.dataset_id)
         assert ds.desc == "new desc"
         assert ds.tag_ids == [10, 20]
 

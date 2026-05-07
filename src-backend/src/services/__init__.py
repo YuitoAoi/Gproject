@@ -48,7 +48,7 @@ from src.services.dataset_process_service import (
     DatasetProcessRequest,
     DatasetProcessResponse,
 )
-from src.services.dataset_update_service import DatasetUpdateService
+from src.services.dataset_update_service import DatasetUpdateService, DatasetAddTagsBatchService
 from src.services.dataset_remove_service import DatasetRemoveService
 from src.services.dataset_tag_service import DatasetTagService
 
@@ -97,6 +97,7 @@ class ServiceFactory:
         self._user_update: Optional[UserUpdateService] = None
         self._user_register: Optional[UserRegisterService] = None
         self._dataset_update: Optional[DatasetUpdateService] = None
+        self._dataset_add_tags: Optional[DatasetAddTagsBatchService] = None
         self._datasets_remove: Optional[DatasetRemoveService] = None
         self._dataset_tag: Optional[DatasetTagService] = None
 
@@ -201,6 +202,11 @@ class ServiceFactory:
         if self._dataset_update is None:
             self._dataset_update = DatasetUpdateService(self.dataset_repo)
         return self._dataset_update
+
+    def add_tags_batch(self) -> DatasetAddTagsBatchService:
+        if self._dataset_add_tags is None:
+            self._dataset_add_tags = DatasetAddTagsBatchService(self.dataset_repo)
+        return self._dataset_add_tags
 
     def remove_datasets(self) -> DatasetRemoveService:
         if self._datasets_remove is None:

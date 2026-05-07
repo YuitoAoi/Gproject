@@ -117,7 +117,7 @@ class TestGetDatasetsService:
     def test_get_by_id_found(self):
         ds = _make_dataset(owner_id=1, id=1, name="myds")
         mock_repo = MagicMock()
-        mock_repo.find.return_value = ds
+        mock_repo.find_by_id.return_value = ds
 
         svc = GetDatasetsService(dataset_repo=mock_repo)
         resp = svc.get_by_id(1, owner_id=1)
@@ -128,7 +128,7 @@ class TestGetDatasetsService:
 
     def test_get_by_id_not_found(self):
         mock_repo = MagicMock()
-        mock_repo.find.return_value = None
+        mock_repo.find_by_id.return_value = None
 
         svc = GetDatasetsService(dataset_repo=mock_repo)
         resp = svc.get_by_id(999, owner_id=1)
@@ -139,7 +139,7 @@ class TestGetDatasetsService:
     def test_get_by_id_wrong_owner(self):
         ds = _make_dataset(owner_id=2, id=1, name="other")
         mock_repo = MagicMock()
-        mock_repo.find.return_value = ds
+        mock_repo.find_by_id.return_value = ds
 
         svc = GetDatasetsService(dataset_repo=mock_repo)
         resp = svc.get_by_id(1, owner_id=1)

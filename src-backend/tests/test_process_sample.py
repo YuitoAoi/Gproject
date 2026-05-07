@@ -21,7 +21,7 @@ class TestSampleParsing:
         jsonl_data = b'{"text":"hello","label":"a"}\n{"text":"world","label":"b"}\n'
         ds = MagicMock()
         ds.meta = DatasetMeta(format="json", file_path="/t.jsonl", file_size=100)
-        svc._dataset_repo.find.return_value = ds
+        svc._dataset_repo.find_by_id.return_value = ds
         svc._file_repo.exists.return_value = True
         svc._file_repo.read.return_value = jsonl_data
 
@@ -33,7 +33,7 @@ class TestSampleParsing:
     def test_xlsx_sample(self, mock_io, svc):
         ds = MagicMock()
         ds.meta = DatasetMeta(format="xlsx", file_path="/t.xlsx", file_size=100)
-        svc._dataset_repo.find.return_value = ds
+        svc._dataset_repo.find_by_id.return_value = ds
         svc._file_repo.exists.return_value = True
         svc._file_repo.read.return_value = b"xlsx_bytes"
 
@@ -49,7 +49,7 @@ class TestSampleParsing:
     def test_csv_empty(self, svc):
         ds = MagicMock()
         ds.meta = DatasetMeta(format="csv", file_path="/t.csv", file_size=0)
-        svc._dataset_repo.find.return_value = ds
+        svc._dataset_repo.find_by_id.return_value = ds
         svc._file_repo.exists.return_value = True
         svc._file_repo.read.return_value = b""
 

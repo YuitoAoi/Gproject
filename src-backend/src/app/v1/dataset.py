@@ -35,6 +35,8 @@ from src.services.dataset_remove_service import (
 from src.services.dataset_update_service import (
     DatasetUpdateRequest,
     DatasetUpdateResponse,
+    DatasetAddTagsBatchRequest,
+    DatasetAddTagsBatchResponse,
 )
 from src.services.jwt_service import TokenPayload
 
@@ -46,15 +48,22 @@ download_router = APIRouter(tags=["download"])
 def _check_owner(svc, dataset_id: int, owner_id: int) -> JSONResponse | None:
     ds = svc.dataset_repo.find(dataset_id)
     if ds is None:
-        return JSONResponse({"success": False, "error": f"Dataset not found: {dataset_id}"}, status_code=404)
+        return JSONResponse(
+            {"success": False, "error": f"Dataset not found: {dataset_id}"},
+            status_code=404,
+        )
     if ds.owner_id != owner_id:
-        return JSONResponse({"success": False, "error": f"Dataset not found: {dataset_id}"}, status_code=404)
+        return JSONResponse(
+            {"success": False, "error": f"Dataset not found: {dataset_id}"},
+            status_code=404,
+        )
     return None
 
 
 # ══════════════════════════════════════════════════════════
 # 查询
 # ══════════════════════════════════════════════════════════
+
 
 @datasets_router.get("", response_model=GetDatasetsResponse)
 def list_datasets(
@@ -82,6 +91,7 @@ def get_dataset(
 # 导入
 # ══════════════════════════════════════════════════════════
 
+
 @router.post("/import", response_model=DatasetImportExportResponse, status_code=201)
 def import_dataset(
     request: DatasetImportRequest,
@@ -98,6 +108,7 @@ def import_dataset(
 # ══════════════════════════════════════════════════════════
 # 分块上传
 # ══════════════════════════════════════════════════════════
+
 
 @router.post("/upload/initiate", response_model=InitiateUploadResponse)
 def initiate_upload(
@@ -149,6 +160,7 @@ def complete_upload(
 # 更新
 # ══════════════════════════════════════════════════════════
 
+
 @router.patch("", response_model=DatasetUpdateResponse)
 def update_dataset(
     request: DatasetUpdateRequest,
@@ -162,9 +174,23 @@ def update_dataset(
     return result
 
 
+@datasets_router.patch("/tags", response_model=DatasetAddTagsBatchResponse)
+def add_tags_batch(
+    request: DatasetAddTagsBatchRequest,
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    owner_id = int(current_user.user_id)
+    result = svc.add_tags_batch().execute(request, owner_id)
+    if not result.success:
+        return JSONResponse(content=result.model_dump(), status_code=400)
+    return result
+
+
 # ══════════════════════════════════════════════════════════
 # 样本 & 处理
 # ══════════════════════════════════════════════════════════
+
 
 @router.post("/sample", response_model=SampleResponse)
 def get_dataset_sample(
@@ -203,6 +229,7 @@ class ProcessCallbackRequest(BaseModel):
 def _is_internal_ip(client_ip: str) -> bool:
     """仅接受本地回环或私有网络 IP（容器网络）。"""
     import ipaddress
+
     if not client_ip:
         return False
     try:
@@ -238,6 +265,7 @@ def process_callback(
 # 下载
 # ══════════════════════════════════════════════════════════
 
+
 @router.post("/download", response_model=DatasetDownloadTokenResponse)
 def request_download_token(
     request: DatasetDownloadRequest,
@@ -251,7 +279,9 @@ def request_download_token(
 
     info = svc.dataset_import_export().download(request)
     if info.error:
-        return JSONResponse(content={"success": False, "error": info.error}, status_code=404)
+        return JSONResponse(
+            content={"success": False, "error": info.error}, status_code=404
+        )
 
     token = svc.jwt().generate_download_token(
         dataset_id=request.dataset_id,
@@ -274,20 +304,31 @@ def download_by_token(
 ):
     payload = svc.jwt().verify_download_token(token)
     if payload is None:
-        return JSONResponse({"success": False, "error": "Invalid or expired download token."}, status_code=401)
+        return JSONResponse(
+            {"success": False, "error": "Invalid or expired download token."},
+            status_code=401,
+        )
 
     dataset_id = payload["dataset_id"]
-    ds = svc.dataset_repo.find(dataset_id)
+    ds = svc.dataset_repo.find_by_id(dataset_id)
     if ds is None:
-        return JSONResponse({"success": False, "error": f"Dataset not found: {dataset_id}"}, status_code=404)
+        return JSONResponse(
+            {"success": False, "error": f"Dataset not found: {dataset_id}"},
+            status_code=404,
+        )
 
     file_path = ds.meta.file_path
     if not file_path:
-        return JSONResponse({"success": False, "error": "File path not set"}, status_code=404)
+        return JSONResponse(
+            {"success": False, "error": "File path not set"}, status_code=404
+        )
 
     from pathlib import Path
+
     if not Path(file_path).exists():
-        return JSONResponse({"success": False, "error": "File not found on disk"}, status_code=404)
+        return JSONResponse(
+            {"success": False, "error": "File not found on disk"}, status_code=404
+        )
 
     return FileResponse(
         path=file_path,
@@ -299,6 +340,7 @@ def download_by_token(
 # ══════════════════════════════════════════════════════════
 # 删除
 # ══════════════════════════════════════════════════════════
+
 
 @datasets_router.delete("", response_model=DatasetRemoveResponse)
 def delete_dataset(

@@ -1,4 +1,5 @@
 """数据集仓储实现 —— 通过 SQLAlchemy 自动适配 MySQL / SQLite。"""
+
 from __future__ import annotations
 
 import json
@@ -37,8 +38,10 @@ _dataset_table = Table(
 class DatasetRepositoryAdapter(DatasetRepository):
     """数据集仓储实现。SQLAlchemy Core Table 自动适配 MySQL / SQLite。"""
 
-    _COLUMNS = ("id, owner_id, name, description, meta, status, tag_ids, "
-                "created_at, updated_at")
+    _COLUMNS = (
+        "id, owner_id, name, description, meta, status, tag_ids, "
+        "created_at, updated_at"
+    )
 
     def __init__(self, connection: DatabaseConnection) -> None:
         self._conn = connection
@@ -108,7 +111,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
         except Exception as exc:
             return exc
 
-    def find(self, id: int) -> Optional[Dataset]:
+    def find_by_id(self, id: int) -> Optional[Dataset]:
         try:
             with self._session() as session:
                 row = session.execute(
@@ -163,27 +166,30 @@ class DatasetRepositoryAdapter(DatasetRepository):
     def update(self, id: int, dataset: Dataset) -> Optional[Exception]:
         try:
             with self._session() as session:
-                result = cast(CursorResult, session.execute(
-                    text(
-                        "UPDATE datasets SET "
-                        "owner_id = :owner_id, "
-                        "name = :name, description = :desc, meta = :meta, "
-                        "status = :status, tag_ids = :tag_ids, "
-                        "created_at = :created_at, updated_at = :updated_at "
-                        "WHERE id = :id"
+                result = cast(
+                    CursorResult,
+                    session.execute(
+                        text(
+                            "UPDATE datasets SET "
+                            "owner_id = :owner_id, "
+                            "name = :name, description = :desc, meta = :meta, "
+                            "status = :status, tag_ids = :tag_ids, "
+                            "created_at = :created_at, updated_at = :updated_at "
+                            "WHERE id = :id"
+                        ),
+                        {
+                            "id": id,
+                            "owner_id": dataset.owner_id,
+                            "name": dataset.name,
+                            "desc": dataset.desc,
+                            "meta": dataset.meta.to_json(),
+                            "status": dataset.status,
+                            "tag_ids": json.dumps(dataset.tag_ids),
+                            "created_at": dataset.created_at,
+                            "updated_at": dataset.updated_at,
+                        },
                     ),
-                    {
-                        "id": id,
-                        "owner_id": dataset.owner_id,
-                        "name": dataset.name,
-                        "desc": dataset.desc,
-                        "meta": dataset.meta.to_json(),
-                        "status": dataset.status,
-                        "tag_ids": json.dumps(dataset.tag_ids),
-                        "created_at": dataset.created_at,
-                        "updated_at": dataset.updated_at,
-                    },
-                ))
+                )
                 session.commit()
                 if result.rowcount == 0:
                     return ValueError(f"Dataset not found: {id}")
@@ -193,7 +199,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
 
     def remove(self, id: int) -> Optional[Exception]:
         try:
-            dataset = self.find(id)
+            dataset = self.find_by_id(id)
             if dataset is None:
                 return ValueError(f"Dataset not found: {id}")
             with self._session() as session:

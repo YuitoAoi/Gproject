@@ -1,4 +1,5 @@
 """DatasetTagService 集成测试"""
+
 import pytest
 
 from src.db_connections.sqlite import SqliteConnection
@@ -15,12 +16,13 @@ from src.services.interfaces.dataset_repository import DatasetRepository
 
 class _FakeDatasetRepo(DatasetRepository):
     """桩：可预设数据集列表，用于测试 tag 删除时的级联行为"""
+
     def __init__(self, datasets=None):
         self._datasets = datasets or []
-        self.updates = []   # 记录 update 调用
-        self.deletes = []   # 记录 remove 调用
+        self.updates = []  # 记录 update 调用
+        self.deletes = []  # 记录 remove 调用
 
-    def find(self, id):
+    def find_by_id(self, id):
         for d in self._datasets:
             if d.id == id:
                 return d
@@ -29,16 +31,25 @@ class _FakeDatasetRepo(DatasetRepository):
     def find_by_owner(self, owner_id):
         return [d for d in self._datasets if d.owner_id == owner_id]
 
-    def find_all(self): return self._datasets
-    def create(self, ds): pass
-    def exists(self, id): return any(d.id == id for d in self._datasets)
+    def find_all(self):
+        return self._datasets
+
+    def create(self, ds):
+        pass
+
+    def exists(self, id):
+        return any(d.id == id for d in self._datasets)
+
     def update(self, id, ds):
         self.updates.append((id, ds))
         return None
+
     def remove(self, id):
         self.deletes.append(id)
         return None
-    def remove_batch(self, ids): pass
+
+    def remove_batch(self, ids):
+        pass
 
 
 @pytest.fixture(scope="session")
@@ -53,11 +64,13 @@ def tag_svc_conn():
 @pytest.fixture
 def tag_svc(tag_svc_conn):
     from sqlalchemy import text
+
     with tag_svc_conn.new_session() as s:
         s.execute(text("DELETE FROM dataset_tags"))
         s.commit()
     repo = DatasetTagRepositoryAdapter(tag_svc_conn)
     return DatasetTagService(repo, _FakeDatasetRepo())
+
 
 @pytest.fixture
 def tag_svc_with_datasets(tag_svc_conn):
@@ -65,18 +78,31 @@ def tag_svc_with_datasets(tag_svc_conn):
     from datetime import datetime
     from src.core.dataset import Dataset, DatasetMeta
     from sqlalchemy import text
+
     with tag_svc_conn.new_session() as s:
         s.execute(text("DELETE FROM dataset_tags"))
         s.commit()
 
     now = datetime.now()
     ds1 = Dataset(
-        id=1, owner_id=1, name="ds_one", meta=DatasetMeta(format="csv", file_path="/a.csv", file_size=10),
-        status=0, tag_ids=[99], created_at=now, updated_at=now,
+        id=1,
+        owner_id=1,
+        name="ds_one",
+        meta=DatasetMeta(format="csv", file_path="/a.csv", file_size=10),
+        status=0,
+        tag_ids=[99],
+        created_at=now,
+        updated_at=now,
     )
     ds2 = Dataset(
-        id=2, owner_id=1, name="ds_two", meta=DatasetMeta(format="csv", file_path="/b.csv", file_size=20),
-        status=0, tag_ids=[99, 100], created_at=now, updated_at=now,
+        id=2,
+        owner_id=1,
+        name="ds_two",
+        meta=DatasetMeta(format="csv", file_path="/b.csv", file_size=20),
+        status=0,
+        tag_ids=[99, 100],
+        created_at=now,
+        updated_at=now,
     )
     fake_ds_repo = _FakeDatasetRepo([ds1, ds2])
     tag_repo = DatasetTagRepositoryAdapter(tag_svc_conn)
@@ -91,8 +117,12 @@ class TestTagService:
         assert resp.success is True
 
     def test_create_duplicate(self, tag_svc):
-        tag_svc.create_tag(DatasetTagCreateRequest(name="dup", color="#111111"), owner_id=1)
-        resp = tag_svc.create_tag(DatasetTagCreateRequest(name="dup", color="#222222"), owner_id=1)
+        tag_svc.create_tag(
+            DatasetTagCreateRequest(name="dup", color="#111111"), owner_id=1
+        )
+        resp = tag_svc.create_tag(
+            DatasetTagCreateRequest(name="dup", color="#222222"), owner_id=1
+        )
         assert resp.success is False
         assert "already exists" in resp.error
 
@@ -198,7 +228,9 @@ class TestTagService:
         """force=True 时：从引用该 tag 的所有数据集中移除 tag_id，然后删除标签"""
         svc, fake_ds = tag_svc_with_datasets
         # 创建 tag_id=99 的标签
-        svc.create_tag(DatasetTagCreateRequest(name="cascade_target", color="#111111"), owner_id=1)
+        svc.create_tag(
+            DatasetTagCreateRequest(name="cascade_target", color="#111111"), owner_id=1
+        )
         tags = svc.get_tags(owner_id=1)
         tag_id = tags.tags[0].tag_id  # real tag id from DB
 
@@ -207,24 +239,39 @@ class TestTagService:
         # 重置 fake_ds 使用真实 tag_id
         from datetime import datetime
         from src.core.dataset import Dataset, DatasetMeta
+
         now = datetime.now()
         fake_ds._datasets = [
-            Dataset(id=1, owner_id=1, name="ds_one",
-                    meta=DatasetMeta(format="csv", file_path="/a.csv", file_size=10),
-                    status=0, tag_ids=[tag_id], created_at=now, updated_at=now),
-            Dataset(id=2, owner_id=1, name="ds_two",
-                    meta=DatasetMeta(format="csv", file_path="/b.csv", file_size=20),
-                    status=0, tag_ids=[tag_id, tag_id + 1], created_at=now, updated_at=now),
+            Dataset(
+                id=1,
+                owner_id=1,
+                name="ds_one",
+                meta=DatasetMeta(format="csv", file_path="/a.csv", file_size=10),
+                status=0,
+                tag_ids=[tag_id],
+                created_at=now,
+                updated_at=now,
+            ),
+            Dataset(
+                id=2,
+                owner_id=1,
+                name="ds_two",
+                meta=DatasetMeta(format="csv", file_path="/b.csv", file_size=20),
+                status=0,
+                tag_ids=[tag_id, tag_id + 1],
+                created_at=now,
+                updated_at=now,
+            ),
         ]
 
         resp = svc.delete_tag(owner_id=1, tag_id=tag_id, force=True)
         assert resp.success is True
 
         # 验证：ds1.tag_ids 中不再包含该 tag_id
-        updated_ds1 = fake_ds.find(1)
+        updated_ds1 = fake_ds.find_by_id(1)
         assert tag_id not in updated_ds1.tag_ids
         # 验证：ds2.tag_ids 中不再包含该 tag_id
-        updated_ds2 = fake_ds.find(2)
+        updated_ds2 = fake_ds.find_by_id(2)
         assert tag_id not in updated_ds2.tag_ids
 
         # 验证：标签本身已删除
@@ -234,17 +281,27 @@ class TestTagService:
     def test_delete_force_false_with_refs(self, tag_svc_with_datasets):
         """force=False 且标签被数据集引用时，返回错误不删除"""
         svc, fake_ds = tag_svc_with_datasets
-        svc.create_tag(DatasetTagCreateRequest(name="referenced", color="#ff0000"), owner_id=1)
+        svc.create_tag(
+            DatasetTagCreateRequest(name="referenced", color="#ff0000"), owner_id=1
+        )
         tags = svc.get_tags(owner_id=1)
         tag_id = tags.tags[0].tag_id
 
         from datetime import datetime
         from src.core.dataset import Dataset, DatasetMeta
+
         now = datetime.now()
         fake_ds._datasets = [
-            Dataset(id=1, owner_id=1, name="uses_tag",
-                    meta=DatasetMeta(format="csv", file_path="/a.csv", file_size=10),
-                    status=0, tag_ids=[tag_id], created_at=now, updated_at=now),
+            Dataset(
+                id=1,
+                owner_id=1,
+                name="uses_tag",
+                meta=DatasetMeta(format="csv", file_path="/a.csv", file_size=10),
+                status=0,
+                tag_ids=[tag_id],
+                created_at=now,
+                updated_at=now,
+            ),
         ]
 
         resp = svc.delete_tag(owner_id=1, tag_id=tag_id, force=False)

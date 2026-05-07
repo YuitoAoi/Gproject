@@ -47,6 +47,30 @@
 
 ---
 
+### `POST /auth/refresh`
+
+使用 refresh_token 刷新过期的 access_token。无需认证。
+
+**请求体** (`application/json`):
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `refresh_token` | `string` | 是 | 登录时返回的 refresh token |
+
+**响应** `200`:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `success` | `bool` | 是否成功 |
+| `access_token` | `string` | 新访问令牌 |
+| `refresh_token` | `string` | 新刷新令牌 |
+| `expires_in` | `int` | 过期时间（秒） |
+| `error` | `string` | 错误信息 |
+
+**错误**: `401` — refresh token 无效或已过期。
+
+---
+
 ## 用户
 
 ### `POST /user`
@@ -210,6 +234,28 @@
 | `error` | `string` | 错误信息 |
 
 **错误**: `404` — 不存在或无权访问。
+
+---
+
+### `PATCH /datasets/tags`
+
+对多个数据集批量追加标签（已存在的标签自动跳过）。**[认证]**
+
+**请求体** (`application/json`):
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `dataset_ids` | `int[]` | 是 | 目标数据集 ID 列表 |
+| `tag_ids` | `int[]` | 是 | 要添加的标签 ID 列表 |
+
+**响应** `200`:
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `success` | `bool` | 全部成功则为 `true` |
+| `error` | `string` | 失败原因（含各条错误用 `; ` 拼接） |
+
+**错误**: `400` — 部分或全部失败。常见原因：`dataset_ids` 为空、`tag_ids` 为空、数据集不存在、无权访问、数据库错误。
 
 ---
 

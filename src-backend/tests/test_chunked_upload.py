@@ -1,4 +1,5 @@
 """ChunkedUploadService 集成测试：分块→续传→校验→组装→秒传"""
+
 import hashlib
 import sys
 from pathlib import Path
@@ -39,7 +40,9 @@ class TestChunkedUploadService:
     def test_initiate(self):
         svc = DatasetImportExportService(MagicMock(), MagicMock())
         req = InitiateUploadRequest(
-            filename="test.csv", file_size=100, file_hash="abc",
+            filename="test.csv",
+            file_size=100,
+            file_hash="abc",
         )
         resp = svc.initiate(req)
         assert resp.upload_id
@@ -48,7 +51,9 @@ class TestChunkedUploadService:
     def test_upload_chunk(self):
         svc = DatasetImportExportService(MagicMock(), MagicMock())
         req = InitiateUploadRequest(
-            filename="test.csv", file_size=10, file_hash="abc",
+            filename="test.csv",
+            file_size=10,
+            file_hash="abc",
             chunk_size=10 * 1024 * 1024,
         )
         initiated = svc.initiate(req)
@@ -64,7 +69,9 @@ class TestChunkedUploadService:
     def test_get_status(self):
         svc = DatasetImportExportService(MagicMock(), MagicMock())
         req = InitiateUploadRequest(
-            filename="test.csv", file_size=20, file_hash="abc",
+            filename="test.csv",
+            file_size=20,
+            file_hash="abc",
             chunk_size=10 * 1024 * 1024,
         )
         initiated = svc.initiate(req)
@@ -82,7 +89,8 @@ class TestChunkedUploadService:
 
         svc = DatasetImportExportService(mock_ds, mock_file)
         req = InitiateUploadRequest(
-            filename="test.csv", file_size=len(data),
+            filename="test.csv",
+            file_size=len(data),
             file_hash=_compute_sha256(b"different data"),
             chunk_size=10 * 1024 * 1024,
         )
@@ -90,7 +98,9 @@ class TestChunkedUploadService:
         svc.upload_chunk(initiated.upload_id, 0, data)
 
         complete = CompleteUploadRequest(
-            upload_id=initiated.upload_id, owner_id=1, name="test",
+            upload_id=initiated.upload_id,
+            owner_id=1,
+            name="test",
         )
         resp = svc.complete(complete)
         assert resp.success is False
@@ -122,6 +132,7 @@ class TestChunkedUploadService:
 
         # 重定向目录到 tmp_path
         import src.services.dataset_import_export_service as ie_svc
+
         orig_datasets = ie_svc._datasets_dir
         orig_chunks = ie_svc._chunks_dir
         ie_svc._datasets_dir = lambda: ds_dir
@@ -130,18 +141,23 @@ class TestChunkedUploadService:
             p = chunks_base / upload_id
             p.mkdir(parents=True, exist_ok=True)
             return p
+
         ie_svc._chunks_dir = _tmp_chunks_dir
 
         try:
             req = InitiateUploadRequest(
-                filename="test.csv", file_size=len(data),
-                file_hash=data_hash, chunk_size=10 * 1024 * 1024,
+                filename="test.csv",
+                file_size=len(data),
+                file_hash=data_hash,
+                chunk_size=10 * 1024 * 1024,
             )
             initiated = svc.initiate(req)
             svc.upload_chunk(initiated.upload_id, 0, data)
 
             complete = CompleteUploadRequest(
-                upload_id=initiated.upload_id, owner_id=1, name="success_test",
+                upload_id=initiated.upload_id,
+                owner_id=1,
+                name="success_test",
             )
             resp = svc.complete(complete)
 
@@ -150,7 +166,7 @@ class TestChunkedUploadService:
             assert resp.file_path != ""
 
             # 验证 DB 记录存在
-            ds = repo.find(resp.dataset_id)
+            ds = repo.find_by_id(resp.dataset_id)
             assert ds is not None
             assert ds.name == "success_test"
 
