@@ -19,9 +19,21 @@ export interface Dataset {
 }
 
 export interface DatasetListResponse {
-  items: Dataset[]
+  items: DatasetItemDTO[]
   total: number
   error: string | null
+}
+
+export interface DatasetItemDTO {
+  id: number
+  name: string
+  desc: string | null
+  format: string
+  file_size: number
+  status: number
+  tag_ids: number[]
+  created_at: string
+  updated_at: string
 }
 
 export interface TagInfo {
@@ -62,17 +74,29 @@ export interface UploadCompleteResponse {
 }
 
 export interface ProcessRequest {
-  process_type: 'clean' | 'convert'
-  convert_format?: 'alpaca' | 'sharegpt'
-  remove_duplicates?: boolean
-  fill_missing?: boolean
-  missing_strategy?: 'mean' | 'median' | 'drop'
+  api_key: string
+  synthesizer_url: string
+  synthesizer_model: string
+  mode: 'atomic' | 'multi_hop' | 'aggregated' | 'CoT' | 'multi_choice' | 'multi_answer' | 'fill_in_blank' | 'true_false'
+  data_format: 'Alpaca' | 'Sharegpt' | 'ChatML'
+  tokenizer?: string
+  chunk_size?: number
+  chunk_overlap?: number
+  quiz_samples?: number
+  partition_method?: 'dfs' | 'bfs' | 'leiden' | 'ece'
+  rpm?: number
+  tpm?: number
 }
 
 export interface ProcessResponse {
-  task_id: string
-  status: string
-  message: string
+  job_id: string
+  status: 'pending' | 'running' | 'done' | 'failed' | 'cancelled'
+  created_at?: string
+  started_at?: string
+  finished_at?: string
+  progress?: number
+  error?: string
+  output_path?: string
 }
 
 export interface TaskStatusResponse {
@@ -83,9 +107,10 @@ export interface TaskStatusResponse {
 }
 
 export interface SampleResponse {
-  headers: string[]
-  samples: Record<string, any>[]
-  total: number
+  columns: string[]
+  rows: Record<string, any>[]
+  total_rows: number
+  error: string | null
 }
 
 export interface DownloadTokenResponse {
@@ -204,7 +229,7 @@ export async function uploadDataset(
 }
 
 export async function getDatasets(): Promise<{
-  records: Dataset[]
+  records: DatasetItemDTO[]
   current: number
   size: number
   total: number
@@ -236,6 +261,13 @@ export async function deleteDataset(id: number): Promise<void> {
   return request.del({
     url: '/datasets',
     data: { dataset_ids: [id] }
+  })
+}
+
+export async function deleteDatasets(ids: number[]): Promise<void> {
+  return request.del({
+    url: '/datasets',
+    data: { dataset_ids: ids }
   })
 }
 
@@ -322,7 +354,7 @@ export async function getDatasetSample(
     })
     return response
   } catch {
-    return { headers: [], samples: [], total: 0 }
+    return { columns: [], rows: [], total_rows: 0, error: 'Failed to fetch sample' }
   }
 }
 

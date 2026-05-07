@@ -29,15 +29,11 @@
             </div>
             <div class="meta-item">
               <span class="meta-label">文件格式</span>
-              <ElTag size="small" :type="formatTagType">{{ dataset?.meta?.format?.toUpperCase() }}</ElTag>
+              <ElTag size="small" :type="formatTagType">{{ dataset?.format?.toUpperCase() }}</ElTag>
             </div>
             <div class="meta-item">
               <span class="meta-label">文件大小</span>
-              <span class="meta-value">{{ formatSize(dataset?.meta?.file_size || 0) }}</span>
-            </div>
-            <div class="meta-item">
-              <span class="meta-label">存储路径</span>
-              <span class="meta-value text-xs font-mono">{{ dataset?.meta?.file_path }}</span>
+              <span class="meta-value">{{ formatSize(dataset?.file_size || 0) }}</span>
             </div>
             <div class="meta-item">
               <span class="meta-label">创建时间</span>
@@ -219,13 +215,14 @@
     getDatasetSample,
     requestDownloadToken,
     updateDataset,
-    type Dataset
+    type Dataset,
+    type DatasetItemDTO
   } from '@/api/dataset'
   import { useTagStore, type TagInfo } from '@/store/modules/tag'
 
   interface Props {
     visible: boolean
-    dataset: Dataset | null
+    dataset: DatasetItemDTO | null
   }
 
   interface Emits {
@@ -258,7 +255,7 @@
   const hoveredTagId = ref<number | null>(null)
 
   const formatTagType = computed(() => {
-    const fmt = props.dataset?.meta?.format
+    const fmt = props.dataset?.format
     if (fmt === 'json') return 'primary' as const
     if (fmt === 'csv') return 'warning' as const
     return 'info' as const
@@ -315,8 +312,8 @@
     sampleLoading.value = true
     samples.value = []
     const res = await getDatasetSample(datasetId)
-    if (res.samples.length > 0) {
-      samples.value = res.samples
+    if (res.rows && res.rows.length > 0) {
+      samples.value = res.rows
     }
     sampleLoading.value = false
   }

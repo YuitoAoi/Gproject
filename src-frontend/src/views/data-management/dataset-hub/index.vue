@@ -252,13 +252,19 @@
               <span class="ri:search-line text-g-400"></span>
             </template>
           </ElInput>
-          <ElSelect v-model="filterTag" placeholder="标签: 全部" class="!w-28" clearable>
-            <ElOption label="高质量" value="高质量" />
-            <ElOption label="指令微调" value="指令微调" />
-            <ElOption label="对话" value="对话" />
-            <ElOption label="代码" value="代码" />
-            <ElOption label="垂直领域" value="垂直领域" />
-            <ElOption label="预训练" value="预训练" />
+          <ElSelect
+            v-model="filterTag"
+            placeholder="标签: 全部"
+            class="!w-28"
+            clearable
+            :popper-attrs="{ style: { maxHeight: '256px', overflowY: 'auto' } }"
+          >
+            <ElOption
+              v-for="tag in tagStore.tags"
+              :key="tag.tag_id"
+              :label="tag.tag_name"
+              :value="tag.tag_name"
+            />
           </ElSelect>
           <ElSelect v-model="filterFormat" placeholder="格式: 全部" class="!w-28" clearable>
             <ElOption label="JSON" value="JSON" />
@@ -284,9 +290,6 @@
           <ElButton :disabled="selectedRows.length === 0" @click="handleBatchDelete">
             <span class="ri:delete-bin-line mr-1"></span>批量删除
             <template v-if="selectedRows.length > 0">({{ selectedRows.length }})</template>
-          </ElButton>
-          <ElButton :disabled="selectedRows.length === 0">
-            <span class="ri:git-merge-line mr-1"></span>合并数据集
           </ElButton>
           <ElButton :disabled="selectedRows.length === 0">
             <span class="ri:price-tag-3-line mr-1"></span>批量打标签
@@ -325,12 +328,12 @@
   import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useTable } from '@/hooks/core/useTable'
-  import { useTagStore } from '@/store/modules/tag'
+  import { useTagStore, type TagInfo } from '@/store/modules/tag'
   import {
     getDatasets,
-    deleteDataset as apiDeleteDataset,
+    deleteDatasets,
     uploadDataset,
-    type Dataset
+    type DatasetItemDTO
   } from '@/api/dataset'
   import DatasetUpload from './modules/dataset-upload.vue'
   import DatasetDrawer from './modules/dataset-drawer.vue'
@@ -349,10 +352,10 @@
 
   // 抽屉
   const drawerVisible = ref(false)
-  const currentDataset = ref<Dataset | null>(null)
+  const currentDataset = ref<DatasetItemDTO | null>(null)
 
   // 选中行
-  const selectedRows = ref<Dataset[]>([])
+  const selectedRows = ref<DatasetItemDTO[]>([])
 
   // 搜索与筛选
   const searchKeyword = ref('')
@@ -410,7 +413,7 @@
     return tagStore.tags.filter((t) => tagIds.includes(t.tag_id))
   }
 
-  const applyLocalFilters = (records: Dataset[]): Dataset[] => {
+  const applyLocalFilters = (records: DatasetItemDTO[]): DatasetItemDTO[] => {
     let result = records
     const params = searchParams as Record<string, any>
 
@@ -420,7 +423,7 @@
     }
 
     if (params.format) {
-      result = result.filter((d) => d.meta.format.toUpperCase() === params.format)
+      result = result.filter((d) => d.format.toUpperCase() === params.format)
     }
 
     if (params.status) {
@@ -437,7 +440,7 @@
     }
 
     if (params.tag) {
-      const tag = allTags.value.find((t) => t.tag_name === params.tag)
+      const tag = tagStore.tags.find((t: TagInfo) => t.tag_name === params.tag)
       if (tag) {
         result = result.filter((d) => d.tag_ids.includes(tag.tag_id))
       }
@@ -475,7 +478,7 @@
           prop: 'name',
           label: '数据集名称',
           width: 210,
-          formatter: (row: Dataset) => {
+          formatter: (row: DatasetItemDTO) => {
             return h(
               'span',
               {
@@ -489,20 +492,20 @@
         {
           prop: 'format',
           label: '格式',
-          formatter: (row: Dataset) => {
+          formatter: (row: DatasetItemDTO) => {
             return h(
               ElTag,
               {
                 size: 'small',
                 type:
-                  row.meta.format === 'json'
+                  row.format === 'json'
                     ? 'primary'
-                    : row.meta.format === 'csv'
+                    : row.format === 'csv'
                       ? 'warning'
                       : 'info',
                 effect: 'plain'
               },
-              () => row.meta.format.toUpperCase()
+              () => row.format.toUpperCase()
             )
           }
         },
@@ -510,7 +513,7 @@
           prop: 'tag_ids',
           label: '标签',
           width: 210,
-          formatter: (row: Dataset) => {
+          formatter: (row: DatasetItemDTO) => {
             const tags = resolveTags(row.tag_ids || [])
             if (tags.length === 0) {
               return h('span', { class: 'text-xs text-g-400' }, '—')
@@ -536,12 +539,12 @@
           prop: 'file_size',
           label: '大小',
           sortable: true,
-          formatter: (row: Dataset) => formatSize(row.meta.file_size)
+          formatter: (row: DatasetItemDTO) => formatSize(row.file_size)
         },
         {
           prop: 'status',
           label: '状态',
-          formatter: (row: Dataset) => {
+          formatter: (row: DatasetItemDTO) => {
             const config = getStatusConfig(row.status)
             return h('div', { class: 'flex items-center gap-1.5' }, [
               h('span', {
@@ -556,7 +559,7 @@
           prop: 'created_at',
           label: '创建时间',
           sortable: true,
-          formatter: (row: Dataset) => {
+          formatter: (row: DatasetItemDTO) => {
             const date = new Date(row.created_at)
             return date.toLocaleDateString('zh-CN', {
               year: 'numeric',
@@ -570,7 +573,7 @@
           label: '操作',
           width: 120,
           fixed: 'right',
-          formatter: (row: Dataset) =>
+          formatter: (row: DatasetItemDTO) =>
             h('div', { class: 'flex gap-1' }, [
               h(ArtButtonTable, {
                 type: 'edit',
@@ -585,7 +588,7 @@
       ]
     },
     transform: {
-      dataTransformer: (records: Dataset[]) => applyLocalFilters(records)
+      dataTransformer: (records: DatasetItemDTO[]) => applyLocalFilters(records)
     }
   })
 
@@ -619,7 +622,7 @@
     tagStore.fetchTags()
   })
 
-  const openDatasetDrawer = (row: Dataset, tab: string = 'meta') => {
+  const openDatasetDrawer = (row: DatasetItemDTO, tab: string = 'meta') => {
     currentDataset.value = row
     drawerVisible.value = true
     nextTick(() => {
@@ -876,24 +879,32 @@
   }
 
   // 批量删除
-  const handleBatchDelete = () => {
+  const handleBatchDelete = async () => {
     if (selectedRows.value.length === 0) return
-    ElMessageBox.confirm(
-      `确定要删除选中的 ${selectedRows.value.length} 个数据集吗？删除后不可恢复。`,
-      '批量删除',
-      {
-        confirmButtonText: '确定删除',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    ).then(() => {
-      ElMessage.success(`已删除 ${selectedRows.value.length} 个数据集`)
+    try {
+      await ElMessageBox.confirm(
+        `确定要删除选中的 ${selectedRows.value.length} 个数据集吗？删除后不可恢复。`,
+        '批量删除',
+        {
+          confirmButtonText: '确定删除',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+      const ids = selectedRows.value.map(row => row.id)
+      await deleteDatasets(ids)
+      ElMessage.success(`已删除 ${ids.length} 个数据集`)
       selectedRows.value = []
-    })
+      refreshData()
+    } catch (err: any) {
+      if (err !== 'cancel') {
+        ElMessage.error('删除失败: ' + (err.message || '未知错误'))
+      }
+    }
   }
 
   // 单行删除
-  const handleDelete = async (row: Dataset) => {
+  const handleDelete = async (row: DatasetItemDTO) => {
     try {
       await ElMessageBox.confirm(
         `确定要删除数据集「${row.name}」吗？删除后不可恢复。`,
@@ -904,7 +915,7 @@
           type: 'warning'
         }
       )
-      await apiDeleteDataset(row.id)
+      await deleteDatasets([row.id])
       ElMessage.success('删除成功')
       refreshData()
     } catch (err: any) {
@@ -914,7 +925,7 @@
     }
   }
 
-  const handleSelectionChange = (selection: Dataset[]) => {
+  const handleSelectionChange = (selection: DatasetItemDTO[]) => {
     selectedRows.value = selection
   }
 </script>

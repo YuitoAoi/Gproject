@@ -224,6 +224,22 @@ declare namespace Api {
         deduplication: DedupConfig
       }
 
+      /** 图生成任务配置（对接后端 DatasetProcessRequest） */
+      interface ProcessConfig {
+        api_key: string
+        synthesizer_url: string
+        synthesizer_model: string
+        mode: 'atomic' | 'multi_hop' | 'aggregated' | 'CoT' | 'multi_choice' | 'multi_answer' | 'fill_in_blank' | 'true_false'
+        data_format: 'Alpaca' | 'Sharegpt' | 'ChatML'
+        tokenizer?: string
+        chunk_size?: number
+        chunk_overlap?: number
+        quiz_samples?: number
+        partition_method?: 'dfs' | 'bfs' | 'leiden' | 'ece'
+        rpm?: number
+        tpm?: number
+      }
+
       /** 清洗预览样本 */
       interface CleaningSample {
         id: number
