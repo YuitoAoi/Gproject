@@ -85,15 +85,12 @@
               </div>
             </ElFormItem>
             <ElFormItem label="描述">
-              <ElInput
-                v-model="editForm.desc"
-                type="textarea"
-                :rows="3"
-                placeholder="数据集描述"
-              />
+              <ElInput v-model="editForm.desc" type="textarea" :rows="3" placeholder="数据集描述" />
             </ElFormItem>
             <ElFormItem>
-              <ElButton type="primary" :loading="saveLoading" @click="handleSave">保存修改</ElButton>
+              <ElButton type="primary" :loading="saveLoading" @click="handleSave"
+                >保存修改</ElButton
+              >
               <ElButton class="ml-2" @click="handleReset">重置</ElButton>
             </ElFormItem>
           </ElForm>
@@ -110,11 +107,7 @@
             <p class="text-sm">暂无预览数据</p>
           </div>
           <div v-else class="sample-list">
-            <div
-              v-for="(sample, idx) in samples"
-              :key="idx"
-              class="sample-item"
-            >
+            <div v-for="(sample, idx) in samples" :key="idx" class="sample-item">
               <div class="sample-index">{{ idx + 1 }}</div>
               <pre class="sample-content">{{ JSON.stringify(sample, null, 2) }}</pre>
             </div>
@@ -143,7 +136,12 @@
       </div>
     </template>
 
-    <ElDialog v-model="tagDialogVisible" title="编辑标签" width="420px" :close-on-click-modal="false">
+    <ElDialog
+      v-model="tagDialogVisible"
+      title="编辑标签"
+      width="420px"
+      :close-on-click-modal="false"
+    >
       <div class="tag-dialog-content">
         <div class="mb-4">
           <div class="text-sm text-g-500 mb-3">已有标签（点击选择）</div>
@@ -213,6 +211,7 @@
   import { ElMessage } from 'element-plus'
   import {
     getDatasetSample,
+    getDatasetTimes,
     requestDownloadToken,
     updateDataset,
     type Dataset,
@@ -278,7 +277,13 @@
   const formatDate = (dateStr: string | undefined): string => {
     if (!dateStr) return '—'
     const date = new Date(dateStr)
-    return date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+    return date.toLocaleDateString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   const resolvedTags = computed(() => {
@@ -336,10 +341,19 @@
     saveLoading.value = false
     if (res.success) {
       ElMessage.success('保存成功')
+      await fetchTimes()
       emit('refresh')
       drawerVisible.value = false
     } else {
       ElMessage.error(res.error || '保存失败')
+    }
+  }
+
+  const fetchTimes = async () => {
+    try {
+      await getDatasetTimes()
+    } catch {
+      // ignore
     }
   }
 
@@ -359,7 +373,10 @@
 
   const handleClean = () => {
     if (!props.dataset?.id) return
-    router.push({ path: '/data-management/data-processing', query: { datasetId: String(props.dataset.id) } })
+    router.push({
+      path: '/data-management/data-processing',
+      query: { datasetId: String(props.dataset.id) }
+    })
   }
 
   const tagDialogVisible = ref(false)

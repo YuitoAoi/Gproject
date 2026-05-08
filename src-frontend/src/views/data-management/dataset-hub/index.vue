@@ -20,34 +20,37 @@
       <!-- 左侧 40%：动态指标卡片 -->
       <div class="lg:col-span-2 grid grid-cols-2 gap-4">
         <!-- 总数据集卡片 -->
-        <div class="art-card p-5">
+        <div class="art-card p-5 relative">
           <div class="flex flex-col justify-between h-full">
             <div>
               <p class="text-sm text-g-500">数据集总量</p>
-              <div class="text-2xl font-medium mt-1">12</div>
-              <p class="text-base text-g-600 mt-1">今日新增</p>
-              <span class="font-medium text-success">+3个</span>
+              <div class="text-2xl font-medium mt-2">{{ stats.total }}</div>
+              <p class="text-base text-g-600 mt-2">今日新增</p>
+              <span class="font-medium text-success">+{{ stats.today_new }}</span>
+              <p class="text-base text-g-600 mt-2">今日修改</p>
+              <span class="font-medium text-primary">+{{ stats.today_modified }}</span>
             </div>
-            <div class="size-12 rounded-lg flex-cc bg-theme/10 mt-3">
-              <ArtSvgIcon icon="ri:archive-line" class="text-xl text-theme" />
-            </div>
+
+          </div>
+          <div class="size-12 rounded-lg flex-cc bg-theme/10 absolute bottom-4 right-4">
+            <ArtSvgIcon icon="ri:archive-line" class="text-xl text-theme" />
           </div>
         </div>
         <!-- 存储水位卡片 -->
-        <div class="art-card p-5">
+        <div class="art-card p-5 relative">
           <div class="flex flex-col justify-between h-full">
             <div>
               <p class="text-sm text-g-500">存储水位</p>
-              <div class="text-2xl font-medium mt-1">35%</div>
-              <p class="text-base text-g-600 mt-1">已用存储空间</p>
+              <div class="text-2xl font-medium mt-2">35%</div>
+              <p class="text-base text-g-600 mt-2">已用存储空间</p>
               <div class="mt-2">
                 <ElProgress :percentage="35" :stroke-width="6" :show-text="false" color="#E6A23C" />
               </div>
               <small class="text-g-500 mt-1">4.2 GB / 12 GB</small>
             </div>
-            <div class="size-12 rounded-lg flex-cc bg-warning/10 mt-3">
-              <ArtSvgIcon icon="ri:hard-drive-3-line" class="text-xl text-warning" />
-            </div>
+          </div>
+          <div class="size-12 rounded-lg flex-cc bg-warning/10 absolute bottom-4 right-4">
+            <ArtSvgIcon icon="ri:hard-drive-3-line" class="text-xl text-warning" />
           </div>
         </div>
       </div>
@@ -331,6 +334,7 @@
   import { useTagStore, type TagInfo } from '@/store/modules/tag'
   import {
     getDatasets,
+    getDatasetTimes,
     deleteDatasets,
     uploadDataset,
     type DatasetItemDTO
@@ -375,6 +379,21 @@
   }
 
   const uploadTasks = ref<UploadTaskItem[]>([])
+
+  // 数据集统计
+  const stats = ref({
+    total: 0,
+    today_new: 0,
+    today_modified: 0
+  })
+
+  const fetchTimes = async () => {
+    try {
+      stats.value = await getDatasetTimes()
+    } catch {
+      // ignore
+    }
+  }
 
   const runningCount = computed(
     () => uploadTasks.value.filter((t) => t.status === 'uploading').length
@@ -497,12 +516,7 @@
               ElTag,
               {
                 size: 'small',
-                type:
-                  row.format === 'json'
-                    ? 'primary'
-                    : row.format === 'csv'
-                      ? 'warning'
-                      : 'info',
+                type: row.format === 'json' ? 'primary' : row.format === 'csv' ? 'warning' : 'info',
                 effect: 'plain'
               },
               () => row.format.toUpperCase()
@@ -556,22 +570,24 @@
           }
         },
         {
-          prop: 'created_at',
-          label: '创建时间',
+          prop: 'updated_at',
+          label: '最后修改',
+          width: 210,
           sortable: true,
           formatter: (row: DatasetItemDTO) => {
-            const date = new Date(row.created_at)
+            const date = new Date(row.updated_at)
             return date.toLocaleDateString('zh-CN', {
               year: 'numeric',
               month: '2-digit',
-              day: '2-digit'
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit'
             })
           }
         },
         {
           prop: 'operation',
           label: '操作',
-          width: 120,
           fixed: 'right',
           formatter: (row: DatasetItemDTO) =>
             h('div', { class: 'flex gap-1' }, [
@@ -620,6 +636,7 @@
 
   onMounted(() => {
     tagStore.fetchTags()
+    fetchTimes()
   })
 
   const openDatasetDrawer = (row: DatasetItemDTO, tab: string = 'meta') => {
@@ -690,6 +707,7 @@
           completeUploadTask(task.id)
           ElMessage.success(`数据集「${fileInfo.name}」上传完成`)
           refreshData()
+          fetchTimes()
         }
       })
       .catch((err: any) => {
@@ -742,6 +760,7 @@
           completeUploadTask(uiTaskId)
           ElMessage.success(data.message || '上传任务完成')
           refreshData()
+          fetchTimes()
           return
         } else if (data.status === 'failure') {
           updatedTask.status = 'error'
@@ -849,6 +868,7 @@
             completeUploadTask(task.id)
             ElMessage.success(`数据集「${task.name}」上传完成`)
             refreshData()
+            fetchTimes()
           }
         })
         .catch((err: any) => {
@@ -891,11 +911,12 @@
           type: 'warning'
         }
       )
-      const ids = selectedRows.value.map(row => row.id)
+      const ids = selectedRows.value.map((row) => row.id)
       await deleteDatasets(ids)
       ElMessage.success(`已删除 ${ids.length} 个数据集`)
       selectedRows.value = []
       refreshData()
+      fetchTimes()
     } catch (err: any) {
       if (err !== 'cancel') {
         ElMessage.error('删除失败: ' + (err.message || '未知错误'))
@@ -918,6 +939,7 @@
       await deleteDatasets([row.id])
       ElMessage.success('删除成功')
       refreshData()
+      fetchTimes()
     } catch (err: any) {
       if (err !== 'cancel') {
         ElMessage.error('删除失败: ' + (err.message || '未知错误'))

@@ -1,4 +1,5 @@
 import abc
+from datetime import datetime
 
 from src.core.dataset import Dataset
 
@@ -35,4 +36,14 @@ class DatasetRepository(abc.ABC):
 
     @abc.abstractmethod
     def remove_batch(self, ids: list[int]) -> list[Exception] | None:
+        pass
+
+    @abc.abstractmethod
+    def count_by_owner_and_date(
+        self, owner_id: int, date: "datetime", field: str
+    ) -> int:
+        pass
+
+    @abc.abstractmethod
+    def count_modified_today(self, owner_id: int, today: "datetime") -> int:
         pass

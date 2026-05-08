@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 from src.services.interfaces.dataset_repository import DatasetRepository
@@ -70,6 +72,7 @@ class DatasetUpdateService:
         try:
             if ds.id is None:
                 raise ValueError("Dataset id cannot be None!")
+            ds.updated_at = datetime.now()
             self._repo.update(ds.id, ds)
         except Exception as e:
             return DatasetUpdateResponse(error=f"Failed to update dataset: {e}")

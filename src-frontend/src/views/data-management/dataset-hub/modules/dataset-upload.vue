@@ -22,8 +22,13 @@
         >
           <div class="flex-c flex-col py-6">
             <span class="ri:upload-cloud-2-line text-5xl text-g-300 mb-4"></span>
-            <div class="text-sm text-g-600 mb-1">将文件拖拽到此处，或 <em class="text-primary not-italic cursor-pointer">点击浏览本地文件</em></div>
-            <div class="text-xs text-g-400 mt-3">支持 .csv, .xlsx, .json, .txt, .md 格式。单文件最大限制 100MB</div>
+            <div class="text-sm text-g-600 mb-1"
+              >将文件拖拽到此处，或
+              <em class="text-primary not-italic cursor-pointer">点击浏览本地文件</em></div
+            >
+            <div class="text-xs text-g-400 mt-3"
+              >支持 .csv, .xlsx, .json, .txt, .md 格式。单文件最大限制 100MB</div
+            >
           </div>
         </ElUpload>
 
@@ -109,7 +114,7 @@
     uploadRef.value?.clearFiles()
   }
 
-const handleUpload = () => {
+  const handleUpload = () => {
     if (!selectedFile.value) return
 
     const file = selectedFile.value
@@ -242,8 +247,12 @@ const handleUpload = () => {
   }
 
   @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .animate-spin {

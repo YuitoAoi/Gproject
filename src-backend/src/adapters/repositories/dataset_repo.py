@@ -228,6 +228,43 @@ class DatasetRepositoryAdapter(DatasetRepository):
         except Exception as exc:
             return [exc]
 
+    def count_by_owner_and_date(
+        self, owner_id: int, date: datetime, field: str
+    ) -> int:
+        if field not in ("created_at", "updated_at"):
+            return 0
+        try:
+            with self._session() as session:
+                row = session.execute(
+                    text(
+                        "SELECT COUNT(*) FROM datasets "
+                        "WHERE owner_id = :owner_id "
+                        f"AND DATE({field}) = DATE(:date)"
+                    ),
+                    {"owner_id": owner_id, "date": date},
+                ).fetchone()
+                return row[0] if row else 0
+        except Exception:
+            _logger.exception("Failed to count datasets by owner and date")
+            return 0
+
+    def count_modified_today(self, owner_id: int, today: datetime) -> int:
+        try:
+            with self._session() as session:
+                row = session.execute(
+                    text(
+                        "SELECT COUNT(*) FROM datasets "
+                        "WHERE owner_id = :owner_id "
+                        "AND DATE(updated_at) = DATE(:today) "
+                        "AND DATE(created_at) < DATE(:today)"
+                    ),
+                    {"owner_id": owner_id, "today": today},
+                ).fetchone()
+                return row[0] if row else 0
+        except Exception:
+            _logger.exception("Failed to count modified today")
+            return 0
+
     # ── 内部工具 ───────────────────────────────────────────────
 
     @staticmethod

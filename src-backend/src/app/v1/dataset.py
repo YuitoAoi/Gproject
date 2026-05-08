@@ -8,6 +8,7 @@ from src.app.dependencies import get_current_user, get_services
 from src.services import (
     GetDatasetResponse,
     GetDatasetsResponse,
+    GetTimesResponse,
     ServiceFactory,
 )
 from src.services.dataset_import_export_service import (
@@ -72,6 +73,15 @@ def list_datasets(
 ):
     owner_id = int(current_user.user_id)
     return svc.get_datasets().get_all(owner_id=owner_id)
+
+
+@datasets_router.get("/times", response_model=GetTimesResponse)
+def get_dataset_times(
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    owner_id = int(current_user.user_id)
+    return svc.get_datasets().get_times(owner_id=owner_id)
 
 
 @router.post("/get", response_model=GetDatasetResponse)

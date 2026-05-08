@@ -34,6 +34,13 @@ class GetDatasetResponse(BaseModel):
     error: Optional[str] = None
 
 
+class GetTimesResponse(BaseModel):
+    total: int
+    today_new: int
+    today_modified: int
+    error: Optional[str] = None
+
+
 class GetDatasetsService:
     """数据集查询服务。"""
 
@@ -80,3 +87,31 @@ class GetDatasetsService:
             return GetDatasetResponse(dataset=self._to_dto(ds))
         except Exception as e:
             return GetDatasetResponse(error=str(e))
+
+    def get_times(self, owner_id: int) -> GetTimesResponse:
+        """返回指定用户的数据集统计：总量、今日新增、今日修改（排除今日新增）。"""
+        try:
+            today = datetime.now().replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
+
+            all_datasets = self._dataset_repo.find_by_owner(owner_id)
+            total = len(all_datasets)
+
+            today_new = self._dataset_repo.count_by_owner_and_date(
+                owner_id, today, "created_at"
+            )
+
+            today_modified = self._dataset_repo.count_modified_today(
+                owner_id, today
+            )
+
+            return GetTimesResponse(
+                total=total,
+                today_new=today_new,
+                today_modified=today_modified,
+            )
+        except Exception as e:
+            return GetTimesResponse(
+                total=0, today_new=0, today_modified=0, error=str(e)
+            )

@@ -17,6 +17,7 @@ from src.services.dataset_get_service import (
     GetDatasetResponse,
     GetDatasetsResponse,
     GetDatasetsService,
+    GetTimesResponse,
 )
 from src.services.jwt_service import JWTService
 from src.services.user_login_service import (
@@ -57,6 +58,7 @@ __all__ = [
     # 数据集
     "GetDatasetResponse",
     "GetDatasetsResponse",
+    "GetTimesResponse",
     # 用户
     "UserLoginRequest",
     "UserLoginResponse",

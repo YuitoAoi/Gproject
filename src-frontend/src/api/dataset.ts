@@ -77,7 +77,15 @@ export interface ProcessRequest {
   api_key: string
   synthesizer_url: string
   synthesizer_model: string
-  mode: 'atomic' | 'multi_hop' | 'aggregated' | 'CoT' | 'multi_choice' | 'multi_answer' | 'fill_in_blank' | 'true_false'
+  mode:
+    | 'atomic'
+    | 'multi_hop'
+    | 'aggregated'
+    | 'CoT'
+    | 'multi_choice'
+    | 'multi_answer'
+    | 'fill_in_blank'
+    | 'true_false'
   data_format: 'Alpaca' | 'Sharegpt' | 'ChatML'
   tokenizer?: string
   chunk_size?: number
@@ -242,6 +250,26 @@ export async function getDatasets(): Promise<{
     current: 1,
     size: response.items?.length || 0,
     total: response.total || 0
+  }
+}
+
+export async function getDatasetTimes(): Promise<{
+  total: number
+  today_new: number
+  today_modified: number
+}> {
+  const response = await request.get<{
+    total: number
+    today_new: number
+    today_modified: number
+    error: string | null
+  }>({
+    url: '/datasets/times'
+  })
+  return {
+    total: response.total ?? 0,
+    today_new: response.today_new ?? 0,
+    today_modified: response.today_modified ?? 0
   }
 }
 
