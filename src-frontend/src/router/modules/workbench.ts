@@ -120,12 +120,31 @@ export const modelFactoryRoutes: AppRouteRecord = {
 export const taskMonitoringRoutes: AppRouteRecord = {
   name: 'TaskMonitoring',
   path: '/task-monitoring',
-  component: '/task-monitoring/index',
+  component: '/index/index',
   meta: {
     title: 'menus.taskMonitoring.title',
     icon: 'ri:line-chart-line',
     roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
-  }
+  },
+  children: [
+    {
+      path: ':id',
+      name: 'TaskMonitoringDetail',
+      component: '/task-monitoring/index',
+      meta: {
+        title: 'menus.taskMonitoring.detail',
+        keepAlive: false,
+        roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
+      }
+    },
+    {
+      path: '',
+      redirect: '/workbench/task-dispatch',
+      meta: {
+        hideInMenu: true
+      }
+    }
+  ]
 }
 
 export const modelInferenceRoutes: AppRouteRecord = {

@@ -326,7 +326,8 @@
       "modelRegistry": "Model Registry"
     },
     "taskMonitoring": {
-      "title": "Task Monitoring"
+      "title": "Task Monitoring",
+      "detail": "Task Detail"
     },
     "modelInference": {
       "title": "Model Inference"

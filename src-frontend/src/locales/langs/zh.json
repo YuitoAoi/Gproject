@@ -320,7 +320,8 @@
       "modelRegistry": "模型管理"
     },
     "taskMonitoring": {
-      "title": "任务监控"
+      "title": "任务监控",
+      "detail": "任务详情"
     },
     "modelInference": {
       "title": "模型推理"

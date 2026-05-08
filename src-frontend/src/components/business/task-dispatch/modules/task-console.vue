@@ -1,0 +1,324 @@
+<template>
+  <div class="task-console">
+    <!-- 工具栏 -->
+    <div
+      class="toolbar flex items-center justify-between flex-wrap gap-3 px-5 py-3 border-b border-g-100"
+    >
+      <!-- 左侧：搜索筛选 -->
+      <div class="flex items-center gap-2 flex-wrap">
+        <ElInput
+          v-model="searchKeyword"
+          placeholder="搜索任务ID/名称..."
+          class="!w-52"
+          clearable
+          @keyup.enter="handleSearch"
+        >
+          <template #prefix>
+            <span class="ri:search-line text-g-400"></span>
+          </template>
+        </ElInput>
+        <ElSelect v-model="filterType" placeholder="类型: 全部" class="!w-32" clearable>
+          <ElOption label="指令微调" value="training" />
+          <ElOption label="数据清洗" value="cleaning" />
+          <ElOption label="格式导出" value="export" />
+          <ElOption label="模型推理" value="inference" />
+        </ElSelect>
+        <ElSelect v-model="filterStatus" placeholder="状态: 全部" class="!w-32" clearable>
+          <ElOption label="运行中" value="running" />
+          <ElOption label="排队等待" value="pending" />
+          <ElOption label="已完成" value="completed" />
+          <ElOption label="失败" value="failed" />
+        </ElSelect>
+        <ElButton type="primary" @click="handleSearch">
+          <span class="ri:search-line mr-1"></span>查询
+        </ElButton>
+        <ElButton @click="handleReset"> <span class="ri:refresh-line mr-1"></span>重置 </ElButton>
+      </div>
+
+      <!-- 右侧：批量操作 -->
+      <div class="flex items-center gap-2">
+        <ElButton @click="handleBatchClear">
+          <span class="ri:delete-bin-line mr-1"></span>批量清理历史记录
+        </ElButton>
+      </div>
+    </div>
+
+    <!-- 表格 -->
+    <ArtTable
+      :loading="loading"
+      :data="filteredData"
+      :columns="columns"
+      :pagination="pagination"
+      empty-height="400px"
+      @selection-change="handleSelectionChange"
+      @pagination:size-change="handleSizeChange"
+      @pagination:current-change="handleCurrentChange"
+    />
+
+    <!-- 强制终止二次确认弹窗 -->
+    <ElDialog v-model="terminateDialogVisible" title="确认强制终止" width="400px" append-to-body>
+      <p>确定要强制终止任务「{{ currentTask?.name }}」吗？此操作不可恢复。</p>
+      <template #footer>
+        <ElButton @click="terminateDialogVisible = false">取消</ElButton>
+        <ElButton type="danger" @click="confirmTerminate">确定终止</ElButton>
+      </template>
+    </ElDialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+  import ArtTable from '@/components/core/tables/art-table/index.vue'
+  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import { ElMessageBox, ElMessage } from 'element-plus'
+  import {
+    taskListMockData,
+    TASK_STATUS_CONFIG,
+    TASK_TYPE_CONFIG,
+    type TaskItem
+  } from '@/mock/modules/task-dispatch'
+
+  defineOptions({ name: 'TaskConsole' })
+
+  const router = useRouter()
+
+  const loading = ref(false)
+  const searchKeyword = ref('')
+  const filterType = ref('')
+  const filterStatus = ref('')
+  const selectedRows = ref<TaskItem[]>([])
+  const terminateDialogVisible = ref(false)
+  const currentTask = ref<TaskItem | null>(null)
+
+  const pagination = ref({
+    current: 1,
+    size: 10,
+    total: taskListMockData.length
+  })
+
+  const filteredData = computed(() => {
+    let result = [...taskListMockData]
+
+    if (searchKeyword.value) {
+      const keyword = searchKeyword.value.toLowerCase()
+      result = result.filter(
+        (item) =>
+          item.id.toLowerCase().includes(keyword) || item.name.toLowerCase().includes(keyword)
+      )
+    }
+
+    if (filterType.value) {
+      result = result.filter((item) => item.type === filterType.value)
+    }
+
+    if (filterStatus.value) {
+      result = result.filter((item) => item.status === filterStatus.value)
+    }
+
+    return result
+  })
+
+  const columns = computed(() => [
+    { type: 'selection', width: 50 },
+    { type: 'index', width: 60, label: '#' },
+    {
+      prop: 'id',
+      label: '任务 ID / 名称',
+      minWidth: 200,
+      formatter: (row: TaskItem) => {
+        return h(
+          'div',
+          {
+            class: 'task-name-cell'
+          },
+          [
+            h(
+              'span',
+              {
+                class: 'task-id text-g-500 font-mono text-xs'
+              },
+              `[${row.id}] `
+            ),
+            h(
+              'span',
+              {
+                class: 'task-name font-medium cursor-pointer hover:text-primary',
+                onClick: () => handleTaskClick(row)
+              },
+              row.name
+            )
+          ]
+        )
+      }
+    },
+    {
+      prop: 'type',
+      label: '类型/阶段',
+      width: 140,
+      formatter: (row: TaskItem) => {
+        const config = TASK_TYPE_CONFIG[row.type]
+        return h(
+          'div',
+          {
+            class: 'flex items-center gap-1.5'
+          },
+          [
+            h(ArtSvgIcon, {
+              icon: config.icon,
+              class: 'text-base',
+              style: { color: config.color }
+            }),
+            h('span', { class: 'text-sm' }, config.label)
+          ]
+        )
+      }
+    },
+    {
+      prop: 'status',
+      label: '状态',
+      width: 120,
+      formatter: (row: TaskItem) => {
+        const config = TASK_STATUS_CONFIG[row.status]
+        return h(
+          'div',
+          {
+            class: 'flex items-center gap-1.5'
+          },
+          [
+            h('span', {
+              class: 'inline-block w-2 h-2 rounded-full',
+              style: { backgroundColor: config.dot }
+            }),
+            h(
+              'span',
+              {
+                class: 'text-sm',
+                style: { color: config.color }
+              },
+              config.label
+            )
+          ]
+        )
+      }
+    },
+    {
+      prop: 'elapsedTime',
+      label: '已耗时',
+      width: 100,
+      formatter: (row: TaskItem) => {
+        return h('span', { class: 'font-mono text-sm' }, row.elapsedTime)
+      }
+    },
+    {
+      prop: 'operation',
+      label: '操作',
+      width: 120,
+      fixed: 'right',
+      formatter: (row: TaskItem) => {
+        return h('div', { class: 'flex gap-1' }, [
+          h(
+            ElButton,
+            {
+              size: 'small',
+              type: row.status === 'running' ? 'danger' : 'info',
+              text: row.status === 'running',
+              disabled: row.status === 'completed' || row.status === 'failed',
+              onClick: () => handleTerminate(row)
+            },
+            () => '终止'
+          )
+        ])
+      }
+    }
+  ])
+
+  const handleSearch = () => {
+    pagination.value.current = 1
+  }
+
+  const handleReset = () => {
+    searchKeyword.value = ''
+    filterType.value = ''
+    filterStatus.value = ''
+    pagination.value.current = 1
+  }
+
+  const handleSelectionChange = (selection: TaskItem[]) => {
+    selectedRows.value = selection
+  }
+
+  const handleSizeChange = (val: number) => {
+    pagination.value.size = val
+    pagination.value.current = 1
+  }
+
+  const handleCurrentChange = (val: number) => {
+    pagination.value.current = val
+  }
+
+  const handleTaskClick = (row: TaskItem) => {
+    router.push(`/task-monitoring/${row.id}`)
+  }
+
+  const handleTerminate = (row: TaskItem) => {
+    currentTask.value = row
+    terminateDialogVisible.value = true
+  }
+
+  const confirmTerminate = () => {
+    ElMessage.success(`任务「${currentTask.value?.name}」已强制终止`)
+    terminateDialogVisible.value = false
+    currentTask.value = null
+  }
+
+  const handleBatchClear = () => {
+    if (selectedRows.value.length === 0) {
+      ElMessage.warning('请先选择要清理的任务')
+      return
+    }
+    ElMessageBox.confirm(
+      `确定要清理选中的 ${selectedRows.value.length} 个历史任务吗？`,
+      '批量清理',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+      .then(() => {
+        ElMessage.success('已清理完成')
+        selectedRows.value = []
+      })
+      .catch(() => {})
+  }
+</script>
+
+<style lang="scss" scoped>
+  .task-console {
+    background: var(--el-bg-color);
+    border-radius: var(--custom-radius, 8px);
+    border: 1px solid var(--art-gray-200);
+  }
+
+  .toolbar {
+    background: var(--el-fill-color-lighter);
+    border-radius: var(--custom-radius, 8px) var(--custom-radius, 8px) 0 0;
+  }
+
+  :deep(.task-name-cell) {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    .task-id {
+      color: var(--art-gray-500);
+    }
+
+    .task-name {
+      color: var(--art-gray-800);
+
+      &:hover {
+        color: var(--el-color-primary);
+      }
+    }
+  }
+</style>

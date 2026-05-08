@@ -6,7 +6,7 @@
         <div>
           <h1 class="page-header__title">数据集管理</h1>
           <p class="page-header__subtitle"
-            >这里是您的预训练数据资产池，支持多格式解析与断点续传。</p
+            >这里是您的预训练数据资产池，支持多格式解析与分块上传。</p
           >
         </div>
         <ElButton class="page-header__button" size="large" @click="uploadVisible = true" v-ripple>
