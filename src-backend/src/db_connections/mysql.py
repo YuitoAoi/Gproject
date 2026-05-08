@@ -143,7 +143,7 @@ class MysqlConnection(DatabaseConnection):
     def _on_connect(dbapi_connection: Any, connection_record: Any) -> None:  # pragma: no cover
         """连接建立后回调：设置 utf8mb4。"""
         cursor = dbapi_connection.cursor()
-        cursor.execute("SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci")
+        cursor.execute("SET NAMES utf8mb4")
         cursor.close()
 
     def _ensure_started(self) -> None:

@@ -62,13 +62,15 @@ class DatasetRepositoryAdapter(DatasetRepository):
         with self._session() as s:
             try:
                 for idx_def in [
-                    "CREATE INDEX IF NOT EXISTS idx_datasets_owner_id ON datasets (owner_id)",
-                    "CREATE INDEX IF NOT EXISTS idx_datasets_status ON datasets (status)",
+                    "CREATE INDEX idx_datasets_owner_id ON datasets (owner_id)",
+                    "CREATE INDEX idx_datasets_status ON datasets (status)",
                 ]:
                     s.execute(text(idx_def))
                 s.commit()
-            except Exception:
+            except Exception as e:
                 s.rollback()
+                if "Duplicate key name" in str(e) or "1061" in str(e):
+                    return
                 _logger.exception("Failed to ensure dataset indexes")
                 raise
 

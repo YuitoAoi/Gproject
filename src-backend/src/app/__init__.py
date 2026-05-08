@@ -35,6 +35,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     existing = user_repo.find_by_id(0)
 
     if existing is None:
+        conflict = user_repo.find_by_email(config.SUPER_USER_EMAIL)
+        if conflict is not None:
+            if conflict.id != 0:
+                user_repo.remove(conflict.id)
+                logger.info(f"Removed conflicting user (id={conflict.id}) with email {config.SUPER_USER_EMAIL}")
+            else:
+                conflict.email = "old_" + conflict.email
+                user_repo.update(0, conflict)
+
         now = datetime.now()
         s = db_conn.new_session()
         try:

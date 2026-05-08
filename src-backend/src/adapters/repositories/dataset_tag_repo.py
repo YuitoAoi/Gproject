@@ -51,12 +51,14 @@ class DatasetTagRepositoryAdapter(DatasetTagRepository):
         with self._session() as s:
             try:
                 s.execute(text(
-                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_dataset_tags_owner_name "
+                    "CREATE UNIQUE INDEX uq_dataset_tags_owner_name "
                     "ON dataset_tags (owner_id, name)"
                 ))
                 s.commit()
-            except Exception:
+            except Exception as e:
                 s.rollback()
+                if "Duplicate key name" in str(e) or "1061" in str(e):
+                    return
                 _logger.exception("Failed to ensure tag unique index")
 
     # ── DatasetTagRepository 实现 ─────────────────────────────

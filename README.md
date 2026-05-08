@@ -80,9 +80,25 @@ graph LR
 
 ```bash
 git clone
-cd ./docker
-docker compose up
+
+# 验证配置
+docker-compose config
+# 启动所有服务（首次构建）
+docker-compose up -d --build
+# 查看服务状态
+docker-compose ps
+# 查看日志
+docker-compose logs -f gproject-backend   # 查看后端日志
+docker-compose logs -f gproject-frontend   # 查看前端日志
+# 停止服务
+docker-compose down
 ```
+服务说明  
+| gproject-backend | FastAPI 后端 | 8088 |
+| gproject-frontend | Vue 3 前端 | 3000 |
+| gproject-celery | Celery 异步任务 | - |
+| gproject-mysql | MySQL 数据库 | 3306 |
+| gproject-redis | Redis 缓存+Broker | 6379 |
 
 - ### 从源码部署 (DEV)
 

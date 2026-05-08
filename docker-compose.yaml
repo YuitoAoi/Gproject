@@ -1,7 +1,7 @@
 services:
   # Mysql 服务
   mysql:
-    image: mysql:latest
+    image: mysql:8.0.36
     container_name: gproject-mysql
     restart: unless-stopped
     environment:
@@ -13,7 +13,7 @@ services:
       - mysql_data:/var/lib/mysql
     command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pPoi114514."]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pPoi114514." ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,7 +27,7 @@ services:
     ports:
       - "6379:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -36,12 +36,12 @@ services:
   # Backend
   gproject-backend:
     build:
-      context: ../src-backend
-      dockerfile: ../docker/backend/DockerFile
+      context: ./src-backend
+      dockerfile: DockerFile
     container_name: gproject-backend
     restart: unless-stopped
     ports:
-      - "8800:8000"
+      - "8088:8088"
     environment:
       DATABASE_URL: "mysql+pymysql://root:Poi114514.@mysql:3306/llama_factory"
       REDIS_URL: "redis://redis:6379/0"
@@ -53,10 +53,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      graphgen:
-        condition: service_healthy
-      llamafactory:
-        condition: service_healthy
+      # graphgen:
+      #   condition: service_healthy
+      # llamafactory:
+      #   condition: service_healthy
     volumes:
       - dataset_data:/app/datasets
     networks:
@@ -64,34 +64,28 @@ services:
   # Frontend
   gproject-frontend:
     build:
-      context: ../src-frontend
-      dockerfile: ../docker/frontend/DockerFile
+      context: ./src-frontend
+      dockerfile: Dockerfile
     container_name: gproject-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-
-    environment:
-      HOST: "localhost"
-      HTTP_PORT: "80"
-      HTTPS_PORT: "443"
+      - "3000:3000"
     depends_on:
       - gproject-backend
     networks:
       - gproject-net
-      
+
   celery-worker:
     build:
-      context: ../src-celery
+      context: ./src-celery
       dockerfile: Dockerfile
     container_name: gproject-celery
     restart: unless-stopped
-    command: celery -A src.tasks.celery worker --loglevel=info --pool=solo
+    command: celery -A main worker --loglevel=info --pool=solo
     environment:
       REDIS_URL: "redis://redis:6379/0"
       BACKEND_HOST: "gproject-backend"
-      BACKEND_PORT: "8000"
+      BACKEND_PORT: "8088"
     depends_on:
       redis:
         condition: service_healthy
@@ -101,63 +95,62 @@ services:
       - dataset_data:/app/datasets
     networks:
       - gproject-net
-
   # GraphGen API 服务
-  graphgen:
-    build:
-      context: ../../GraphGen
-    container_name: gproject-graphgen
-    restart: unless-stopped
-    ports:
-      - "8001:8001"
-    environment:
-      GRAPHGEN_HOST: "0.0.0.0"
-      GRAPHGEN_PORT: "8001"
-      GRAPHGEN_DATASETS_DIR: "/app/datasets"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
-      interval: 15s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-    volumes:
-      - dataset_data:/app/datasets
-    networks:
-      - gproject-net
+  # graphgen:
+  #   build:
+  #     context: ../../GraphGen
+  #   container_name: gproject-graphgen
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8001:8001"
+  #   environment:
+  #     GRAPHGEN_HOST: "0.0.0.0"
+  #     GRAPHGEN_PORT: "8001"
+  #     GRAPHGEN_DATASETS_DIR: "/app/datasets"
+  #   healthcheck:
+  #     test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
+  #     interval: 15s
+  #     timeout: 10s
+  #     retries: 3
+  #     start_period: 30s
+  #   volumes:
+  #     - dataset_data:/app/datasets
+  #   networks:
+  #     - gproject-net
 
   # LlamaFactory 服务
-  llamafactory:
-    image: hiyouga/llamafactory:latest
-    container_name: llamafactory
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
-    # 如果上面的 deploy 写法不生效，可以改用 runtime: nvidia（需要 compose v2.3）
-    # runtime: nvidia
-    ports:
-      - "7860:7860"   # Web UI
-      - "8000:8000"   # API 服务
-    volumes:
-      # 挂载你的数据/模型/配置目录
-      - ./data:/app/data
-      - ./examples:/app/examples   # 如果希望使用自定义的推理配置文件
-    environment:
-      - API_PORT=8000
-      - GRADIO_SERVER_PORT=7860
-      - HF_TOKEN=${HF_TOKEN}
-      - USE_MODELSCOPE_HUB=0
-      # - CUDA_VISIBLE_DEVICES=0,1 # 如需指定显卡
-    command: ["llamafactory-cli", "api", "examples/inference/llama3_lora_sft.yaml"]
-    # 如果需要交互式 shell 而不是自动启动服务，可以注释掉 command
-    # stdin_open: true
-    # tty: true
-    restart: unless-stopped
-    networks:
-      - gproject-net
+  # llamafactory:
+  #   image: hiyouga/llamafactory:latest
+  #   container_name: llamafactory
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [ gpu ]
+  #   # 如果上面的 deploy 写法不生效，可以改用 runtime: nvidia（需要 compose v2.3）
+  #   # runtime: nvidia
+  #   ports:
+  #     - "7860:7860" # Web UI
+  #     - "8000:8000" # API 服务
+  #   volumes:
+  #     # 挂载你的数据/模型/配置目录
+  #     - ./data:/app/data
+  #     - ./examples:/app/examples # 如果希望使用自定义的推理配置文件
+  #   environment:
+  #     - API_PORT=8000
+  #     - GRADIO_SERVER_PORT=7860
+  #     - HF_TOKEN=${HF_TOKEN}
+  #     - USE_MODELSCOPE_HUB=0
+  #     # - CUDA_VISIBLE_DEVICES=0,1 # 如需指定显卡
+  #   command: [ "llamafactory-cli", "api", "examples/inference/llama3_lora_sft.yaml" ]
+  #   # 如果需要交互式 shell 而不是自动启动服务，可以注释掉 command
+  #   # stdin_open: true
+  #   # tty: true
+  #   restart: unless-stopped
+  #   networks:
+  #     - gproject-net
 
 volumes:
   mysql_data:
