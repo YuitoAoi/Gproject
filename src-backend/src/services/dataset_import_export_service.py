@@ -348,8 +348,10 @@ class DatasetImportExportService:
 
         try:
             ext = os.path.splitext(session.filename)[1].lstrip(".").lower()
-            if ext not in ("csv", "xlsx", "json"):
-                ext = "json"
+            if ext not in ("txt","md","csv", "xlsx", "json"):
+                return CompleteUploadResponse(
+                    error = ValueError("File type not supported.")
+                )
 
             meta = DatasetMeta(format=ext, file_path="", file_size=session.file_size)
             entity = Dataset.new(

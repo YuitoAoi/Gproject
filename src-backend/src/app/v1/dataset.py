@@ -46,7 +46,7 @@ download_router = APIRouter(tags=["download"])
 
 
 def _check_owner(svc, dataset_id: int, owner_id: int) -> JSONResponse | None:
-    ds = svc.dataset_repo.find(dataset_id)
+    ds = svc.dataset_repo.find_by_id(dataset_id)
     if ds is None:
         return JSONResponse(
             {"success": False, "error": f"Dataset not found: {dataset_id}"},

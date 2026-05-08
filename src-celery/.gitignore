@@ -1,0 +1,13 @@
+# Python temp
+
+poetry.lock
+__pycache__/
+.venv/
+
+# Local datas
+data/
+
+# Test file
+
+.pytest_cache/
+.coverage

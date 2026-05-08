@@ -18,12 +18,12 @@
           :on-exceed="handleExceed"
           :on-change="handleFileChange"
           :on-remove="handleFileRemove"
-          accept=".csv,.xlsx,.json"
+          accept=".csv,.xlsx,.json,.txt,.md"
         >
           <div class="flex-c flex-col py-6">
             <span class="ri:upload-cloud-2-line text-5xl text-g-300 mb-4"></span>
             <div class="text-sm text-g-600 mb-1">将文件拖拽到此处，或 <em class="text-primary not-italic cursor-pointer">点击浏览本地文件</em></div>
-            <div class="text-xs text-g-400 mt-3">支持 .csv, .xlsx, .json 格式。单文件最大限制 100MB</div>
+            <div class="text-xs text-g-400 mt-3">支持 .csv, .xlsx, .json, .txt, .md 格式。单文件最大限制 100MB</div>
           </div>
         </ElUpload>
 
@@ -78,8 +78,8 @@
 
   const handleFileChange = (file: any, _files: any[]) => {
     const ext = file.name.split('.').pop()?.toLowerCase()
-    if (!['csv', 'xlsx', 'json'].includes(ext || '')) {
-      ElMessage.error('仅支持 CSV、XLSX、JSON 格式文件')
+    if (!['csv', 'xlsx', 'json', 'txt', 'md'].includes(ext || '')) {
+      ElMessage.error('仅支持 CSV、XLSX、JSON、TXT、MD 格式文件')
       uploadRef.value?.clearFiles()
       return
     }
