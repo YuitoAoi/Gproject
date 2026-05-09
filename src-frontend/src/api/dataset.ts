@@ -4,6 +4,7 @@ export interface DatasetMeta {
   format: 'csv' | 'xlsx' | 'json'
   file_path: string
   file_size: number
+  output_path?: string
 }
 
 export interface Dataset {

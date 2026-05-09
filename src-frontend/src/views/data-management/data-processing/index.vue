@@ -350,17 +350,21 @@
     try {
       const result = await getDatasets()
       datasets.value = result.records
-
-      // 场景B：从数据集管理页的"去清洗"按钮跳转，携带dataset_id
-      const datasetId = route.query.datasetId
-      if (datasetId) {
-        selectedDatasetId.value = Number(datasetId)
-        currentStep.value = 2
-      }
     } finally {
       loading.value = false
     }
   })
+
+  watch(
+    () => route.query.datasetId,
+    (newId) => {
+      if (newId) {
+        selectedDatasetId.value = Number(newId)
+        currentStep.value = 2
+      }
+    },
+    { immediate: true }
+  )
 
   onUnmounted(() => {
     stopProgressWs()

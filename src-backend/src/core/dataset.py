@@ -12,6 +12,7 @@ class DatasetMeta(BaseModel):
     format: Literal["txt","md","csv", "xlsx", "json", "jsonl"] = Field(..., description="数据格式")
     file_path: str
     file_size: int
+    output_path: Optional[str] = None
 
     # ── 序列化 ──────────────────────────────────────────────
 

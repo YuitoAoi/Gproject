@@ -220,7 +220,7 @@ class DatasetProcessService:
         elif result.status == "done":
             ds.status = 2
             if result.output_path:
-                ds.meta.file_path = result.output_path
+                ds.meta.output_path = result.output_path
             self._dataset_repo.update(dataset_id, ds)
         elif result.status == "failed":
             ds.status = -1
