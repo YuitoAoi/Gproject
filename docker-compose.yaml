@@ -98,7 +98,9 @@ services:
       - gproject-net
   # GraphGen API 服务
   graphgen:
-    image: makerlinck/graphgen-api:1.0.0
+    build:
+      context: ./src-graphgen_api
+      dockerfile: Dockerfile
     container_name: gproject-graphgen
     restart: unless-stopped
     ports:

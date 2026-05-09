@@ -56,7 +56,7 @@
     <div class="wizard-footer" v-if="currentStep !== 3">
       <ElButton @click="handleCancel">取消</ElButton>
       <div class="flex gap-3">
-        <ElButton v-if="currentStep > 1" @click="currentStep--"> 上一步 </ElButton>
+        <ElButton v-if="currentStep > 1" @click="goPreviousStep"> 上一步 </ElButton>
         <ElButton
           v-if="currentStep === 1"
           type="primary"
@@ -81,12 +81,27 @@
 
 <script setup lang="ts">
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { getDatasets, getDatasetDetail, processDataset, type DatasetItemDTO } from '@/api/dataset'
+  import { getDatasets, processDataset, type DatasetItemDTO } from '@/api/dataset'
   import Step1DataSource from './modules/step1-datasource.vue'
   import Step2Mapping from './modules/step2-mapping.vue'
   import Step3Execution from './modules/step3-execution.vue'
 
   defineOptions({ name: 'DataProcessingPage' })
+
+  const DEFAULT_PROCESS_CONFIG: Api.DataManage.DataProcessing.ProcessConfig = {
+    api_key: 'sk-cp-VkpJUr7Be-n8QMuOGwjaeWl5_LWjlj17SV0BFQ-hEkt1x2Fh9hjL8zLvjwhT-Rqc0tXx_Mz4T97dHlM2r6mzGUane7TZNquKlVJyPfNmt4UaVNeShX91Xps',
+    synthesizer_url: 'https://api.minimaxi.com/v1',
+    synthesizer_model: 'MiniMax-M2.7',
+    mode: 'atomic',
+    data_format: 'Alpaca',
+    tokenizer: 'cl100k_base',
+    chunk_size: 1024,
+    chunk_overlap: 100,
+    quiz_samples: 2,
+    partition_method: 'ece',
+    rpm: 1000,
+    tpm: 50000,
+  }
 
   const router = useRouter()
   const route = useRoute()
@@ -104,20 +119,7 @@
   const datasets = ref<DatasetItemDTO[]>([])
   const submitting = ref(false)
 
-  const processConfig = reactive<Api.DataManage.DataProcessing.ProcessConfig>({
-    api_key: '',
-    synthesizer_url: 'https://api.openai.com/v1',
-    synthesizer_model: 'gpt-4',
-    mode: 'atomic',
-    data_format: 'Alpaca',
-    tokenizer: 'cl100k_base',
-    chunk_size: 1024,
-    chunk_overlap: 100,
-    quiz_samples: 2,
-    partition_method: 'ece',
-    rpm: 1000,
-    tpm: 50000
-  })
+  const processConfig = reactive<Api.DataManage.DataProcessing.ProcessConfig>({ ...DEFAULT_PROCESS_CONFIG })
 
   const taskInfo = ref<Api.DataManage.DataProcessing.ProcessingTask | null>(null)
   const taskLogs = ref<Api.DataManage.DataProcessing.ProcessingLog[]>([])
@@ -140,6 +142,18 @@
 
   function handleConfigUpdate(config: Api.DataManage.DataProcessing.ProcessConfig) {
     Object.assign(processConfig, config)
+  }
+
+  function goPreviousStep() {
+    if (currentStep.value === 2) {
+      previousDatasetId.value = selectedDatasetId.value
+    }
+    if (currentStep.value === 3) {
+      stopProgressWs()
+      taskInfo.value = null
+      taskLogs.value = []
+    }
+    currentStep.value--
   }
 
   async function handleNextStep() {
@@ -180,76 +194,109 @@
         finalCount: 0
       }
 
-      // 初始化 mock 日志
       taskLogs.value = []
       appendLog('INFO', `任务已提交，Job ID: ${response.job_id}`)
-      appendLog('INFO', `正在初始化处理流程...`)
       appendLog('INFO', `使用模型: ${processConfig.synthesizer_model}`)
       appendLog('INFO', `生成模式: ${processConfig.mode}`)
       appendLog('INFO', `输出格式: ${processConfig.data_format}`)
 
-      // 启动轮询
-      startPolling()
-
-      // 启动 mock 日志模拟
-      startMockLogs()
+      startProgressWs(response.job_id)
     } finally {
       submitting.value = false
     }
   }
 
   function handleReturnPool() {
-    stopPolling()
+    stopProgressWs()
     router.push({ name: 'DatasetHub' })
   }
 
-  const pollingInterval = ref<ReturnType<typeof setInterval> | null>(null)
-  const mockLogInterval = ref<ReturnType<typeof setInterval> | null>(null)
-  let mockProgress = 0
+  // ── WebSocket 进度连接 ────────────────────────────────────
 
-  function startPolling() {
-    stopPolling()
-    pollingInterval.value = setInterval(async () => {
-      if (!selectedDatasetId.value || !taskInfo.value) return
+  let progressWs: WebSocket | null = null
 
+  function resolveWsBase(): string {
+    const env = import.meta.env.VITE_WS_URL
+    if (env) return env
+    const api = import.meta.env.VITE_API_URL
+    if (typeof api === 'string' && api.startsWith('http')) {
+      return api.replace(/^http/, 'ws')
+    }
+    return 'ws://localhost:8088'
+  }
+
+  function startProgressWs(jobId: string) {
+    stopProgressWs()
+    const url = `${resolveWsBase()}/ws/progress?job_id=${jobId}`
+    progressWs = new WebSocket(url)
+
+    progressWs.onopen = () => {
+      appendLog('INFO', '已连接任务进度通道')
+    }
+
+    progressWs.onmessage = (event: MessageEvent) => {
       try {
-        const dataset = await getDatasetDetail(selectedDatasetId.value)
-        if (!dataset) return
+        const data = JSON.parse(event.data)
+        const { stage, progress, status, message } = data
 
-        // 根据 dataset status 推断任务状态
-        // status: 0=初始化, 1=处理中, 2=已完成, 3=失败
-        if (taskInfo.value.status === 'pending' || taskInfo.value.status === 'processing') {
-          if (dataset.status === 2) {
+        if (taskInfo.value) {
+          taskInfo.value.progress = Math.round(progress * 100)
+          taskInfo.value.status = status === 'done'
+            ? 'completed'
+            : status === 'failed' || status === 'cancelled'
+              ? 'failed'
+              : status === 'running'
+                ? 'processing'
+                : 'pending'
+          if (taskInfo.value.status === 'processing') {
+            const remaining = Math.max(1, Math.round((1 - progress) * 30))
+            taskInfo.value.eta = `约 ${remaining} 秒`
+          } else if (taskInfo.value.status === 'completed') {
+            taskInfo.value.eta = '已完成'
+          }
+        }
+
+        if (stage && message) {
+          const level = status === 'failed' ? 'ERROR' as const : 'INFO' as const
+          appendLog(level, `${message}`)
+        }
+
+        if (status === 'done') {
+          if (taskInfo.value) {
             taskInfo.value.status = 'completed'
             taskInfo.value.progress = 100
             taskInfo.value.eta = '已完成'
-            taskInfo.value.finalCount =
-              taskInfo.value.rawCount > 0 ? Math.floor(taskInfo.value.rawCount * 0.7) : 0
-            appendLog('INFO', '任务执行完成！')
-            appendLog('INFO', `最终产出: ${taskInfo.value.finalCount} 条`)
-            stopPolling()
-          } else if (dataset.status === 3) {
-            taskInfo.value.status = 'failed'
-            appendLog('ERROR', '任务执行失败')
-            stopPolling()
-          } else if (dataset.status === 1) {
-            taskInfo.value.status = 'processing'
           }
+          appendLog('INFO', '任务执行完成！')
+          stopProgressWs()
+        } else if (status === 'failed') {
+          if (taskInfo.value) {
+            taskInfo.value.status = 'failed'
+          }
+          appendLog('ERROR', `任务失败: ${message || '未知错误'}`)
+          stopProgressWs()
         }
-      } catch {
-        /* 忽略轮询错误 */
+      } catch (e) {
+        console.error('[WS] 消息解析失败:', e)
       }
-    }, 3000)
+    }
+
+    progressWs.onclose = () => {
+      appendLog('WARN', '进度通道已断开')
+      progressWs = null
+    }
+
+    progressWs.onerror = () => {
+      if (taskInfo.value && taskInfo.value.status !== 'completed' && taskInfo.value.status !== 'failed') {
+        appendLog('WARN', '进度通道连接异常')
+      }
+    }
   }
 
-  function stopPolling() {
-    if (pollingInterval.value) {
-      clearInterval(pollingInterval.value)
-      pollingInterval.value = null
-    }
-    if (mockLogInterval.value) {
-      clearInterval(mockLogInterval.value)
-      mockLogInterval.value = null
+  function stopProgressWs() {
+    if (progressWs) {
+      progressWs.close(1000)
+      progressWs = null
     }
   }
 
@@ -259,59 +306,13 @@
     taskLogs.value.push({ time, level, message })
   }
 
-  function startMockLogs() {
-    if (mockLogInterval.value) {
-      clearInterval(mockLogInterval.value)
-    }
-    mockProgress = 0
-
-    const phases = [
-      { msg: '正在连接 LLM 服务...', delay: 800 },
-      { msg: 'LLM 服务连接成功', delay: 1200 },
-      { msg: '开始加载数据集...', delay: 800 },
-      { msg: '数据集加载完成，共 10,000 条记录', delay: 1000 },
-      { msg: '开始图构建阶段...', delay: 1500 },
-      { msg: '图节点提取中: 10%', delay: 2000 },
-      { msg: '图节点提取中: 25%', delay: 2500 },
-      { msg: '图边关系建立中: 40%', delay: 2000 },
-      { msg: '图分区完成，开始生成问答对...', delay: 1500 },
-      { msg: '问答生成中: 60%', delay: 3000 },
-      { msg: '问答生成中: 80%', delay: 2500 },
-      { msg: '数据格式化输出中...', delay: 1000 }
-    ]
-
-    let idx = 0
-    const runPhase = () => {
-      if (
-        idx >= phases.length ||
-        !taskInfo.value ||
-        taskInfo.value.status === 'completed' ||
-        taskInfo.value.status === 'failed'
-      ) {
-        return
-      }
-      const phase = phases[idx]
-      appendLog('INFO', phase.msg)
-      mockProgress = Math.min(mockProgress + 8, 92)
-      if (taskInfo.value) {
-        taskInfo.value.progress = mockProgress
-        const remaining = Math.max(1, Math.round((100 - mockProgress) * 0.3))
-        taskInfo.value.eta = `约 ${remaining} 秒`
-      }
-      idx++
-      mockLogInterval.value = setTimeout(runPhase, phase.delay)
-    }
-
-    runPhase()
-  }
-
   function handleBack() {
-    stopPolling()
+    stopProgressWs()
     router.push({ name: 'DatasetHub' })
   }
 
   function handleCancel() {
-    stopPolling()
+    stopProgressWs()
     router.push({ name: 'DatasetHub' })
   }
 
@@ -320,38 +321,23 @@
   }
 
   function resetProcessConfig() {
-    Object.assign(processConfig, {
-      api_key: '',
-      synthesizer_url: 'https://api.openai.com/v1',
-      synthesizer_model: 'gpt-4',
-      mode: 'atomic',
-      data_format: 'Alpaca',
-      tokenizer: 'cl100k_base',
-      chunk_size: 1024,
-      chunk_overlap: 100,
-      quiz_samples: 2,
-      partition_method: 'ece',
-      rpm: 1000,
-      tpm: 50000
-    })
+    Object.assign(processConfig, { ...DEFAULT_PROCESS_CONFIG })
   }
 
   function handleStepClick(step: number) {
     if (!canClickStep(step)) return
 
     if (currentStep.value === 3) {
-      stopPolling()
+      stopProgressWs()
     }
 
     if (step === 1) {
       previousDatasetId.value = selectedDatasetId.value
-      selectedDatasetId.value = null
       taskInfo.value = null
       taskLogs.value = []
     }
 
     if (step === 2) {
-      resetProcessConfig()
       taskInfo.value = null
       taskLogs.value = []
     }
@@ -374,6 +360,10 @@
     } finally {
       loading.value = false
     }
+  })
+
+  onUnmounted(() => {
+    stopProgressWs()
   })
 </script>
 

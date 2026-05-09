@@ -272,6 +272,14 @@ declare namespace Api {
         level: 'INFO' | 'WARN' | 'ERROR'
         message: string
       }
+
+      /** WebSocket 推送的阶段进度消息 */
+      interface StageProgress {
+        stage: string
+        progress: number
+        message: string
+        status: string
+      }
     }
   }
 

@@ -139,6 +139,10 @@ from src.app.v1.dataset import download_router
 app.include_router(router)
 app.include_router(download_router)
 
+from src.app.v1.ws_progress import router as ws_router
+
+app.include_router(ws_router)
+
 from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,

@@ -15,12 +15,17 @@ _CALLBACK_URL = (
 )
 
 
-def _publish_progress(task_id: str, stage: str, progress: float, message: str):
+def _publish_progress(job_id: str, stage: str, progress: float, message: str, status: str = ""):
     try:
         r = redis.Redis.from_url(config.REDIS_URL, decode_responses=True)
         r.publish(
-            f"progress:{task_id}",
-            json.dumps({"stage": stage, "progress": progress, "message": message}),
+            f"progress:{job_id}",
+            json.dumps({
+                "stage": stage,
+                "progress": progress,
+                "message": message,
+                "status": status,
+            }),
         )
         r.close()
     except Exception:
@@ -30,8 +35,7 @@ def _publish_progress(task_id: str, stage: str, progress: float, message: str):
 @celery_app.task(name="dataset.monitor_graphgen", bind=True, max_retries=0)
 def monitor_graphgen_job(self, job_id: str, dataset_id: int) -> Dict[str, Any]:
     """轮询 GraphGen 直到完成/失败，HTTP 回调 backend 更新 status。"""
-    task_id = self.request.id
-    _publish_progress(task_id, "monitoring", 0.0, f"开始监控 job={job_id}")
+    _publish_progress(job_id, "monitoring", 0.0, f"开始监控 job={job_id}", "pending")
 
     gg_url = config.GRAPHGEN_API_URL.rstrip("/api/v1")
     deadline = time.time() + 15 * 60
@@ -48,23 +52,24 @@ def monitor_graphgen_job(self, job_id: str, dataset_id: int) -> Dict[str, Any]:
             data = resp.json()
             status = data.get("status")
             progress = data.get("progress", 0)
-            _publish_progress(task_id, status, progress, f"GraphGen: {status}")
+            stage = data.get("stage", status)
+            _publish_progress(job_id, stage, progress, f"GraphGen: {status}", status)
 
             if status in ("done", "failed"):
                 _callback_backend(job_id, dataset_id, data)
-                _publish_progress(task_id, status, 1.0, f"回调完成: {status}")
+                _publish_progress(job_id, status, 1.0, f"回调完成: {status}", status)
                 return {"success": status == "done", "status": status}
 
         except Exception as exc:
-            _publish_progress(task_id, "retry", 0,
-                              f"GraphGen 不可达，30s 后重试: {exc}")
+            _publish_progress(job_id, "retry", 0,
+                              f"GraphGen 不可达，30s 后重试: {exc}", "running")
             time.sleep(30)
             continue
 
         time.sleep(5)
 
     _callback_backend(job_id, dataset_id, {"status": "failed", "error": "timeout"})
-    _publish_progress(task_id, "timeout", 0.0, "超时 (15 min)")
+    _publish_progress(job_id, "timeout", 0.0, "超时 (15 min)", "failed")
     return {"success": False, "status": "timeout"}
 
 

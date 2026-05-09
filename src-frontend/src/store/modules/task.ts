@@ -7,6 +7,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
+export interface StageLog {
+  time: string
+  level: 'INFO' | 'WARN' | 'ERROR'
+  message: string
+}
+
 export interface TaskProgress {
   taskId: string
   current: number
@@ -17,6 +23,7 @@ export interface TaskProgress {
   message: string
   createdAt: string
   updatedAt: string
+  logs: StageLog[]
 }
 
 export const useTaskStore = defineStore(
@@ -50,12 +57,24 @@ export const useTaskStore = defineStore(
     // 更新或创建任务进度
     function updateTask(taskId: string, updates: Partial<TaskProgress>) {
       const existing = tasks.value.get(taskId)
+      const now = new Date().toISOString()
       if (existing) {
+        const prevPhase = existing.phase
         Object.assign(existing, {
           ...updates,
-          updatedAt: new Date().toISOString()
+          updatedAt: now,
         })
-        // 触发响应式更新
+        if (updates.phase && updates.phase !== prevPhase) {
+          const time = new Date().toLocaleTimeString('zh-CN', { hour12: false })
+          const level = updates.status === 'failure' ? 'ERROR' as const
+            : updates.status === 'success' ? 'INFO' as const
+            : 'INFO' as const
+          existing.logs.push({
+            time,
+            level,
+            message: updates.message || updates.phase,
+          })
+        }
         tasks.value = new Map(tasks.value)
       } else {
         tasks.value.set(taskId, {
@@ -66,9 +85,10 @@ export const useTaskStore = defineStore(
           phase: '',
           status: 'pending',
           message: '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          ...updates
+          createdAt: now,
+          updatedAt: now,
+          logs: [],
+          ...updates,
         })
         tasks.value = new Map(tasks.value)
       }

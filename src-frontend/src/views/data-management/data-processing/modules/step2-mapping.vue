@@ -34,7 +34,7 @@
                     <label class="form-label">服务地址</label>
                     <ElInput
                       :model-value="config.synthesizer_url"
-                      placeholder="https://api.openai.com/v1"
+                      placeholder="请输入服务地址"
                       @update:model-value="(v) => updateConfig('synthesizer_url', v)"
                     />
                   </div>
@@ -42,7 +42,7 @@
                     <label class="form-label">模型名称</label>
                     <ElInput
                       :model-value="config.synthesizer_model"
-                      placeholder="gpt-4"
+                      placeholder="请输入模型名称"
                       @update:model-value="(v) => updateConfig('synthesizer_model', v)"
                     />
                   </div>
