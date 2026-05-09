@@ -1,4 +1,4 @@
-"""Dataset 服务层集成测试（基于 SQLite 内存数据库）"""
+"""Dataset 服务层集成测试（基于 MySQL 测试数据库）"""
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -7,7 +7,7 @@ import pytest
 
 from src.core.config import config
 from src.core.dataset import Dataset, DatasetMeta
-from src.db_connections.sqlite import SqliteConnection
+from src.db_connections.mysql import MysqlConnection
 from src.adapters.repositories.dataset_repo import DatasetRepositoryAdapter
 from src.services.dataset_import_export_service import (
     DatasetImportExportService,
@@ -116,8 +116,9 @@ class _MemoryFileRepo(FileRepository):
 
 @pytest.fixture(scope="session")
 def sqlite_conn():
-    """会话级：创建 SQLite 内存数据库连接，建表。"""
-    conn = SqliteConnection("sqlite:///:memory:", echo=False)
+    """会话级：创建 MySQL 测试数据库连接，建表。"""
+    from tests import get_test_db_url
+    conn = MysqlConnection(get_test_db_url(), echo=False, pool_size=5, max_overflow=5)
     conn.start()
 
     repo = DatasetRepositoryAdapter(conn)

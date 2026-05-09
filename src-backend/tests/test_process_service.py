@@ -178,6 +178,89 @@ class TestProcessService:
         resp = svc.cancel_job("j1")
         assert resp.status == "failed"
 
+    # ── check_job ──────────────────────────────────────────
+
+    def test_check_job_updates_status_from_pending(self, svc, mock_ds_repo, mock_gg):
+        """check_job: pending/running 时 dataset status 应变为 1"""
+        ds = MagicMock()
+        ds.status = 0
+        mock_ds_repo.find_by_id.return_value = ds
+
+        mock_resp = MagicMock()
+        mock_resp.is_error = False
+        mock_resp.json.return_value = {
+            "job_id": "j1", "status": "running",
+            "created_at": "2024-01-01T00:00:00",
+            "started_at": None, "finished_at": None,
+            "progress": 0.3, "error": None, "output_path": None,
+        }
+        mock_gg.get_job.return_value = mock_resp
+
+        resp = svc.check_job("j1", 1)
+        assert resp.status == "running"
+        assert ds.status == 1
+        mock_ds_repo.update.assert_called_once_with(1, ds)
+
+    def test_check_job_done_updates_output(self, svc, mock_ds_repo, mock_gg):
+        """check_job: done 时 dataset status=2 且写入 output_path"""
+        ds = MagicMock()
+        ds.status = 0
+        ds.meta.output_path = None
+        mock_ds_repo.find_by_id.return_value = ds
+
+        mock_resp = MagicMock()
+        mock_resp.is_error = False
+        mock_resp.json.return_value = {
+            "job_id": "j1", "status": "done",
+            "created_at": "2024-01-01T00:00:00",
+            "started_at": None, "finished_at": "2024-01-01T01:00:00",
+            "progress": 1.0, "error": None,
+            "output_path": "/output/j1.jsonl",
+        }
+        mock_gg.get_job.return_value = mock_resp
+
+        resp = svc.check_job("j1", 1)
+        assert resp.status == "done"
+        assert ds.status == 2
+        assert ds.meta.output_path == "/output/j1.jsonl"
+
+    def test_check_job_failed_updates_status(self, svc, mock_ds_repo, mock_gg):
+        """check_job: failed 时 dataset status=-1"""
+        ds = MagicMock()
+        ds.status = 0
+        mock_ds_repo.find_by_id.return_value = ds
+
+        mock_resp = MagicMock()
+        mock_resp.is_error = False
+        mock_resp.json.return_value = {
+            "job_id": "j1", "status": "failed",
+            "created_at": "2024-01-01T00:00:00",
+            "started_at": None, "finished_at": None,
+            "progress": 0.0, "error": "out of memory", "output_path": None,
+        }
+        mock_gg.get_job.return_value = mock_resp
+
+        resp = svc.check_job("j1", 1)
+        assert resp.status == "failed"
+        assert ds.status == -1
+
+    def test_check_job_dataset_not_found(self, svc, mock_ds_repo, mock_gg):
+        """check_job: 数据集不存在时仍返回任务状态"""
+        mock_ds_repo.find_by_id.return_value = None
+
+        mock_resp = MagicMock()
+        mock_resp.is_error = False
+        mock_resp.json.return_value = {
+            "job_id": "j1", "status": "running",
+            "created_at": "2024-01-01T00:00:00",
+            "started_at": None, "finished_at": None,
+            "progress": 0.5, "error": None, "output_path": None,
+        }
+        mock_gg.get_job.return_value = mock_resp
+
+        resp = svc.check_job("j1", 1)
+        assert resp.status == "running"
+
 
 def _make_process_req():
     return DatasetProcessRequest(
