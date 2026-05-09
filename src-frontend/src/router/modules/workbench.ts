@@ -75,7 +75,7 @@ export const dataManagementRoutes: AppRouteRecord = {
       meta: {
         title: 'menus.dataManagement.dataProcessing',
         icon: 'ri:refresh-line',
-        keepAlive: true,
+        keepAlive: false,
         roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
       }
     }

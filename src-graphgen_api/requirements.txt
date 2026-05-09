@@ -1,0 +1,44 @@
+tqdm
+openai
+python-dotenv
+numpy
+networkx
+graspologic
+tiktoken
+pyecharts
+wikipedia
+tenacity
+nltk
+jieba
+plotly
+pandas
+gradio==5.50.0
+kaleido
+pyyaml
+langcodes
+requests
+fastapi
+pydantic-settings
+trafilatura
+aiohttp
+socksio
+ray[default]==2.53.0
+pyarrow
+
+leidenalg
+igraph
+python-louvain
+
+# storage
+rocksdict
+kuzu
+
+# KG
+rdflib
+scipy
+
+# Bioinformatics
+biopython
+
+# For visualization
+matplotlib
