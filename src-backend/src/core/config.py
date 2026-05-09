@@ -18,7 +18,7 @@ class Config(BaseSettings):
     BACKEND_CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
 
 
-    DATABASE_URL: str = "sqlite:///data/gproject.db"
+    DATABASE_URL: str = "mysql+pymysql://root:Poi114514.@mysql:3306/llama_factory"
     REDIS_URL: str = 'redis://localhost:6379/0'
 
     @property

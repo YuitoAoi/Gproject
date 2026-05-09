@@ -48,13 +48,14 @@ services:
       DATASETS_DIR: "/app/datasets"
       JWT_SECRET_KEY: "change-me-in-production"
       BACKEND_CORS_ORIGINS: '["http://localhost:3000","http://localhost:5173"]'
+      GRAPHGEN_API_URL: "http://gproject-graphgen:8001/api/v1"
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
-      # graphgen:
-      #   condition: service_healthy
+      graphgen:
+        condition: service_started
       # llamafactory:
       #   condition: service_healthy
     volumes:
@@ -96,28 +97,26 @@ services:
     networks:
       - gproject-net
   # GraphGen API 服务
-  # graphgen:
-  #   build:
-  #     context: ../../GraphGen
-  #   container_name: gproject-graphgen
-  #   restart: unless-stopped
-  #   ports:
-  #     - "8001:8001"
-  #   environment:
-  #     GRAPHGEN_HOST: "0.0.0.0"
-  #     GRAPHGEN_PORT: "8001"
-  #     GRAPHGEN_DATASETS_DIR: "/app/datasets"
-  #   healthcheck:
-  #     test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
-  #     interval: 15s
-  #     timeout: 10s
-  #     retries: 3
-  #     start_period: 30s
-  #   volumes:
-  #     - dataset_data:/app/datasets
-  #   networks:
-  #     - gproject-net
-
+  graphgen:
+    image: makerlinck/graphgen-api:1.0.0
+    container_name: gproject-graphgen
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      GRAPHGEN_HOST: "0.0.0.0"
+      GRAPHGEN_PORT: "8001"
+      GRAPHGEN_DATASETS_DIR: "/app/datasets"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - dataset_data:/app/datasets
+    networks:
+      - gproject-net
   # LlamaFactory 服务
   # llamafactory:
   #   image: hiyouga/llamafactory:latest
