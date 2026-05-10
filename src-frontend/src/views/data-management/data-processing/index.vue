@@ -414,7 +414,12 @@
   })
 
   onActivated(async () => {
-    resetForNewTask()
+    const stepFromQuery = route.query.step
+    if (stepFromQuery) {
+      currentStep.value = Number(stepFromQuery)
+    } else {
+      resetForNewTask()
+    }
     loading.value = true
     try {
       const result = await getDatasets()
@@ -422,7 +427,9 @@
       const datasetId = route.query.datasetId
       if (datasetId) {
         selectedDatasetId.value = Number(datasetId)
-        currentStep.value = 2
+        if (!stepFromQuery) {
+          currentStep.value = 2
+        }
       }
     } finally {
       loading.value = false
@@ -434,6 +441,14 @@
     try {
       const result = await getDatasets()
       datasets.value = result.records
+      const datasetId = route.query.datasetId
+      if (datasetId) {
+        selectedDatasetId.value = Number(datasetId)
+      }
+      const stepFromQuery = route.query.step
+      if (stepFromQuery) {
+        currentStep.value = Number(stepFromQuery)
+      }
     } finally {
       loading.value = false
     }
