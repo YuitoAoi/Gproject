@@ -88,6 +88,7 @@ export interface ProcessRequest {
     | 'fill_in_blank'
     | 'true_false'
   data_format: 'Alpaca' | 'Sharegpt' | 'ChatML'
+  content_field?: string
   tokenizer?: string
   chunk_size?: number
   chunk_overlap?: number
@@ -311,7 +312,7 @@ export async function processDataset(
 }
 
 export async function getTaskStatus(_taskId: string): Promise<TaskStatusResponse> {
-  return Promise.reject(new Error('Task status is provided via WebSocket, not HTTP polling'))
+  throw new Error('[已废弃] 任务状态请通过 WebSocket 获取，不可使用 HTTP 轮询')
 }
 
 export async function getTags(): Promise<TagsGetResponse> {
@@ -398,5 +399,21 @@ export async function requestDownloadToken(
     return response
   } catch {
     return null
+  }
+}
+
+export interface DatasetLogsResponse {
+  lines: string[]
+  error?: string
+}
+
+export async function getDatasetLogs(jobId: string): Promise<DatasetLogsResponse> {
+  try {
+    return await request.get<DatasetLogsResponse>({
+      url: '/dataset/logs',
+      params: { job_id: jobId }
+    })
+  } catch {
+    return { lines: [], error: '请求失败' }
   }
 }

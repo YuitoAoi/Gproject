@@ -5,11 +5,16 @@ from __future__ import annotations
 import csv
 import io
 import json
+import os
+import re
+import shutil
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Literal, Optional, TYPE_CHECKING
 
 from pydantic import BaseModel, Field
 
+from src.core.dataset import Dataset, DatasetMeta
 from src.services.interfaces.dataset_repository import DatasetRepository
 from src.services.interfaces.file_repository import FileRepository
 
@@ -64,6 +69,9 @@ class DatasetProcessRequest(BaseModel):
     ]
     data_format: Literal["Alpaca", "Sharegpt", "ChatML"]
 
+    # Content field mapping — which column to use as source text
+    content_field: str = "content"
+
     # Optional with defaults
     tokenizer: str = "cl100k_base"
     trainee_model: Optional[str] = None
@@ -116,11 +124,15 @@ class DatasetProcessService:
         file_repo: FileRepository,
         gg_client: GraphGenClient,
         celery_client=None,
+        dataset_log_repo=None,
+        task_repo=None,
     ) -> None:
         self._dataset_repo = dataset_repo
         self._file_repo = file_repo
         self._gg = gg_client
         self._celery = celery_client
+        self._dataset_log_repo = dataset_log_repo
+        self._task_repo = task_repo
 
     # ── 样本预览 ──────────────────────────────────────────────
 
@@ -139,9 +151,18 @@ class DatasetProcessService:
             if fmt == "csv":
                 return self._sample_csv(file_path, request.limit)
             elif fmt in ("json", "jsonl"):
-                return self._sample_jsonl(file_path, request.limit)
+                if ds.status == 0:
+                    return self._sample_raw_text(file_path, request.limit)
+                result = self._sample_jsonl(file_path, request.limit)
+                if not result.rows and not result.error:
+                    result = self._sample_json_array(file_path, request.limit)
+                if not result.rows and not result.error:
+                    result = self._sample_raw_text(file_path, request.limit)
+                return result
             elif fmt == "xlsx":
                 return self._sample_xlsx(file_path, request.limit)
+            elif fmt in ("txt", "md"):
+                return self._sample_raw_text(file_path, request.limit)
             else:
                 return SampleResponse(error=f"Unsupported format: {fmt}")
         except Exception as exc:
@@ -189,6 +210,24 @@ class DatasetProcessService:
         data = resp.json()
         job_id = data.get("job_id", "")
 
+        # 创建任务记录
+        if job_id and self._task_repo is not None:
+            from src.core.task_record import TaskRecord as TR
+            task = TR(
+                owner_id=ds.owner_id,
+                task_name=ds.name,
+                task_type="cleaning",
+                status="pending",
+                config=TR.config_to_json({
+                    "job_id": job_id,
+                    "dataset_id": request.dataset_id,
+                    "mode": request.mode,
+                    "data_format": request.data_format,
+                    "content_field": request.content_field,
+                }),
+            )
+            self._task_repo.insert(task)
+
         # 提交 Celery 异步监控（Celery 不可用时不影响任务提交）
         if job_id and self._celery is not None:
             try:
@@ -218,13 +257,88 @@ class DatasetProcessService:
             ds.status = 1
             self._dataset_repo.update(dataset_id, ds)
         elif result.status == "done":
-            ds.status = 2
+            ds.status = 0
             if result.output_path:
                 ds.meta.output_path = result.output_path
             self._dataset_repo.update(dataset_id, ds)
+
+            output_path = result.output_path
+            if output_path and os.path.isfile(output_path):
+                stat = os.stat(output_path)
+                ext = os.path.splitext(output_path)[1].lstrip(".").lower()
+                if ext not in ("txt", "md", "csv", "xlsx", "json", "jsonl"):
+                    ext = "jsonl"
+
+                pattern = re.compile(rf"^{re.escape(ds.name)}_清洗(\d+)$")
+                max_seq = 0
+                for d in self._dataset_repo.find_by_owner(ds.owner_id):
+                    m = pattern.match(d.name)
+                    if m:
+                        seq = int(m.group(1))
+                        if seq > max_seq:
+                            max_seq = seq
+
+                next_seq = max_seq + 1
+                output_ds = Dataset.new(
+                    owner_id=ds.owner_id,
+                    name=f"{ds.name}_清洗{next_seq}",
+                    desc=f"GraphGen 清洗产物（第{next_seq}次）",
+                    meta=DatasetMeta(
+                        format=ext,
+                        file_path=output_path,
+                        file_size=stat.st_size,
+                    ),
+                    status=2,
+                    tag_ids=list(ds.tag_ids),
+                )
+                output_ds.created_at = datetime.fromtimestamp(stat.st_ctime)
+                output_ds.updated_at = datetime.fromtimestamp(stat.st_ctime)
+                self._dataset_repo.create(output_ds)
+
+                if self._dataset_log_repo is not None:
+                    log_src = os.path.join("cache", "logs", f"{job_id}.log")
+                    log_dst_dir = os.path.join("dataset", "logs", "dataset_logs")
+                    os.makedirs(log_dst_dir, exist_ok=True)
+                    log_dst = os.path.join(log_dst_dir, f"{job_id}.log")
+                    if os.path.isfile(log_src):
+                        shutil.copy2(log_src, log_dst)
+                        output_ds.meta.log_path = log_dst
+                        self._dataset_repo.update(output_ds.id, output_ds)
+                    from src.core.dataset_log import DatasetLog as DSLog
+                    log_record = DSLog(
+                        job_id=job_id,
+                        dataset_id=output_ds.id,
+                        log_path=output_ds.meta.log_path or "",
+                        created_at=datetime.now(),
+                    )
+                    self._dataset_log_repo.insert(log_record)
+
+                if self._task_repo is not None:
+                    task = self._task_repo.find_by_config_job_id(ds.owner_id, job_id)
+                    if task:
+                        from src.core.task_record import TaskRecord as TR
+                        task.status = "done"
+                        task.progress = 1.0
+                        task.phase = "处理完成"
+                        task.config = TR.config_to_json({
+                            "job_id": job_id,
+                            "dataset_id": dataset_id,
+                            "output_dataset_id": output_ds.id,
+                            "mode": result.status,
+                        })
+                        task.updated_at = datetime.now()
+                        self._task_repo.update(task.id, task)
+
         elif result.status == "failed":
-            ds.status = -1
+            ds.status = 0
             self._dataset_repo.update(dataset_id, ds)
+            if self._task_repo is not None:
+                task = self._task_repo.find_by_config_job_id(ds.owner_id, job_id)
+                if task:
+                    task.status = "failed"
+                    task.phase = result.error or "任务失败"
+                    task.updated_at = datetime.now()
+                    self._task_repo.update(task.id, task)
 
         return result
 
@@ -333,6 +447,38 @@ class DatasetProcessService:
             total_rows=len(lines),
         )
 
+    def _sample_json_array(self, file_path: str, limit: int) -> SampleResponse:
+        """解析标准 JSON 数组 [{...}, {...}] 或单对象 {...}。"""
+        raw = self._file_repo.read(file_path)
+        try:
+            data = json.loads(raw.decode("utf-8"))
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            return SampleResponse(columns=[], rows=[], total_rows=0)
+
+        if isinstance(data, dict):
+            return SampleResponse(
+                columns=list(data.keys()),
+                rows=[data],
+                total_rows=1,
+            )
+
+        if not isinstance(data, list):
+            return SampleResponse(columns=[], rows=[], total_rows=0)
+
+        rows: List[Dict[str, Any]] = []
+        columns: List[str] = []
+        for item in data[:limit]:
+            if isinstance(item, dict):
+                rows.append(item)
+                for k in item:
+                    if k not in columns:
+                        columns.append(k)
+        return SampleResponse(
+            columns=columns,
+            rows=rows,
+            total_rows=len(data),
+        )
+
     def _sample_xlsx(self, file_path: str, limit: int) -> SampleResponse:
         raw = self._file_repo.read(file_path)
         from openpyxl import load_workbook
@@ -367,3 +513,11 @@ class DatasetProcessService:
             rows=rows,
             total_rows=total + 1,
         )
+
+    def _sample_raw_text(self, file_path: str, limit: int) -> SampleResponse:
+        raw = self._file_repo.read(file_path)
+        text = raw.decode("utf-8", errors="replace")
+        lines = [l for l in text.splitlines() if l.strip()]
+        columns = ["content"]
+        rows = [{"content": line} for _, line in zip(range(limit), lines)]
+        return SampleResponse(columns=columns, rows=rows, total_rows=len(lines))

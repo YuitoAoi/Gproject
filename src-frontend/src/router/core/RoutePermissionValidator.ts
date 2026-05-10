@@ -74,23 +74,6 @@ export class RoutePermissionValidator {
   }
 
   /**
-   * 检查目标路径是否匹配集合中的某个路径前缀
-   * 用于支持动态路由参数匹配，如 /user/123 匹配 /user
-   * @param targetPath 目标路径
-   * @param pathSet 路径集合
-   * @returns 是否匹配
-   */
-  static checkPathPrefix(targetPath: string, pathSet: Set<string>): boolean {
-    // 遍历路径集合，检查是否有前缀匹配
-    for (const menuPath of pathSet) {
-      if (targetPath.startsWith(`${menuPath}/`)) {
-        return true
-      }
-    }
-    return false
-  }
-
-  /**
    * 递归匹配路由配置，支持隐藏路由和动态参数路由
    */
   static matchRoute(targetPath: string, routes: AppRouteRecord[]): boolean {

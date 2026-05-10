@@ -61,6 +61,8 @@ export const useWorktabStore = defineStore(
     const opened = ref<WorkTab[]>([])
     const keepAliveExclude = ref<string[]>([])
 
+    const { homePath } = useCommon()
+
     // 计算属性
     const hasOpenedTabs = computed(() => opened.value.length > 0)
     const hasMultipleTabs = computed(() => opened.value.length > 1)
@@ -203,8 +205,6 @@ export const useWorktabStore = defineStore(
         addKeepAliveExclude(targetTab)
       }
 
-      const { homePath } = useCommon()
-
       // 如果关闭后无标签页，跳转首页
       if (!hasOpenedTabs.value) {
         if (path !== homePath.value) {
@@ -326,7 +326,6 @@ export const useWorktabStore = defineStore(
      * 关闭所有可关闭的标签页
      */
     const removeAll = (): void => {
-      const { homePath } = useCommon()
       const hasFixedTabs = opened.value.some((tab) => tab.fixedTab)
 
       // 获取可关闭的标签页

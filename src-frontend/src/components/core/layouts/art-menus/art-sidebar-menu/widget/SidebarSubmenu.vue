@@ -29,6 +29,7 @@
       :index="isExternalLink(item) ? undefined : item.path || item.meta.title"
       :level-item="level + 1"
       @click="goPage(item)"
+      @mouseenter="prefetchMenuItem(item)"
     >
       <div class="menu-icon flex-cc">
         <ArtSvgIcon
@@ -61,6 +62,7 @@
   import type { AppRouteRecord } from '@/types/router'
   import { formatMenuTitle } from '@/utils/router'
   import { handleMenuJump } from '@/utils/navigation'
+  import { prefetchComponent } from '@/utils/navigation/prefetch'
   import { useSettingStore } from '@/store/modules/setting'
 
   interface MenuTheme {
@@ -112,6 +114,12 @@
   const goPage = (item: AppRouteRecord): void => {
     closeMenu()
     handleMenuJump(item)
+  }
+
+  const prefetchMenuItem = (item: AppRouteRecord): void => {
+    if (typeof item.component === 'string') {
+      prefetchComponent(item.component)
+    }
   }
 
   /**

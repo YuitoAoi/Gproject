@@ -68,6 +68,7 @@ export class StorageKeyManager {
       const existingData = localStorage.getItem(fromKey)
       if (existingData) {
         localStorage.setItem(toKey, existingData)
+        localStorage.removeItem(fromKey)
         console.info(`[Storage] 已迁移数据: ${fromKey} → ${toKey}`)
       }
     } catch (error) {

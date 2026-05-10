@@ -5,6 +5,7 @@ services:
     container_name: gproject-mysql
     restart: unless-stopped
     environment:
+      TZ: Asia/Shanghai
       MYSQL_ROOT_PASSWORD: Poi114514.
       MYSQL_DATABASE: llama_factory
     ports:
@@ -26,6 +27,8 @@ services:
     restart: unless-stopped
     ports:
       - "6379:6379"
+    environment:
+      TZ: Asia/Shanghai
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
@@ -43,6 +46,7 @@ services:
     ports:
       - "8088:8088"
     environment:
+      TZ: Asia/Shanghai
       DATABASE_URL: "mysql+pymysql://root:Poi114514.@mysql:3306/llama_factory"
       REDIS_URL: "redis://redis:6379/0"
       DATASETS_DIR: "/app/datasets"
@@ -71,6 +75,9 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    environment:
+      TZ: Asia/Shanghai
+      VITE_WS_URL: "ws://localhost:8088"
     depends_on:
       - gproject-backend
     networks:
@@ -84,9 +91,11 @@ services:
     restart: unless-stopped
     command: celery -A main worker --loglevel=info --pool=solo
     environment:
+      TZ: Asia/Shanghai
       REDIS_URL: "redis://redis:6379/0"
       BACKEND_HOST: "gproject-backend"
       BACKEND_PORT: "8088"
+      GRAPHGEN_API_URL: "http://gproject-graphgen:8001/api/v1"
     depends_on:
       redis:
         condition: service_healthy
@@ -106,12 +115,13 @@ services:
     ports:
       - "8001:8001"
     environment:
+      TZ: Asia/Shanghai
       GRAPHGEN_HOST: "0.0.0.0"
       GRAPHGEN_PORT: "8001"
       GRAPHGEN_DATASETS_DIR: "/app/datasets"
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8001/health" ]
-      interval: 15s
+      interval: 600s
       timeout: 10s
       retries: 3
       start_period: 30s

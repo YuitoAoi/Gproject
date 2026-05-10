@@ -19,6 +19,7 @@ class DatasetItemDTO(BaseModel):
     file_size: int
     status: int
     tag_ids: List[int] = []
+    output_path: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -60,6 +61,7 @@ class GetDatasetsService:
             file_size=ds.meta.file_size,
             status=ds.status,
             tag_ids=ds.tag_ids,
+            output_path=ds.meta.output_path,
             created_at=ds.created_at,
             updated_at=ds.updated_at,
         )

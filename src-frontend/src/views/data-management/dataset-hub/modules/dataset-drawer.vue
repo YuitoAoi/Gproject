@@ -102,14 +102,55 @@
           <div v-if="sampleLoading" class="flex items-center justify-center py-10">
             <span class="ri:loader-4-line text-2xl text-g-400 animate-spin"></span>
           </div>
-          <div v-else-if="samples.length === 0" class="text-center py-10 text-g-400">
-            <span class="ri:file-list-3-line text-3xl block mb-2"></span>
-            <p class="text-sm">暂无预览数据</p>
-          </div>
-          <div v-else class="sample-list">
-            <div v-for="(sample, idx) in samples" :key="idx" class="sample-item">
-              <div class="sample-index">{{ idx + 1 }}</div>
-              <pre class="sample-content">{{ JSON.stringify(sample, null, 2) }}</pre>
+          <div v-else>
+            <div
+              v-if="sampleError"
+              class="text-center py-4 text-danger bg-danger-light rounded mb-3"
+            >
+              <span class="ri:error-warning-line text-lg block mb-1"></span>
+              <p class="text-xs">{{ sampleError }}</p>
+            </div>
+            <div v-if="samples.length === 0 && !sampleError" class="text-center py-10 text-g-400">
+              <span class="ri:file-list-3-line text-3xl block mb-2"></span>
+              <p class="text-sm">暂无预览数据</p>
+            </div>
+            <div v-if="samples.length > 0" class="sample-preview">
+              <div v-if="!isRawTextMode" class="sample-preview-header">
+                <span class="text-xs text-g-500">
+                  当前预览前 <strong class="text-g-700">{{ samples.length }}</strong> 条
+                </span>
+              </div>
+              <div v-if="isRawTextMode" class="raw-text-area">
+                <pre class="raw-text-code">{{ rawTextContent }}</pre>
+              </div>
+              <div v-else class="sample-table-wrapper">
+                <ElTable
+                  :data="samples"
+                  border
+                  stripe
+                  size="small"
+                  max-height="620px"
+                  style="width: 100%"
+                >
+                  <ElTableColumn type="index" label="#" width="50" align="center" />
+                  <ElTableColumn
+                    v-for="col in sampleColumns"
+                    :key="col"
+                    :prop="col"
+                    :label="col"
+                    :min-width="140"
+                  >
+                    <template #default="{ row }">
+                      {{ formatCellValue(row[col]) }}
+                    </template>
+                  </ElTableColumn>
+                </ElTable>
+              </div>
+              <div class="sample-preview-footer">
+                <ElButton type="primary" size="small" @click="openFullPreview">
+                  <span class="ri:fullscreen-line mr-1"></span>完整预览
+                </ElButton>
+              </div>
             </div>
           </div>
         </div>
@@ -202,6 +243,63 @@
         <ElButton type="primary" :loading="tagLoading" @click="handleAddTag">确定</ElButton>
       </template>
     </ElDialog>
+
+    <ElDialog
+      v-model="fullPreviewVisible"
+      :title="`完整预览 — ${dataset?.name || ''}`"
+      width="85%"
+      top="3vh"
+      destroy-on-close
+      :close-on-click-modal="false"
+    >
+      <div v-if="fullPreviewLoading" class="flex items-center justify-center py-16">
+        <span class="ri:loader-4-line text-3xl text-g-400 animate-spin"></span>
+      </div>
+      <div v-else-if="fullPreviewError" class="text-center py-10 text-danger">
+        <span class="ri:error-warning-line text-3xl block mb-2"></span>
+        <p class="text-sm">{{ fullPreviewError }}</p>
+      </div>
+      <div v-else-if="fullPreviewData.length === 0" class="text-center py-10 text-g-400">
+        <span class="ri:file-list-3-line text-3xl block mb-2"></span>
+        <p class="text-sm">暂无预览数据</p>
+      </div>
+      <div v-else class="full-preview-body">
+        <div v-if="!isFullRawTextMode" class="sample-preview-header mb-3">
+          <span class="text-xs text-g-500">
+            当前预览前 <strong class="text-g-700">{{ fullPreviewData.length }}</strong> 条
+          </span>
+        </div>
+        <div v-if="isFullRawTextMode" class="raw-text-area">
+          <pre class="raw-text-code">{{ fullRawTextContent }}</pre>
+        </div>
+        <ElTable
+          v-else
+          :data="fullPreviewData"
+          border
+          stripe
+          size="small"
+          max-height="70vh"
+          style="width: 100%"
+          class="full-preview-table"
+        >
+          <ElTableColumn type="index" label="#" width="50" align="center" />
+          <ElTableColumn
+            v-for="col in fullPreviewColumns"
+            :key="col"
+            :prop="col"
+            :label="col"
+            :min-width="140"
+          >
+            <template #default="{ row }">
+              {{ formatCellValue(row[col]) }}
+            </template>
+          </ElTableColumn>
+        </ElTable>
+      </div>
+      <template #footer>
+        <ElButton @click="fullPreviewVisible = false">关闭</ElButton>
+      </template>
+    </ElDialog>
   </ElDrawer>
 </template>
 
@@ -248,7 +346,15 @@
 
   const tagStore = useTagStore()
   const samples = ref<Record<string, any>[]>([])
+  const sampleColumns = ref<string[]>([])
+  const sampleTotal = ref(0)
   const sampleLoading = ref(false)
+  const sampleError = ref<string | null>(null)
+  const fullPreviewVisible = ref(false)
+  const fullPreviewLoading = ref(false)
+  const fullPreviewError = ref<string | null>(null)
+  const fullPreviewData = ref<Record<string, any>[]>([])
+  const fullPreviewColumns = ref<string[]>([])
   const saveLoading = ref(false)
   const tagLoading = ref(false)
   const hoveredTagId = ref<number | null>(null)
@@ -265,6 +371,22 @@
     if (props.dataset?.status === 1) return '清洗中'
     if (props.dataset?.status === -1) return '异常'
     return '待清洗'
+  })
+
+  const isRawTextMode = computed(() => {
+    return sampleColumns.value.length === 1 && sampleColumns.value[0] === 'content'
+  })
+
+  const isFullRawTextMode = computed(() => {
+    return fullPreviewColumns.value.length === 1 && fullPreviewColumns.value[0] === 'content'
+  })
+
+  const rawTextContent = computed(() => {
+    return samples.value.map((s) => s.content).join('\n')
+  })
+
+  const fullRawTextContent = computed(() => {
+    return fullPreviewData.value.map((s) => s.content).join('\n')
   })
 
   const formatSize = (size: number): string => {
@@ -306,21 +428,55 @@
     drawerVisible.value = false
   }
 
-  const setActiveTab = (tab: string) => {
-    activeTab.value = tab
+  watch(activeTab, (tab) => {
     if (tab === 'samples' && props.dataset?.id) {
       loadSamples(props.dataset.id)
     }
+  })
+
+  const setActiveTab = (tab: string) => {
+    activeTab.value = tab
   }
 
   const loadSamples = async (datasetId: number) => {
     sampleLoading.value = true
     samples.value = []
+    sampleColumns.value = []
+    sampleTotal.value = 0
+    sampleError.value = null
     const res = await getDatasetSample(datasetId)
     if (res.rows && res.rows.length > 0) {
       samples.value = res.rows
+      sampleColumns.value =
+        res.columns && res.columns.length > 0 ? res.columns : Object.keys(res.rows[0])
+      sampleTotal.value = res.total_rows || 0
+    } else if (res.error) {
+      sampleError.value = res.error
     }
     sampleLoading.value = false
+  }
+
+  const formatCellValue = (value: any): string => {
+    if (value === null || value === undefined) return '—'
+    if (typeof value === 'object') return JSON.stringify(value)
+    return String(value)
+  }
+
+  const openFullPreview = async () => {
+    fullPreviewVisible.value = true
+    fullPreviewLoading.value = true
+    fullPreviewData.value = []
+    fullPreviewColumns.value = []
+    fullPreviewError.value = null
+    const res = await getDatasetSample(props.dataset!.id, 200)
+    if (res.rows && res.rows.length > 0) {
+      fullPreviewData.value = res.rows
+      fullPreviewColumns.value =
+        res.columns && res.columns.length > 0 ? res.columns : Object.keys(res.rows[0])
+    } else if (res.error) {
+      fullPreviewError.value = res.error
+    }
+    fullPreviewLoading.value = false
   }
 
   const handleReset = () => {
@@ -375,7 +531,7 @@
     if (!props.dataset?.id) return
     router.push({
       path: '/data-management/data-processing',
-      query: { datasetId: String(props.dataset.id) }
+      query: { datasetId: String(props.dataset.id), step: '2' }
     })
   }
 
@@ -491,37 +647,71 @@
       border-color: transparent;
     }
   }
-  .sample-list {
+  .sample-preview {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    max-height: 400px;
+  }
+  .sample-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 4px;
+  }
+  .sample-table-wrapper {
+    border-radius: 6px;
+    overflow: hidden;
+
+    :deep(.el-table) {
+      font-size: 12px;
+    }
+    :deep(.el-table th) {
+      background-color: var(--el-fill-color-light);
+      font-weight: 600;
+    }
+    :deep(.el-table__cell) {
+      padding: 6px 8px;
+    }
+    :deep(.el-table__cell .cell) {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+  .sample-preview-footer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 4px;
+  }
+  .raw-text-area {
+    max-height: 620px;
     overflow-y: auto;
   }
-  .sample-item {
-    display: flex;
-    gap: 10px;
-    background: var(--el-fill-color-lighter);
-    border-radius: 6px;
-    padding: 8px 12px;
-  }
-  .sample-index {
-    font-size: 12px;
-    color: var(--el-text-color-placeholder);
-    min-width: 20px;
-    flex-shrink: 0;
-    padding-top: 2px;
-  }
-  .sample-content {
+  .raw-text-code {
     font-size: 12px;
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     color: var(--el-text-color-regular);
     white-space: pre-wrap;
     word-break: break-all;
     margin: 0;
+    padding: 12px;
+    background: var(--el-fill-color-lighter);
+    border-radius: 6px;
     line-height: 1.5;
-    flex: 1;
-    overflow-x: auto;
+  }
+  .full-preview-body {
+    max-height: 75vh;
+    overflow: hidden;
+  }
+  .full-preview-table :deep(.el-table__cell) {
+    white-space: normal;
+    word-break: break-word;
+  }
+  .bg-danger-light {
+    background-color: var(--el-color-danger-light-9);
+  }
+  .text-danger {
+    color: var(--el-color-danger);
   }
 
   .tag-add-btn {

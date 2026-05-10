@@ -25,6 +25,9 @@ class GenerateRequest(BaseModel):
     ]
     data_format: Literal["Alpaca", "Sharegpt", "ChatML"]
 
+    # Content field mapping — which column to use as source text
+    content_field: str = "content"
+
     # Optional with defaults
     tokenizer: str = "cl100k_base"
     trainee_model: Optional[str] = None

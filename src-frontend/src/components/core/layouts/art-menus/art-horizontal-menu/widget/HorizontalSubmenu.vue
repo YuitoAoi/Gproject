@@ -25,6 +25,7 @@
     v-else-if="isNavigableRoute"
     :index="item.path || item.meta.title"
     @click="goPage(item)"
+    @mouseenter="prefetchMenuItem(item)"
   >
     <ArtSvgIcon
       :icon="item.meta.icon"
@@ -48,6 +49,7 @@
   import { computed, type PropType } from 'vue'
   import { AppRouteRecord } from '@/types/router'
   import { handleMenuJump } from '@/utils/navigation'
+  import { prefetchComponent } from '@/utils/navigation/prefetch'
   import { formatMenuTitle } from '@/utils/router'
 
   const props = defineProps({
@@ -92,6 +94,12 @@
   const goPage = (item: AppRouteRecord) => {
     closeMenu()
     handleMenuJump(item)
+  }
+
+  const prefetchMenuItem = (item: AppRouteRecord) => {
+    if (typeof item.component === 'string') {
+      prefetchComponent(item.component)
+    }
   }
 
   const closeMenu = () => {

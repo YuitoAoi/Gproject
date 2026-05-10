@@ -43,6 +43,7 @@ if TYPE_CHECKING:
         PickleReader,
         RDFReader,
         TXTReader,
+        XLSXReader,
     )
     from .rephraser import StyleControlledRephraser
     from .searcher.db.interpro_searcher import InterProSearch
@@ -100,6 +101,7 @@ _import_map = {
     "PickleReader": ".reader",
     "RDFReader": ".reader",
     "TXTReader": ".reader",
+    "XLSXReader": ".reader",
     "HuggingFaceReader": ".reader",
     # Searcher
     "InterProSearch": ".searcher.db.interpro_searcher",

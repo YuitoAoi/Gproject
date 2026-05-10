@@ -13,6 +13,7 @@ class DatasetMeta(BaseModel):
     file_path: str
     file_size: int
     output_path: Optional[str] = None
+    log_path: Optional[str] = None
 
     # ── 序列化 ──────────────────────────────────────────────
 

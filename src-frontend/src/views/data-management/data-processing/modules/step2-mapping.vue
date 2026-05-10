@@ -88,6 +88,17 @@
               <ElCollapseItem title="3. 高级设置" name="advancedSettings">
                 <div class="operator-content">
                   <div class="form-item">
+                    <label class="form-label">源文本列 (content_field)</label>
+                    <ElInput
+                      :model-value="config.content_field"
+                      placeholder="content"
+                      @update:model-value="(v) => updateConfig('content_field', v)"
+                    />
+                    <span class="form-hint"
+                      >JSON/CSV/XLSX 中作为源文本的列名，txt 文件无需设置</span
+                    >
+                  </div>
+                  <div class="form-item">
                     <label class="form-label">分词器</label>
                     <ElInput
                       :model-value="config.tokenizer"

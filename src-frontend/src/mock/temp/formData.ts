@@ -315,8 +315,16 @@ export const DATASET_TABLE_DATA: DatasetItem[] = [
       '{"instruction": "生成一个Python函数", "input": "计算斐波那契数列", "output": "def fibonacci(n):\\n    if n <= 1: return n\\n    return fibonacci(n-1) + fibonacci(n-2)"}'
     ],
     logs: [
-      { time: '2026-04-25 09:15', action: '数据清洗完成', detail: '清洗规则：去重、脱敏，共处理52000条记录' },
-      { time: '2026-04-22 16:30', action: '质量检测通过', detail: '数据完整性 99.8%，格式一致性 100%' },
+      {
+        time: '2026-04-25 09:15',
+        action: '数据清洗完成',
+        detail: '清洗规则：去重、脱敏，共处理52000条记录'
+      },
+      {
+        time: '2026-04-22 16:30',
+        action: '质量检测通过',
+        detail: '数据完整性 99.8%，格式一致性 100%'
+      },
       { time: '2026-04-20 14:30', action: '数据集上传', detail: '由 Admin 上传，原始大小 312.4 MB' }
     ],
     uploadTime: '2026-04-20 14:30:00',
@@ -343,7 +351,11 @@ export const DATASET_TABLE_DATA: DatasetItem[] = [
       '{"conversations": [{"from": "human", "value": "解释一下机器学习"}, {"from": "gpt", "value": "机器学习是AI的一个分支..."}]}'
     ],
     logs: [
-      { time: '2026-04-18 10:00', action: '远程导入完成', detail: '从 HuggingFace 导入，共 98000 条记录' }
+      {
+        time: '2026-04-18 10:00',
+        action: '远程导入完成',
+        detail: '从 HuggingFace 导入，共 98000 条记录'
+      }
     ],
     uploadTime: '2026-04-18 10:00:00',
     updateTime: '2026-04-22 16:45:00'
@@ -360,7 +372,10 @@ export const DATASET_TABLE_DATA: DatasetItem[] = [
       { label: '垂直领域', color: '#F56C6C' },
       { label: '文本分类', color: '#909399' }
     ],
-    lineage: { sourceName: '中国裁判文书网原始数据', rules: ['结构化解析', '敏感信息脱敏', '分段标注'] },
+    lineage: {
+      sourceName: '中国裁判文书网原始数据',
+      rules: ['结构化解析', '敏感信息脱敏', '分段标注']
+    },
     source: '本地上传',
     creator: 'ZhangWei',
     storagePath: '/data/datasets/legal-2025q4/',
@@ -370,7 +385,11 @@ export const DATASET_TABLE_DATA: DatasetItem[] = [
     ],
     logs: [
       { time: '2026-04-26 11:30', action: '数据清洗中', detail: '正在进行敏感信息脱敏处理' },
-      { time: '2026-04-24 08:20', action: '数据集上传', detail: '由 ZhangWei 上传，原始大小 1.8 GB' }
+      {
+        time: '2026-04-24 08:20',
+        action: '数据集上传',
+        detail: '由 ZhangWei 上传，原始大小 1.8 GB'
+      }
     ],
     uploadTime: '2026-04-24 08:20:00',
     updateTime: '2026-04-26 11:30:00'
@@ -396,7 +415,11 @@ export const DATASET_TABLE_DATA: DatasetItem[] = [
       '{"question": "二甲双胍的常见副作用有哪些？", "answer": "常见副作用包括胃肠道反应如恶心、腹泻，少数可出现乳酸酸中毒..."}'
     ],
     logs: [
-      { time: '2026-04-16 14:20', action: '质量检测通过', detail: '医学专业审核通过，准确率 97.3%' },
+      {
+        time: '2026-04-16 14:20',
+        action: '质量检测通过',
+        detail: '医学专业审核通过，准确率 97.3%'
+      },
       { time: '2026-04-15 16:50', action: '数据集上传', detail: '由 LiMing 上传' }
     ],
     uploadTime: '2026-04-15 16:50:00',
@@ -422,9 +445,7 @@ export const DATASET_TABLE_DATA: DatasetItem[] = [
       '{"instruction": "编写一个Python函数计算最大公约数", "output": "def gcd(a, b):\\n    while b:\\n        a, b = b, a % b\\n    return a"}',
       '{"instruction": "用TypeScript定义一个用户接口", "output": "interface User {\\n  id: number;\\n  name: string;\\n  email: string;\\n}"}'
     ],
-    logs: [
-      { time: '2026-04-22 09:30', action: '远程导入完成', detail: '从 GitHub 仓库导入' }
-    ],
+    logs: [{ time: '2026-04-22 09:30', action: '远程导入完成', detail: '从 GitHub 仓库导入' }],
     uploadTime: '2026-04-22 09:30:00',
     updateTime: '2026-04-23 10:05:00'
   },
@@ -448,7 +469,11 @@ export const DATASET_TABLE_DATA: DatasetItem[] = [
       '报告标题,机构,日期,行业,评级,摘要\n2026年AI产业投资展望,中信证券,2026-01-15,科技,增持,"人工智能产业在2026年将继续保持高速增长..."'
     ],
     logs: [
-      { time: '2026-04-23 13:20', action: '上传失败', detail: '文件编码异常：检测到混合编码 GBK/UTF-8，建议重新导出' },
+      {
+        time: '2026-04-23 13:20',
+        action: '上传失败',
+        detail: '文件编码异常：检测到混合编码 GBK/UTF-8，建议重新导出'
+      },
       { time: '2026-04-23 13:15', action: '数据集上传', detail: '由 WangFang 上传' }
     ],
     uploadTime: '2026-04-23 13:15:00',
@@ -466,7 +491,10 @@ export const DATASET_TABLE_DATA: DatasetItem[] = [
       { label: '对话', color: '#E6A23C' },
       { label: '高质量', color: '#67C23A' }
     ],
-    lineage: { sourceName: '多轮对话v2', rules: ['去除低质量样本', '上下文增强', '新增大语言模型生成数据'] },
+    lineage: {
+      sourceName: '多轮对话v2',
+      rules: ['去除低质量样本', '上下文增强', '新增大语言模型生成数据']
+    },
     source: '远程导入',
     creator: 'Admin',
     storagePath: '/data/datasets/multi-turn-dialog-v3/',
@@ -474,7 +502,11 @@ export const DATASET_TABLE_DATA: DatasetItem[] = [
       '{"messages": [{"role": "user", "content": "推荐一本好书"}, {"role": "assistant", "content": "你喜歡什么类型的？"}, {"role": "user", "content": "科幻"}, {"role": "assistant", "content": "推荐《三体》，中国科幻的里程碑之作"}]}'
     ],
     logs: [
-      { time: '2026-04-20 08:30', action: '版本升级完成', detail: '从 v2 升级至 v3，新增 12000 条数据' },
+      {
+        time: '2026-04-20 08:30',
+        action: '版本升级完成',
+        detail: '从 v2 升级至 v3，新增 12000 条数据'
+      },
       { time: '2026-04-19 11:45', action: '数据集导入', detail: '远程导入完成' }
     ],
     uploadTime: '2026-04-19 11:45:00',
@@ -584,7 +616,11 @@ export const DATASET_TABLE_DATA: DatasetItem[] = [
       '{"title": "基于Transformer的文本分类方法研究", "abstract": "本文提出了一种改进的Transformer架构用于文本分类任务...", "keywords": ["Transformer", "文本分类", "深度学习"]}'
     ],
     logs: [
-      { time: '2026-04-15 16:30', action: '元数据提取完成', detail: '自动识别论文标题、摘要、关键词字段' },
+      {
+        time: '2026-04-15 16:30',
+        action: '元数据提取完成',
+        detail: '自动识别论文标题、摘要、关键词字段'
+      },
       { time: '2026-04-14 09:00', action: '数据集上传', detail: '由 ZhaoQiang 上传' }
     ],
     uploadTime: '2026-04-14 09:00:00',
@@ -612,7 +648,11 @@ export const DATASET_TABLE_DATA: DatasetItem[] = [
       '会话ID,用户消息,客服回复,意图,情感\nCS002,"产品质量太差了，我要投诉！","非常抱歉给您带来不便...",投诉,负面'
     ],
     logs: [
-      { time: '2026-04-26 09:45', action: '数据集禁用', detail: '因隐私合规审查，暂时禁用该数据集' },
+      {
+        time: '2026-04-26 09:45',
+        action: '数据集禁用',
+        detail: '因隐私合规审查，暂时禁用该数据集'
+      },
       { time: '2026-04-25 14:10', action: '数据集上传', detail: '由 SunLi 上传' }
     ],
     uploadTime: '2026-04-25 14:10:00',
@@ -720,17 +760,37 @@ export const DEFAULT_CLEANING_CONFIG = {
 export const MOCK_PROCESSING_LOGS = [
   { time: '14:20:00', level: 'INFO' as const, message: 'Task ID: cln_9fa82b started.' },
   { time: '14:20:01', level: 'INFO' as const, message: 'Loading dataset from storage...' },
-  { time: '14:20:03', level: 'INFO' as const, message: 'Dataset loaded: 52,000 records from Alpaca-Cleaned-zh' },
+  {
+    time: '14:20:03',
+    level: 'INFO' as const,
+    message: 'Dataset loaded: 52,000 records from Alpaca-Cleaned-zh'
+  },
   { time: '14:20:05', level: 'WARN' as const, message: 'Chunk 1: Dropped 452 empty rows.' },
   { time: '14:20:08', level: 'INFO' as const, message: 'Applying HTML tag removal...' },
   { time: '14:20:12', level: 'INFO' as const, message: 'PII Masker: Masked 1,204 phone numbers.' },
   { time: '14:20:15', level: 'INFO' as const, message: 'PII Masker: Masked 487 email addresses.' },
-  { time: '14:20:18', level: 'WARN' as const, message: 'Chunk 2: Dropped 89 short texts (length < 10).' },
+  {
+    time: '14:20:18',
+    level: 'WARN' as const,
+    message: 'Chunk 2: Dropped 89 short texts (length < 10).'
+  },
   { time: '14:21:03', level: 'INFO' as const, message: 'Chunk 3: Dropped 156 empty rows.' },
   { time: '14:21:30', level: 'INFO' as const, message: 'MinHash Dedup: Scanning chunk 1/5...' },
-  { time: '14:21:45', level: 'INFO' as const, message: 'MinHash Dedup: Chunk 1 complete, 12,340 duplicates found.' },
+  {
+    time: '14:21:45',
+    level: 'INFO' as const,
+    message: 'MinHash Dedup: Chunk 1 complete, 12,340 duplicates found.'
+  },
   { time: '14:22:15', level: 'INFO' as const, message: 'Chunk 4 processing...' },
-  { time: '14:22:40', level: 'INFO' as const, message: 'MinHash Dedup: All chunks complete. Total duplicates: 8,521.' },
+  {
+    time: '14:22:40',
+    level: 'INFO' as const,
+    message: 'MinHash Dedup: All chunks complete. Total duplicates: 8,521.'
+  },
   { time: '14:23:00', level: 'INFO' as const, message: 'Writing output dataset...' },
-  { time: '14:23:30', level: 'INFO' as const, message: 'Cleaning pipeline completed. Output: 43,034 valid records.' }
+  {
+    time: '14:23:30',
+    level: 'INFO' as const,
+    message: 'Cleaning pipeline completed. Output: 43,034 valid records.'
+  }
 ]

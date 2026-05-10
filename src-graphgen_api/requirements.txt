@@ -42,3 +42,4 @@ biopython
 
 # For visualization
 matplotlib
+openpyxl

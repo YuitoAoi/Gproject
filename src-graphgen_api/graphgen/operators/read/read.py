@@ -11,6 +11,7 @@ from graphgen.models import (
     PickleReader,
     RDFReader,
     TXTReader,
+    XLSXReader,
 )
 from graphgen.utils import compute_dict_hash, logger
 
@@ -27,6 +28,7 @@ _MAPPING = {
     "txt": TXTReader,
     "csv": CSVReader,
     "md": TXTReader,
+    "xlsx": XLSXReader,
     "pdf": PDFReader,
     "parquet": ParquetReader,
     "pickle": PickleReader,

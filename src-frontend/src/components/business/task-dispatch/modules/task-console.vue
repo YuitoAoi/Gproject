@@ -70,18 +70,54 @@
   import ArtTable from '@/components/core/tables/art-table/index.vue'
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { ElMessageBox, ElMessage } from 'element-plus'
-  import {
-    taskListMockData,
-    TASK_STATUS_CONFIG,
-    TASK_TYPE_CONFIG,
-    type TaskItem
-  } from '@/mock/modules/task-dispatch'
+  import { TASK_STATUS_CONFIG, TASK_TYPE_CONFIG, type TaskItem } from '@/mock/modules/task-dispatch'
+  import { getTasks, deleteTask, type TaskItem as ApiTask } from '@/api/task'
 
   defineOptions({ name: 'TaskConsole' })
 
   const router = useRouter()
 
+  const rawTasks = ref<ApiTask[]>([])
   const loading = ref(false)
+
+  async function fetchTasks() {
+    loading.value = true
+    try {
+      const resp = await getTasks()
+      rawTasks.value = resp.items || []
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const allTaskItems = computed<TaskItem[]>(() =>
+    rawTasks.value.map((t: ApiTask) => {
+      const elapsed = Math.round((Date.now() - new Date(t.created_at).getTime()) / 1000)
+      const min = Math.floor(elapsed / 60)
+      const sec = elapsed % 60
+      const mappedStatus =
+        t.status === 'done'
+          ? 'completed'
+          : t.status === 'failed'
+            ? 'failed'
+            : t.status === 'running'
+              ? 'running'
+              : 'pending'
+      return {
+        id: String(t.id),
+        name: t.task_name,
+        type: (t.task_type as TaskItem['type']) || 'cleaning',
+        typeLabel: TASK_TYPE_CONFIG[t.task_type]?.label || t.task_type,
+        status: mappedStatus as TaskItem['status'],
+        statusLabel: TASK_STATUS_CONFIG[mappedStatus]?.label || mappedStatus,
+        elapsedTime: min > 0 ? `${min}m${sec}s` : `${sec}s`,
+        progress: Math.round(t.progress * 100),
+        gpuCount: 0,
+        createdAt: t.created_at
+      }
+    })
+  )
+
   const searchKeyword = ref('')
   const filterType = ref('')
   const filterStatus = ref('')
@@ -92,11 +128,15 @@
   const pagination = ref({
     current: 1,
     size: 10,
-    total: taskListMockData.length
+    total: 0
+  })
+
+  watchEffect(() => {
+    pagination.value.total = allTaskItems.value.length
   })
 
   const filteredData = computed(() => {
-    let result = [...taskListMockData]
+    let result = allTaskItems.value
 
     if (searchKeyword.value) {
       const keyword = searchKeyword.value.toLowerCase()
@@ -265,6 +305,12 @@
   }
 
   const confirmTerminate = () => {
+    if (currentTask.value) {
+      const id = Number(currentTask.value.id)
+      if (!isNaN(id)) {
+        deleteTask(id).then(() => fetchTasks())
+      }
+    }
     ElMessage.success(`任务「${currentTask.value?.name}」已强制终止`)
     terminateDialogVisible.value = false
     currentTask.value = null
@@ -285,11 +331,20 @@
       }
     )
       .then(() => {
+        selectedRows.value.forEach((row) => {
+          const id = Number(row.id)
+          if (!isNaN(id)) deleteTask(id)
+        })
+        fetchTasks()
         ElMessage.success('已清理完成')
         selectedRows.value = []
       })
       .catch(() => {})
   }
+
+  onMounted(() => {
+    fetchTasks()
+  })
 </script>
 
 <style lang="scss" scoped>

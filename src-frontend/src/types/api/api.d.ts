@@ -229,8 +229,17 @@ declare namespace Api {
         api_key: string
         synthesizer_url: string
         synthesizer_model: string
-        mode: 'atomic' | 'multi_hop' | 'aggregated' | 'CoT' | 'multi_choice' | 'multi_answer' | 'fill_in_blank' | 'true_false'
+        mode:
+          | 'atomic'
+          | 'multi_hop'
+          | 'aggregated'
+          | 'CoT'
+          | 'multi_choice'
+          | 'multi_answer'
+          | 'fill_in_blank'
+          | 'true_false'
         data_format: 'Alpaca' | 'Sharegpt' | 'ChatML'
+        content_field?: string
         tokenizer?: string
         chunk_size?: number
         chunk_overlap?: number

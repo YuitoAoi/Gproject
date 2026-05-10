@@ -51,7 +51,7 @@ def login_user(
     if not result.success:
         err = result.error or ""
         status = 400 if ("empty" in err or "Invalid" in err) else 401
-        return JSONResponse(content=result.model_dump(), status_code=status)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=status)
     return result
 
 
@@ -62,7 +62,7 @@ def get_current_user_info(
 ):
     result = svc.get_user_info().execute(int(current_user.user_id))
     if result.error:
-        return JSONResponse(content=result.model_dump(), status_code=404)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=404)
     return result
 
 
@@ -76,7 +76,7 @@ def update_user_info(
     if not result.success:
         err = result.error or ""
         status = 409 if "already" in err.lower() else 400
-        return JSONResponse(content=result.model_dump(), status_code=status)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=status)
     return result
 
 
@@ -116,5 +116,5 @@ def register_user(
     if not result.success:
         err = result.error or ""
         status = 409 if "already" in err.lower() else 400
-        return JSONResponse(content=result.model_dump(), status_code=status)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=status)
     return result

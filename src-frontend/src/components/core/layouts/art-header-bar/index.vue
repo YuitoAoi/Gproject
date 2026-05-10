@@ -221,6 +221,7 @@
 
   const showNotice = ref(false)
   const notice = ref(null)
+  const reloadTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 
   // 菜单类型判断
   const isLeftMenu = computed(() => menuType.value === MenuTypeEnum.LEFT)
@@ -236,6 +237,7 @@
   })
 
   onUnmounted(() => {
+    if (reloadTimer.value) clearTimeout(reloadTimer.value)
     document.removeEventListener('click', bodyCloseNotice)
   })
 
@@ -268,7 +270,8 @@
    * @param {number} time - 延迟时间，默认为0毫秒
    */
   const reload = (time: number = 0): void => {
-    setTimeout(() => {
+    if (reloadTimer.value) clearTimeout(reloadTimer.value)
+    reloadTimer.value = setTimeout(() => {
       refresh()
     }, time)
   }

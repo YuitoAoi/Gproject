@@ -35,8 +35,6 @@ import { ref, computed } from 'vue'
 import { MenuThemeType } from '@/types/store'
 import AppConfig from '@/config'
 import { SystemThemeEnum, MenuThemeEnum, MenuTypeEnum, ContainerWidthEnum } from '@/enums/appEnum'
-import { setElementThemeColor } from '@/utils/ui'
-import { useCeremony } from '@/hooks/core/useCeremony'
 import { StorageConfig } from '@/utils'
 import { SETTING_DEFAULT_CONFIG } from '@/config/setting'
 
@@ -152,14 +150,6 @@ export const useSettingStore = defineStore(
     })
 
     /**
-     * 是否显示烟花
-     * 根据当前日期和节日日期判断是否显示烟花效果
-     */
-    const isShowFireworks = computed((): boolean => {
-      return festivalDate.value === useCeremony().currentFestivalData.value?.date ? false : true
-    })
-
-    /**
      * 切换菜单布局
      * @param type 菜单类型
      */
@@ -200,7 +190,6 @@ export const useSettingStore = defineStore(
      */
     const setElementTheme = (theme: string) => {
       systemThemeColor.value = theme
-      setElementThemeColor(theme)
     }
 
     /**
@@ -348,7 +337,6 @@ export const useSettingStore = defineStore(
      */
     const setCustomRadius = (radius: string) => {
       customRadius.value = radius
-      document.documentElement.style.setProperty('--custom-radius', `${radius}rem`)
     }
 
     /**
@@ -409,7 +397,6 @@ export const useSettingStore = defineStore(
       isDark,
       getMenuOpenWidth,
       getCustomRadius,
-      isShowFireworks,
       switchMenuLayouts,
       setMenuOpenWidth,
       setGlopTheme,

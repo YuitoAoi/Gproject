@@ -1,6 +1,10 @@
 <!-- 环型图卡片 -->
 <template>
-  <div class="art-card overflow-hidden" :class="flex ? 'flex flex-col' : ''" :style="flex ? {} : { height: `${height}rem` }">
+  <div
+    class="art-card overflow-hidden"
+    :class="flex ? 'flex flex-col' : ''"
+    :style="flex ? {} : { height: `${height}rem` }"
+  >
     <div class="flex box-border h-full p-5" :class="flex ? 'flex-1 min-h-0' : ''">
       <div class="flex w-full flex-col items-center">
         <p class="self-start text-lg font-medium leading-tight text-g-900 mb-3">

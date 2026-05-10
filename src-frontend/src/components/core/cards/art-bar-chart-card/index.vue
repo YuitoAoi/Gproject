@@ -1,6 +1,9 @@
 <!-- 柱状图卡片 -->
 <template>
-  <div class="art-card overflow-hidden flex flex-col" :style="{ height: flex ? '100%' : `${height}rem` }">
+  <div
+    class="art-card overflow-hidden flex flex-col"
+    :style="{ height: flex ? '100%' : `${height}rem` }"
+  >
     <div class="mb-2.5 flex-b items-start p-5 flex-shrink-0">
       <div>
         <p class="text-2xl font-medium leading-none">
@@ -8,10 +11,7 @@
         </p>
         <p class="mt-1 text-sm text-g-500">{{ label }}</p>
       </div>
-      <div
-        class="text-sm font-medium"
-        :class="percentage > 0 ? 'text-success' : 'text-danger'"
-      >
+      <div class="text-sm font-medium" :class="percentage > 0 ? 'text-success' : 'text-danger'">
         {{ percentage > 0 ? '+' : '' }}{{ percentage }}%
       </div>
     </div>

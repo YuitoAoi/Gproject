@@ -96,32 +96,113 @@
     lossChartMockData,
     TASK_STATUS_CONFIG
   } from '@/mock/modules/task-dispatch'
+  import { getTask as fetchTask, deleteTask, type TaskItem as ApiTask } from '@/api/task'
+  import { getDatasetLogs } from '@/api/dataset'
 
   defineOptions({ name: 'TaskMonitoringPage' })
 
   const route = useRoute()
   const router = useRouter()
 
-  const taskId = computed(() => route.params.id as string)
+  const rawTask = ref<ApiTask | null>(null)
+  const taskIdParam = computed(() => route.params.id as string)
 
-  const taskData = ref({ ...taskDetailMockData })
+  const isCleaning = computed(() => rawTask.value?.task_type === 'cleaning')
+
+  const taskData = computed(() => {
+    const t = rawTask.value
+    if (!t) return { ...taskDetailMockData }
+    const elapsed = Math.round((Date.now() - new Date(t.created_at).getTime()) / 1000)
+    const min = Math.floor(elapsed / 60)
+    const sec = elapsed % 60
+    const mappedStatus =
+      t.status === 'done'
+        ? 'completed'
+        : t.status === 'failed'
+          ? 'failed'
+          : t.status === 'running'
+            ? 'running'
+            : 'pending'
+    return {
+      ...taskDetailMockData,
+      id: String(t.id),
+      name: t.task_name,
+      status: mappedStatus,
+      progress: Math.round(t.progress * 100),
+      currentStep: Math.round(t.progress * 10) || 1,
+      totalSteps: 10,
+      elapsedTime: min > 0 ? `${min}m${sec}s` : `${sec}s`
+    }
+  })
+
+  const terminalLogs = ref<any[]>([])
   const checkpoints = ref([...checkpointListMockData])
   const lossChartData = ref([...lossChartMockData])
   const autoScroll = ref(true)
 
-  const terminalLogs = ref([
-    { timestamp: '14:20:00', level: 'INFO', message: 'Task ID: cln_9fa82b started.' },
-    { timestamp: '14:20:01', level: 'INFO', message: 'Loading dataset from S3...' },
-    { timestamp: '14:20:05', level: 'WARN', message: 'Chunk 1: Dropped 452 empty rows.' },
-    { timestamp: '14:20:12', level: 'INFO', message: 'PII Masker: Masked 1,204 phones.' },
-    { timestamp: '14:21:03', level: 'WARN', message: 'Chunk 2: Dropped 89 short texts.' },
-    { timestamp: '14:21:30', level: 'INFO', message: 'MinHash Dedup: Scanning...' },
-    { timestamp: '14:22:15', level: 'INFO', message: 'Chunk 3 processing...' },
-    { timestamp: '14:22:30', level: 'INFO', message: '[INFO] epoch 1, step 4000' },
-    { timestamp: '14:22:31', level: 'INFO', message: "{'loss': 0.85, 'learning_rate': 2e-5}" },
-    { timestamp: '14:22:35', level: 'INFO', message: '[INFO] Saving checkpoint-4000...' },
-    { timestamp: '14:22:45', level: 'INFO', message: '[INFO] step 4500, loss: 0.82' }
-  ])
+  async function loadLogs() {
+    const t = rawTask.value
+    if (!t) return
+    let jobId = ''
+    try {
+      const cfg = JSON.parse(t.config)
+      jobId = cfg.job_id || ''
+    } catch {
+      return
+    }
+    if (!jobId) return
+    try {
+      const resp = await getDatasetLogs(jobId)
+      if (resp.lines) {
+        terminalLogs.value = resp.lines.map((line) => ({
+          timestamp: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+          level: parseLevel(line),
+          message: line
+        }))
+      } else if (resp.error) {
+        terminalLogs.value = [
+          {
+            timestamp: '',
+            level: 'WARN',
+            message: resp.error
+          }
+        ]
+      }
+    } catch {
+      terminalLogs.value = [
+        {
+          timestamp: '',
+          level: 'WARN',
+          message: '无法加载日志'
+        }
+      ]
+    }
+  }
+
+  onMounted(async () => {
+    const id = Number(taskIdParam.value)
+    if (!isNaN(id)) {
+      const resp = await fetchTask(id)
+      rawTask.value = resp.task || null
+    }
+    if (rawTask.value) {
+      loadLogs()
+    }
+  })
+
+  function parseLevel(line: string): string {
+    const match = line.match(/\] (DEBUG|INFO|WARNING|ERROR|CRITICAL) \[/)
+    if (match) {
+      if (match[1] === 'WARNING') return 'WARN'
+      if (match[1] === 'CRITICAL') return 'ERROR'
+      return match[1]
+    }
+    return 'INFO'
+  }
+
+  onMounted(() => {
+    loadLogs()
+  })
 
   const statusConfig = computed(() => TASK_STATUS_CONFIG[taskData.value.status])
 
@@ -131,7 +212,7 @@
 
   const handleForceTerminate = () => {
     ElMessageBox.confirm(
-      `确定要强制终止任务 #${taskId.value} 吗？此操作不可恢复。`,
+      `确定要强制终止任务 #${taskIdParam.value} 吗？此操作不可恢复。`,
       '确认强制终止',
       {
         confirmButtonText: '确定终止',
@@ -139,7 +220,11 @@
         type: 'warning'
       }
     )
-      .then(() => {
+      .then(async () => {
+        const id = Number(taskIdParam.value)
+        if (!isNaN(id)) {
+          await deleteTask(id)
+        }
         ElMessage.success('任务已强制终止')
         router.push('/workbench/task-dispatch')
       })

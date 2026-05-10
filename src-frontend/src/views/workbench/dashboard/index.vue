@@ -52,14 +52,17 @@
             <ArtSvgIcon icon="ri:hard-drive-3-line" class="mr-2 text-blue-500 inline-block" />
             算力负载池
           </h3>
-          <ElScrollbar class="flex-1 ">
+          <ElScrollbar class="flex-1">
             <div class="grid grid-cols-2 gap-7">
               <div
                 v-for="gpu in gpuData"
                 :key="gpu.name"
-                class="art-card h-28 flex flex-col justify-center px-4">
+                class="art-card h-28 flex flex-col justify-center px-4"
+              >
                 <div class="flex flex-col mb-2">
-                  <span class="text-lg font-semibold" :class="getGpuUsageClass(gpu.usage)">{{ gpu.usage }}%</span>
+                  <span class="text-lg font-semibold" :class="getGpuUsageClass(gpu.usage)"
+                    >{{ gpu.usage }}%</span
+                  >
                   <span class="text-xs text-g-500">{{ gpu.name }}</span>
                 </div>
                 <ElProgress
@@ -127,62 +130,86 @@
 </template>
 
 <script setup lang="ts">
-defineOptions({ name: 'DashboardPage' })
+  defineOptions({ name: 'DashboardPage' })
 
-const serviceHealthList = ref([
-  { title: 'Redis', status: '正常', time: '运行中', class: 'bg-green-100 text-green-600', icon: 'ri:database-2-line' },
-  { title: 'Celery', status: '正常', time: '运行中', class: 'bg-green-100 text-green-600', icon: 'ri:timer-flash-line' },
-  { title: 'WebSocket', status: '正常', time: '运行中', class: 'bg-green-100 text-green-600', icon: 'ri:wifi-line' },
-  { title: 'GPU Driver', status: '正常', time: '就绪', class: 'bg-blue-100 text-blue-600', icon: 'ri:hard-drive-3-line' }
-])
+  const serviceHealthList = ref([
+    {
+      title: 'Redis',
+      status: '正常',
+      time: '运行中',
+      class: 'bg-green-100 text-green-600',
+      icon: 'ri:database-2-line'
+    },
+    {
+      title: 'Celery',
+      status: '正常',
+      time: '运行中',
+      class: 'bg-green-100 text-green-600',
+      icon: 'ri:timer-flash-line'
+    },
+    {
+      title: 'WebSocket',
+      status: '正常',
+      time: '运行中',
+      class: 'bg-green-100 text-green-600',
+      icon: 'ri:wifi-line'
+    },
+    {
+      title: 'GPU Driver',
+      status: '正常',
+      time: '就绪',
+      class: 'bg-blue-100 text-blue-600',
+      icon: 'ri:hard-drive-3-line'
+    }
+  ])
 
-const gpuData = ref([
-  { name: 'GPU 0: RTX 4090', usage: 95 },
-  { name: 'GPU 1: RTX 4090', usage: 80 },
-  { name: 'GPU 2: RTX 4090', usage: 45 },
-  { name: 'GPU 3: RTX 4090', usage: 0 },
-  { name: 'GPU 4: RTX 4090', usage: 60 },
-  { name: 'GPU 5: RTX 4090', usage: 30 },
-  { name: 'GPU 6: RTX 4090', usage: 85 },
-  { name: 'GPU 7: RTX 4090', usage: 0 }
-])
+  const gpuData = ref([
+    { name: 'GPU 0: RTX 4090', usage: 95 },
+    { name: 'GPU 1: RTX 4090', usage: 80 },
+    { name: 'GPU 2: RTX 4090', usage: 45 },
+    { name: 'GPU 3: RTX 4090', usage: 0 },
+    { name: 'GPU 4: RTX 4090', usage: 60 },
+    { name: 'GPU 5: RTX 4090', usage: 30 },
+    { name: 'GPU 6: RTX 4090', usage: 85 },
+    { name: 'GPU 7: RTX 4090', usage: 0 }
+  ])
 
-const taskProgressList = ref([
-  { taskName: 'Llama3-微调-001', phase: '训练中', progress: 65 },
-  { taskName: 'Qwen-数据清洗', phase: '数据处理', progress: 90 },
-  { taskName: 'Baichuan-模型导出', phase: '已完成', progress: 100 },
-  { taskName: 'ChatGLM3-增量训练', phase: '排队中', progress: 0 },
-  { taskName: 'DeepSeek-评测任务', phase: '推理中', progress: 45 },
-  { taskName: 'Mistral-格式转换', phase: '数据处理', progress: 78 },
-  { taskName: 'LLaMA2-检索增强', phase: '训练中', progress: 32 },
-  { taskName: 'Qwen2.5-量化导出', phase: '已完成', progress: 100 },
-  { taskName: 'Yi-34B-全量微调', phase: '排队中', progress: 5 },
-  { taskName: 'Phi-3-数据标注', phase: '数据处理', progress: 88 }
-])
+  const taskProgressList = ref([
+    { taskName: 'Llama3-微调-001', phase: '训练中', progress: 65 },
+    { taskName: 'Qwen-数据清洗', phase: '数据处理', progress: 90 },
+    { taskName: 'Baichuan-模型导出', phase: '已完成', progress: 100 },
+    { taskName: 'ChatGLM3-增量训练', phase: '排队中', progress: 0 },
+    { taskName: 'DeepSeek-评测任务', phase: '推理中', progress: 45 },
+    { taskName: 'Mistral-格式转换', phase: '数据处理', progress: 78 },
+    { taskName: 'LLaMA2-检索增强', phase: '训练中', progress: 32 },
+    { taskName: 'Qwen2.5-量化导出', phase: '已完成', progress: 100 },
+    { taskName: 'Yi-34B-全量微调', phase: '排队中', progress: 5 },
+    { taskName: 'Phi-3-数据标注', phase: '数据处理', progress: 88 }
+  ])
 
-const auditTrailList = ref([
-  { time: '10 分钟前', status: 'success', content: 'Admin 启动了 Llama3 微调任务' },
-  { time: '1 小时前', status: 'success', content: '数据集 清洗完成，大小 1.2GB' },
-  { time: '昨天', status: 'success', content: '导出模型 Qwen-7B-chat 完成' },
-  { time: '2 天前', status: 'primary', content: '新建数据集 medical-zh 成功，共 5000 条' },
-  { time: '3 天前', status: 'danger', content: '训练任务 fine-tune-batch-1 失败：OOM' }
-])
+  const auditTrailList = ref([
+    { time: '10 分钟前', status: 'success', content: 'Admin 启动了 Llama3 微调任务' },
+    { time: '1 小时前', status: 'success', content: '数据集 清洗完成，大小 1.2GB' },
+    { time: '昨天', status: 'success', content: '导出模型 Qwen-7B-chat 完成' },
+    { time: '2 天前', status: 'primary', content: '新建数据集 medical-zh 成功，共 5000 条' },
+    { time: '3 天前', status: 'danger', content: '训练任务 fine-tune-batch-1 失败：OOM' }
+  ])
 
-const getGpuUsageClass = (usage: number) => {
-  if (usage > 80) return 'text-red-500'
-  if (usage > 50) return 'text-yellow-500'
-  return 'text-green-500'
-}
+  const getGpuUsageClass = (usage: number) => {
+    if (usage > 80) return 'text-red-500'
+    if (usage > 50) return 'text-yellow-500'
+    return 'text-green-500'
+  }
 
-const getGpuProgressColor = (usage: number) => {
-  if (usage > 80) return '#f56c6c'
-  if (usage > 50) return '#e6a23c'
-  return '#67c23a'
-}
+  const getGpuProgressColor = (usage: number) => {
+    if (usage > 80) return '#f56c6c'
+    if (usage > 50) return '#e6a23c'
+    return '#67c23a'
+  }
 </script>
 
 <style lang="scss" scoped>
-.overview-page {
-  padding: 0;
-}
+  .overview-page {
+    padding: 0;
+  }
 </style>

@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, Request, UploadFile, File, Form
+from fastapi import APIRouter, Depends, Query, Request, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
@@ -93,7 +93,7 @@ def get_dataset(
     owner_id = int(current_user.user_id)
     result = svc.get_datasets().get_by_id(request.dataset_id, owner_id)
     if result.error:
-        return JSONResponse(content=result.model_dump(), status_code=404)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=404)
     return result
 
 
@@ -111,7 +111,7 @@ def import_dataset(
     owner_id = int(current_user.user_id)
     result = svc.dataset_import_export().import_dataset(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=400)
     return result
 
 
@@ -140,7 +140,7 @@ def upload_chunk(
     data = file.file.read()
     result = svc.chunked_upload().upload_chunk(upload_id, chunk_index, data)
     if result.error:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=400)
     return result
 
 
@@ -162,7 +162,7 @@ def complete_upload(
     request.owner_id = int(current_user.user_id)
     result = svc.chunked_upload().complete(request)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=400)
     return result
 
 
@@ -180,7 +180,7 @@ def update_dataset(
     owner_id = int(current_user.user_id)
     result = svc.update_dataset().execute(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=404)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=404)
     return result
 
 
@@ -193,7 +193,7 @@ def add_tags_batch(
     owner_id = int(current_user.user_id)
     result = svc.add_tags_batch().execute(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=400)
     return result
 
 
@@ -361,5 +361,35 @@ def delete_dataset(
     owner_id = int(current_user.user_id)
     result = svc.remove_datasets().execute(request, owner_id)
     if not result.deleted:
-        return JSONResponse(content=result.model_dump(), status_code=404)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=404)
     return result
+
+
+logs_router = APIRouter(prefix="/dataset", tags=["dataset"])
+
+
+class DatasetLogResponse(BaseModel):
+    lines: List[str] = []
+    error: Optional[str] = None
+
+
+@logs_router.get("/logs")
+def get_dataset_logs(
+    job_id: str = Query(...),
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """根据 job_id 查询清洗任务的日志文件内容。"""
+    import os
+
+    log_repo = svc.dataset_log_repo
+    record = log_repo.find_by_job_id(job_id)
+    if record is None:
+        return DatasetLogResponse(error="日志未找到")
+
+    if not os.path.isfile(record.log_path):
+        return DatasetLogResponse(error="日志文件已过期")
+
+    with open(record.log_path, "r", encoding="utf-8") as f:
+        lines = [line.rstrip("\n") for line in f.readlines()]
+    return DatasetLogResponse(lines=lines)

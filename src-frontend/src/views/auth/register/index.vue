@@ -206,15 +206,9 @@
   }
 
   const rules = computed<FormRules<RegisterForm>>(() => ({
-    name: [
-      { required: true, validator: validateName, trigger: 'blur' }
-    ],
-    email: [
-      { required: true, validator: validateEmail, trigger: 'blur' }
-    ],
-    password: [
-      { required: true, validator: validatePassword, trigger: 'blur' }
-    ],
+    name: [{ required: true, validator: validateName, trigger: 'blur' }],
+    email: [{ required: true, validator: validateEmail, trigger: 'blur' }],
+    password: [{ required: true, validator: validatePassword, trigger: 'blur' }],
     confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'blur' }]
   }))
 

@@ -35,7 +35,6 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { LanguageEnum } from '@/enums/appEnum'
 import { router } from '@/router'
-import { useSettingStore } from './setting'
 import { useWorktabStore } from './worktab'
 import { AppRouteRecord } from '@/types/router'
 import { setPageTitle } from '@/utils/router'
@@ -70,16 +69,12 @@ export const useUserStore = defineStore(
     // 搜索历史记录
     const searchHistory = ref<AppRouteRecord[]>([])
     // 访问令牌
-    const accessToken = ref('dev-token')
+    const accessToken = ref(import.meta.env.DEV ? 'dev-token' : '')
     // 刷新令牌
-    const refreshToken = ref('dev-refresh-token')
+    const refreshToken = ref(import.meta.env.DEV ? 'dev-refresh-token' : '')
 
     // 计算属性：获取用户信息
     const getUserInfo = computed(() => info.value)
-    // 计算属性：获取设置状态
-    const getSettingState = computed(() => useSettingStore().$state)
-    // 计算属性：获取工作台状态
-    const getWorktabState = computed(() => useWorktabStore().$state)
 
     /**
      * 设置用户信息
@@ -220,8 +215,6 @@ export const useUserStore = defineStore(
       accessToken,
       refreshToken,
       getUserInfo,
-      getSettingState,
-      getWorktabState,
       setUserInfo,
       setLoginStatus,
       setLanguage,

@@ -53,17 +53,20 @@ class BaseReader(ABC):
 
     def _validate_batch(self, batch: pd.DataFrame) -> pd.DataFrame:
         """
-        Validate data format.
+        Validate data format, auto-add missing columns.
+
+        - 自动补 ``type="text"`` 列（JSON/CSV/XLSX 等未预设 type 的文件）
+        - 若 ``text_column`` 不是 "content"，自动重命名为 "content"
         """
+        import numpy as np
+
+        num_rows = len(batch)
 
         if "type" not in batch.columns:
-            raise ValueError(f"Missing 'type' column. Found: {list(batch.columns)}")
+            batch["type"] = np.array(["text"] * num_rows)
 
-        if "text" in batch["type"].values:
-            if self.text_column not in batch.columns:
-                raise ValueError(
-                    f"Missing '{self.text_column}' column for text documents"
-                )
+        if self.text_column != "content" and self.text_column in batch.columns:
+            batch["content"] = batch[self.text_column]
 
         return batch
 

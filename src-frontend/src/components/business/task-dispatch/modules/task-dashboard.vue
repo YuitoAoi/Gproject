@@ -79,32 +79,38 @@
 
 <script setup lang="ts">
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
-  import { taskDashboardMockData } from '@/mock/modules/task-dispatch'
+  import { getTasks, type TaskItem } from '@/api/task'
 
   defineOptions({ name: 'TaskDashboard' })
 
-  interface DashboardData {
-    running: number
-    pending: number
-    completed: number
-    failed: number
-    avgWaitTime: string
-    successRate: string
-    totalGpu: number
-    allocatedGpu: number
+  const rawTasks = ref<TaskItem[]>([])
+
+  async function fetchStats() {
+    const resp = await getTasks()
+    rawTasks.value = resp.items || []
   }
 
-  withDefaults(
-    defineProps<{
-      data?: DashboardData
-    }>(),
-    {
-      data: () => taskDashboardMockData
+  const data = computed(() => {
+    const running = rawTasks.value.filter((t) => t.status === 'running').length
+    const pending = rawTasks.value.filter((t) => t.status === 'pending').length
+    const completed = rawTasks.value.filter((t) => t.status === 'done').length
+    const failed = rawTasks.value.filter((t) => t.status === 'failed').length
+    const total = rawTasks.value.length
+    return {
+      running,
+      pending,
+      completed,
+      failed,
+      avgWaitTime: '—',
+      successRate: total > 0 ? `${Math.round((completed / total) * 100)}%` : '—',
+      totalGpu: 8,
+      allocatedGpu: running * 2
     }
-  )
+  })
 
   const gpuPercentage = computed(() => {
-    return Math.round((taskDashboardMockData.allocatedGpu / taskDashboardMockData.totalGpu) * 100)
+    if (data.value.totalGpu === 0) return 0
+    return Math.round((data.value.allocatedGpu / data.value.totalGpu) * 100)
   })
 
   const gpuProgressColor = computed(() => {
@@ -112,6 +118,10 @@
     if (percentage > 80) return '#F56C6C'
     if (percentage > 50) return '#E6A23C'
     return '#67C23A'
+  })
+
+  onMounted(() => {
+    fetchStats()
   })
 </script>
 

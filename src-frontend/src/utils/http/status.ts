@@ -15,5 +15,6 @@ export enum ApiStatus {
   badGateway = 502, // 网关错误
   serviceUnavailable = 503, // 服务不可用
   gatewayTimeout = 504, // 网关超时
-  httpVersionNotSupported = 505 // HTTP版本不支持
+  httpVersionNotSupported = 505, // HTTP版本不支持
+  clientError = -1 // 客户端/网络错误前哨值
 }

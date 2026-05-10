@@ -1,132 +1,104 @@
 /**
- * 任务进度状态管理
+ * 任务进度状态管理（WebSocket 实时缓存）
  *
- * 管理Celery异步任务（上传、清洗、转换）的实时进度
- * 通过WebSocket实时推送进度更新
+ * 仅用于监控页 WebSocket 推送时的本地 UI 缓存。
+ * 任务队列的权威数据源是后端 MySQL tasks 表，通过 GET /tasks API 查询。
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
-export interface StageLog {
-  time: string
-  level: 'INFO' | 'WARN' | 'ERROR'
-  message: string
-}
-
-export interface TaskProgress {
+export interface TaskRecord {
   taskId: string
+  taskName: string
+  taskType: 'cleaning' | 'training' | 'upload' | 'export' | 'inference'
   current: number
   total: number
   percentage: number
   phase: string
   status: 'pending' | 'running' | 'success' | 'failure'
   message: string
+  logPath?: string
   createdAt: string
   updatedAt: string
-  logs: StageLog[]
 }
 
-export const useTaskStore = defineStore(
-  'taskStore',
-  () => {
-    // 所有任务
-    const tasks = ref<Map<string, TaskProgress>>(new Map())
+export const useTaskStore = defineStore('taskStore', () => {
+  const tasks = ref<Map<string, TaskRecord>>(new Map())
 
-    // 排序后的任务列表
-    const taskList = computed(() => {
-      return Array.from(tasks.value.values()).sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      )
-    })
-
-    // 进行中的任务
-    const runningTasks = computed(() =>
-      taskList.value.filter((t) => t.status === 'running' || t.status === 'pending')
+  const taskList = computed(() => {
+    return Array.from(tasks.value.values()).sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     )
+  })
 
-    // 已完成的任务
-    const completedTasks = computed(() =>
-      taskList.value.filter((t) => t.status === 'success')
-    )
+  const runningTasks = computed(() =>
+    taskList.value.filter((t) => t.status === 'running' || t.status === 'pending')
+  )
 
-    // 失败的任务
-    const failedTasks = computed(() =>
-      taskList.value.filter((t) => t.status === 'failure')
-    )
+  const pendingTasks = computed(() => taskList.value.filter((t) => t.status === 'pending'))
 
-    // 更新或创建任务进度
-    function updateTask(taskId: string, updates: Partial<TaskProgress>) {
-      const existing = tasks.value.get(taskId)
-      const now = new Date().toISOString()
-      if (existing) {
-        const prevPhase = existing.phase
-        Object.assign(existing, {
-          ...updates,
-          updatedAt: now,
-        })
-        if (updates.phase && updates.phase !== prevPhase) {
-          const time = new Date().toLocaleTimeString('zh-CN', { hour12: false })
-          const level = updates.status === 'failure' ? 'ERROR' as const
-            : updates.status === 'success' ? 'INFO' as const
-            : 'INFO' as const
-          existing.logs.push({
-            time,
-            level,
-            message: updates.message || updates.phase,
-          })
-        }
-        tasks.value = new Map(tasks.value)
-      } else {
-        tasks.value.set(taskId, {
-          taskId,
-          current: 0,
-          total: 100,
-          percentage: 0,
-          phase: '',
-          status: 'pending',
-          message: '',
-          createdAt: now,
-          updatedAt: now,
-          logs: [],
-          ...updates,
-        })
-        tasks.value = new Map(tasks.value)
-      }
-    }
+  const completedTasks = computed(() => taskList.value.filter((t) => t.status === 'success'))
 
-    // 获取指定任务
-    function getTask(taskId: string): TaskProgress | undefined {
-      return tasks.value.get(taskId)
-    }
+  const failedTasks = computed(() => taskList.value.filter((t) => t.status === 'failure'))
 
-    // 移除指定任务
-    function removeTask(taskId: string) {
-      tasks.value.delete(taskId)
-      tasks.value = new Map(tasks.value)
-    }
-
-    // 清空已完成的任务
-    function clearCompleted() {
-      const toRemove: string[] = []
-      tasks.value.forEach((task, key) => {
-        if (task.status === 'success' || task.status === 'failure') {
-          toRemove.push(key)
-        }
+  function updateTask(taskId: string, updates: Partial<TaskRecord>) {
+    const existing = tasks.value.get(taskId)
+    const now = new Date().toISOString()
+    if (existing) {
+      Object.assign(existing, {
+        ...updates,
+        updatedAt: now
       })
-      toRemove.forEach((key) => tasks.value.delete(key))
       tasks.value = new Map(tasks.value)
-    }
-
-    return {
-      tasks,
-      taskList,
-      runningTasks,
-      completedTasks,
-      failedTasks,
-      updateTask,
-      getTask,
-      removeTask,
-      clearCompleted
+    } else {
+      tasks.value.set(taskId, {
+        taskId,
+        taskName: taskId.slice(0, 8),
+        taskType: 'cleaning',
+        current: 0,
+        total: 100,
+        percentage: 0,
+        phase: '',
+        status: 'pending',
+        message: '',
+        createdAt: now,
+        updatedAt: now,
+        ...updates
+      })
+      tasks.value = new Map(tasks.value)
     }
   }
-)
+
+  function getTask(taskId: string): TaskRecord | undefined {
+    return tasks.value.get(taskId)
+  }
+
+  function removeTask(taskId: string) {
+    tasks.value.delete(taskId)
+    tasks.value = new Map(tasks.value)
+  }
+
+  function clearCompleted() {
+    const toRemove: string[] = []
+    tasks.value.forEach((task, key) => {
+      if (task.status === 'success' || task.status === 'failure') {
+        toRemove.push(key)
+      }
+    })
+    toRemove.forEach((key) => tasks.value.delete(key))
+    tasks.value = new Map(tasks.value)
+  }
+
+  return {
+    tasks,
+    taskList,
+    runningTasks,
+    pendingTasks,
+    completedTasks,
+    failedTasks,
+    updateTask,
+    getTask,
+    removeTask,
+    clearCompleted
+  }
+})

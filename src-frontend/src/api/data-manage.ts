@@ -151,9 +151,7 @@ export function fetchGetProcessingLogsMock(
 ): Promise<Api.DataManage.DataProcessing.ProcessingLog[]> {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve(
-        MOCK_PROCESSING_LOGS as Api.DataManage.DataProcessing.ProcessingLog[]
-      )
+      resolve(MOCK_PROCESSING_LOGS as Api.DataManage.DataProcessing.ProcessingLog[])
     }, 300)
   })
 }

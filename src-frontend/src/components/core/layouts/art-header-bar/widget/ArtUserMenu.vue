@@ -75,6 +75,7 @@
 
   const { getUserInfo: userInfo } = storeToRefs(userStore)
   const userMenuPopover = ref()
+  const pendingTimers: ReturnType<typeof setTimeout>[] = []
 
   /**
    * 页面跳转
@@ -110,7 +111,7 @@
    */
   const loginOut = (): void => {
     closeUserMenu()
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       ElMessageBox.confirm(t('common.logOutTips'), t('common.tips'), {
         confirmButtonText: t('common.confirm'),
         cancelButtonText: t('common.cancel'),
@@ -119,16 +120,22 @@
         userStore.logOut()
       })
     }, 200)
+    pendingTimers.push(timer)
   }
 
   /**
    * 关闭用户菜单弹出层
    */
   const closeUserMenu = (): void => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       userMenuPopover.value.hide()
     }, 100)
+    pendingTimers.push(timer)
   }
+
+  onUnmounted(() => {
+    pendingTimers.forEach(clearTimeout)
+  })
 </script>
 
 <style scoped>

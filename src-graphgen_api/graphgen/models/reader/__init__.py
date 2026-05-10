@@ -6,3 +6,4 @@ from .pdf_reader import PDFReader
 from .pickle_reader import PickleReader
 from .rdf_reader import RDFReader
 from .txt_reader import TXTReader
+from .xlsx_reader import XLSXReader

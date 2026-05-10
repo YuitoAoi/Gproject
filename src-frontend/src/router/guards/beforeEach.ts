@@ -50,6 +50,7 @@ import { useCommon } from '@/hooks/core/useCommon'
 import { useWorktabStore } from '@/store/modules/worktab'
 import { ApiStatus } from '@/utils/http/status'
 import { isHttpError } from '@/utils/http/error'
+import { clearPendingLogout } from '@/utils/http'
 import { RouteRegistry, MenuProcessor, IframeRouteManager, RoutePermissionValidator } from '../core'
 import { fetchGetUserInfo } from '@/api/auth'
 
@@ -146,9 +147,13 @@ async function handleRouteGuard(
   const settingStore = useSettingStore()
   const userStore = useUserStore()
 
-  // 启动进度条
+  // 启动进度条（仅在跨路由组导航时显示）
   if (settingStore.showNprogress) {
-    NProgress.start()
+    const fromGroup = from.matched[0]?.path
+    const toGroup = to.matched[0]?.path
+    if (fromGroup !== toGroup) {
+      NProgress.start()
+    }
   }
 
   // 1. 检查登录状态
@@ -170,14 +175,24 @@ async function handleRouteGuard(
 
   // 3. 处理动态路由注册
   if (!routeRegistry?.isRegistered() && userStore.isLogin) {
-    // 防止并发请求（快速连续导航场景）
-    if (routeInitInProgress) {
-      // 正在初始化中，等待完成后重新导航
+    // 自愈检查：路由注册器标记丢失但实际动态路由已存在于 router 中
+    const menuStore = useMenuStore()
+    const existingRouteNames = new Set(router.getRoutes().map((r) => r.name))
+    const menuHasRoutes = menuStore.menuList.length > 0
+    const dynamicRoutesExist = menuStore.menuList.some(
+      (item) => item.name && existingRouteNames.has(item.name)
+    )
+
+    if (menuHasRoutes && dynamicRoutesExist) {
+      routeRegistry?.markAsRegistered()
+    } else if (routeInitInProgress) {
+      // 防止并发请求（快速连续导航场景）
       next(false)
       return
+    } else {
+      await handleDynamicRoutes(to, next, router)
+      return
     }
-    await handleDynamicRoutes(to, next, router)
-    return
   }
 
   // 4. 处理根路径重定向
@@ -268,6 +283,7 @@ async function handleDynamicRoutes(
   try {
     // 1. 获取用户信息（开发模式直接使用 mock）
     await fetchUserInfo()
+    clearPendingLogout()
 
     // 2. 获取菜单数据
     console.log('[RouteGuard] 开始获取菜单数据...')
@@ -382,7 +398,26 @@ async function handleDynamicRoutes(
  * 获取用户信息
  */
 async function fetchUserInfo(): Promise<void> {
-  const userInfo = await fetchGetUserInfo()
+  let userInfo: Api.Auth.UserInfo
+
+  try {
+    userInfo = await fetchGetUserInfo()
+  } catch {
+    if (import.meta.env.DEV) {
+      userInfo = {
+        id: 1,
+        name: 'admin',
+        email: 'admin@local.dev',
+        is_admin: true,
+        is_active: true,
+        created_at: '',
+        last_login: ''
+      }
+    } else {
+      throw new Error('获取用户信息失败')
+    }
+  }
+
   const userStore = useUserStore()
   userStore.setUserInfo({
     userId: userInfo.id,
@@ -400,7 +435,9 @@ async function fetchUserInfo(): Promise<void> {
  */
 export function resetRouterState(delay: number): void {
   setTimeout(() => {
-    routeRegistry?.unregister()
+    if (routeRegistry?.isRegistered()) {
+      routeRegistry?.unregister()
+    }
     IframeRouteManager.getInstance().clear()
 
     const menuStore = useMenuStore()

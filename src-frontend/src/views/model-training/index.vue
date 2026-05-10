@@ -9,5 +9,5 @@
 </template>
 
 <script setup lang="ts">
-defineOptions({ name: 'ModelTrainingPage' })
+  defineOptions({ name: 'ModelTrainingPage' })
 </script>

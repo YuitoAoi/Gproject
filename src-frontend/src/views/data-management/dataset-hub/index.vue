@@ -30,7 +30,6 @@
               <p class="text-base text-g-600 mt-2">今日修改</p>
               <span class="font-medium text-primary">+{{ stats.today_modified }}</span>
             </div>
-
           </div>
           <div class="size-12 rounded-lg flex-cc bg-theme/10 absolute bottom-4 right-4">
             <ArtSvgIcon icon="ri:archive-line" class="text-xl text-theme" />

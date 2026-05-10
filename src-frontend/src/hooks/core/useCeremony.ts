@@ -67,7 +67,7 @@ const FESTIVAL_CONFIG = {
  */
 export function useCeremony() {
   const settingStore = useSettingStore()
-  const { holidayFireworksLoaded, isShowFireworks } = storeToRefs(settingStore)
+  const { holidayFireworksLoaded, festivalDate } = storeToRefs(settingStore)
 
   let fireworksInterval: { pause: () => void } | null = null
 
@@ -101,6 +101,13 @@ export function useCeremony() {
   const currentFestivalData = computed(() => {
     const currentDate = useDateFormat(new Date(), 'YYYY-MM-DD').value
     return festivalConfigList.find((item) => isDateInRange(currentDate, item.date, item.endDate))
+  })
+
+  /**
+   * 是否应显示烟花（未对当前节日播放过）
+   */
+  const isShowFireworks = computed(() => {
+    return festivalDate.value !== currentFestivalData.value?.date
   })
 
   /**

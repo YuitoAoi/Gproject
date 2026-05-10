@@ -57,8 +57,8 @@ export class MenuProcessor {
    * 注：当前使用前端硬编码路由，后端菜单接口已废弃
    */
   private async processBackendMenu(): Promise<AppRouteRecord[]> {
-    // 后端菜单接口已废弃，抛出错误引导使用前端模式
-    throw new Error('Backend menu API is deprecated. Use frontend mode instead.')
+    console.warn('[MenuProcessor] Backend mode not implemented, falling back to frontend mode')
+    return this.processFrontendMenu()
   }
 
   /**
@@ -178,11 +178,11 @@ export class MenuProcessor {
   private isNavigableRoute(route: AppRouteRecord): boolean {
     return Boolean(
       route.path &&
-        route.path !== '/' &&
-        !route.meta?.link &&
-        route.meta?.isIframe !== true &&
-        route.component &&
-        route.component !== ''
+      route.path !== '/' &&
+      !route.meta?.link &&
+      route.meta?.isIframe !== true &&
+      route.component &&
+      route.component !== ''
     )
   }
 

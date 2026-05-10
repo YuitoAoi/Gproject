@@ -16,7 +16,7 @@
 
     <RouterView v-if="isRefresh" v-slot="{ Component, route }" :style="contentStyle">
       <!-- 缓存路由动画 -->
-      <Transition :name="showTransitionMask ? '' : actualTransition" mode="out-in" appear>
+      <Transition :name="showTransitionMask ? '' : actualTransition" appear>
         <KeepAlive :max="10" :exclude="keepAliveExclude">
           <component
             class="art-page-view"
@@ -28,11 +28,11 @@
       </Transition>
 
       <!-- 非缓存路由动画 -->
-      <Transition :name="showTransitionMask ? '' : actualTransition" mode="out-in" appear>
+      <Transition :name="showTransitionMask ? '' : actualTransition" appear>
         <component
           class="art-page-view"
           :is="Component"
-          :key="route.path"
+          :key="componentKey"
           v-if="!route.meta.keepAlive"
         />
       </Transition>
@@ -64,6 +64,14 @@
   const isRefresh = shallowRef(true)
   const isOpenRouteInfo = import.meta.env.VITE_OPEN_ROUTE_INFO
   const showTransitionMask = ref(false)
+  const transitionTimer = ref<ReturnType<typeof setTimeout> | null>(null)
+
+  const componentKey = computed(() => {
+    if (route.matched.length > 1) {
+      return route.matched[0].path
+    }
+    return route.path
+  })
 
   // 标记是否是首次加载（浏览器刷新）
   const isFirstLoad = ref(true)
@@ -83,8 +91,8 @@
   watch(isFullPage, (val, oldVal) => {
     if (val !== oldVal) {
       showTransitionMask.value = true
-      // 延迟隐藏遮罩，给足时间让页面完成切换
-      setTimeout(() => {
+      if (transitionTimer.value) clearTimeout(transitionTimer.value)
+      transitionTimer.value = setTimeout(() => {
         showTransitionMask.value = false
       }, 50)
     }
@@ -128,9 +136,12 @@
 
   // 组件挂载后标记首次加载完成
   onMounted(() => {
-    // 延迟一帧，确保首次渲染完成
     nextTick(() => {
       isFirstLoad.value = false
     })
+  })
+
+  onUnmounted(() => {
+    if (transitionTimer.value) clearTimeout(transitionTimer.value)
   })
 </script>

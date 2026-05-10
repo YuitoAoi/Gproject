@@ -134,6 +134,34 @@ class ServiceFactory:
         return self._dataset_tag_repo
 
     @property
+    def dataset_log_repo(self):
+        if not hasattr(self, '_dataset_log_repo_cache') or self._dataset_log_repo_cache is None:
+            if self._conn is None:
+                raise RuntimeError(
+                    "DatasetLogRepository requires a DatabaseConnection."
+                )
+            from src.adapters.repositories.dataset_log_repo import (
+                DatasetLogRepository,
+            )
+            repo = DatasetLogRepository(self._conn)
+            repo.init_table()
+            self._dataset_log_repo_cache = repo
+        return self._dataset_log_repo_cache
+
+    @property
+    def task_repo(self):
+        if not hasattr(self, '_task_repo_cache') or self._task_repo_cache is None:
+            if self._conn is None:
+                raise RuntimeError(
+                    "TaskRepository requires a DatabaseConnection."
+                )
+            from src.adapters.repositories.task_repo import TaskRepository
+            repo = TaskRepository(self._conn)
+            repo.init_table()
+            self._task_repo_cache = repo
+        return self._task_repo_cache
+
+    @property
     def file_repo(self) -> FileRepository:
         if self._file_repo is None:
             from src.adapters.repositories.windows_file_repo import (
@@ -162,14 +190,24 @@ class ServiceFactory:
         """分块上传服务，与导入导出共享同一实例。"""
         return self.dataset_import_export()
     def process_dataset(self) -> DatasetProcessService:
-        """数据处理服务：样本预览 + 图生成任务 + 下载。"""
+        """数据处理服务：样本预览 + 图生成任务 + 下载。
+
+        GraphGen 未就绪时抛出 ConnectionError，不缓存损坏的实例，
+        GraphGen 恢复后下次调用重新初始化。
+        """
         if self._dataset_process is None:
             from src.adapters.graphgen_client import GraphGenClient
             from src.adapters.celery_client import celery_client
-            self._dataset_process = DatasetProcessService(
-                self.dataset_repo, self.file_repo, GraphGenClient(),
-                celery_client=celery_client,
-            )
+            try:
+                self._dataset_process = DatasetProcessService(
+                    self.dataset_repo, self.file_repo, GraphGenClient(),
+                    celery_client=celery_client,
+                    dataset_log_repo=self.dataset_log_repo,
+                    task_repo=self.task_repo,
+                )
+            except ConnectionError:
+                self._dataset_process = None
+                raise
         return self._dataset_process
     def jwt(self) -> JWTService:
         if self._jwt is None:

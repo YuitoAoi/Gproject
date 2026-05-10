@@ -21,10 +21,43 @@ def _publish_progress(job_id: str, stage: str, progress: float, message: str, st
         r.publish(
             f"progress:{job_id}",
             json.dumps({
+                "type": "stage",
                 "stage": stage,
                 "progress": progress,
                 "message": message,
                 "status": status,
+            }),
+        )
+        r.close()
+    except Exception:
+        pass
+
+
+def _publish_log(job_id: str, line: str):
+    try:
+        r = redis.Redis.from_url(config.REDIS_URL, decode_responses=True)
+        r.publish(
+            f"progress:{job_id}",
+            json.dumps({
+                "type": "engine_log",
+                "line": line,
+                "status": "running",
+            }),
+        )
+        r.close()
+    except Exception:
+        pass
+
+
+def _publish_heartbeat(job_id: str, status: str, progress: float):
+    try:
+        r = redis.Redis.from_url(config.REDIS_URL, decode_responses=True)
+        r.publish(
+            f"progress:{job_id}",
+            json.dumps({
+                "type": "heartbeat",
+                "status": status,
+                "progress": progress,
             }),
         )
         r.close()
@@ -37,10 +70,12 @@ def monitor_graphgen_job(self, job_id: str, dataset_id: int) -> Dict[str, Any]:
     """轮询 GraphGen 直到完成/失败，HTTP 回调 backend 更新 status。"""
     _publish_progress(job_id, "monitoring", 0.0, f"开始监控 job={job_id}", "pending")
 
-    gg_url = config.GRAPHGEN_API_URL.rstrip("/api/v1")
-    deadline = time.time() + 15 * 60
+    log_offset = 0
+    last_stage = None
+    last_progress = -1
+    heartbeat_count = 0
 
-    while time.time() < deadline:
+    while True:
         try:
             resp = httpx.get(
                 f"{config.GRAPHGEN_API_URL}/jobs/{job_id}",
@@ -53,7 +88,16 @@ def monitor_graphgen_job(self, job_id: str, dataset_id: int) -> Dict[str, Any]:
             status = data.get("status")
             progress = data.get("progress", 0)
             stage = data.get("stage", status)
-            _publish_progress(job_id, stage, progress, f"GraphGen: {status}", status)
+
+            heartbeat_count += 1
+            if stage != last_stage or progress != last_progress:
+                _publish_progress(job_id, stage, progress, f"GraphGen: {status}", status)
+                last_stage = stage
+                last_progress = progress
+                heartbeat_count = 0
+            elif heartbeat_count >= 6:
+                _publish_heartbeat(job_id, status, progress)
+                heartbeat_count = 0
 
             if status in ("done", "failed"):
                 _callback_backend(job_id, dataset_id, data)
@@ -66,11 +110,22 @@ def monitor_graphgen_job(self, job_id: str, dataset_id: int) -> Dict[str, Any]:
             time.sleep(30)
             continue
 
-        time.sleep(5)
+        try:
+            log_resp = httpx.get(
+                f"{config.GRAPHGEN_API_URL}/jobs/{job_id}/logs?offset={log_offset}",
+                timeout=5,
+            )
+            if not log_resp.is_error:
+                log_data = log_resp.json()
+                for line in log_data.get("lines", []):
+                    if any(skip in line for skip in ["progress_bar.py", "streaming_executor.py", "dataset.py:5344"]):
+                        continue
+                    _publish_log(job_id, line)
+                log_offset = log_data.get("offset", log_offset)
+        except Exception:
+            pass
 
-    _callback_backend(job_id, dataset_id, {"status": "failed", "error": "timeout"})
-    _publish_progress(job_id, "timeout", 0.0, "超时 (15 min)", "failed")
-    return {"success": False, "status": "timeout"}
+        time.sleep(5)
 
 
 def _callback_backend(job_id: str, dataset_id: int, graphgen_result: dict) -> None:

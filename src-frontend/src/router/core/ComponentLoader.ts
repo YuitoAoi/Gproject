@@ -9,27 +9,23 @@
 
 import { h } from 'vue'
 
+const COMPONENT_LOAD_TIMEOUT = 15000
+
 export class ComponentLoader {
   private modules: Record<string, () => Promise<any>>
 
   constructor() {
-    // 动态导入 views 目录下所有 .vue 组件
     this.modules = import.meta.glob('../../views/**/*.vue')
   }
 
-  /**
-   * 加载组件
-   */
   load(componentPath: string): () => Promise<any> {
     if (!componentPath) {
       return this.createEmptyComponent()
     }
 
-    // 构建可能的路径
     const fullPath = `../../views${componentPath}.vue`
     const fullPathWithIndex = `../../views${componentPath}/index.vue`
 
-    // 先尝试直接路径，再尝试添加/index的路径
     const module = this.modules[fullPath] || this.modules[fullPathWithIndex]
 
     if (!module) {
@@ -39,7 +35,25 @@ export class ComponentLoader {
       return this.createErrorComponent(componentPath)
     }
 
-    return module
+    const loader = module
+    return () => {
+      return Promise.race([
+        loader(),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () => reject(new Error(`组件加载超时: ${componentPath}`)),
+            COMPONENT_LOAD_TIMEOUT
+          )
+        )
+      ]).catch((err) => {
+        console.error(`[ComponentLoader] 组件加载失败: ${componentPath}`, err)
+        return {
+          render() {
+            return h('div', { class: 'component-error' }, `页面加载失败，请刷新重试`)
+          }
+        }
+      })
+    }
   }
 
   /**

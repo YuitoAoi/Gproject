@@ -19,18 +19,19 @@ import { useUserStore } from '@/store/modules/user'
 import { ApiStatus } from './status'
 import { HttpError, handleError, showError, showSuccess } from './error'
 import { $t } from '@/locales'
-import { BaseResponse } from '@/types'
 
 /** 请求配置常量 */
 const REQUEST_TIMEOUT = 15000
 const LOGOUT_DELAY = 500
-const MAX_RETRIES = 0
+const MAX_RETRIES = 2
 const RETRY_DELAY = 1000
 const UNAUTHORIZED_DEBOUNCE_TIME = 3000
 
 /** 401防抖状态 */
 let isUnauthorizedErrorShown = false
 let unauthorizedTimer: NodeJS.Timeout | null = null
+/** 退出登录定时器，用于在初始化阶段被触发时清理 */
+let logoutTimer: ReturnType<typeof setTimeout> | null = null
 
 /** 扩展 AxiosRequestConfig */
 interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
@@ -123,13 +124,29 @@ function resetUnauthorizedError() {
   isUnauthorizedErrorShown = false
   if (unauthorizedTimer) clearTimeout(unauthorizedTimer)
   unauthorizedTimer = null
+  if (logoutTimer) clearTimeout(logoutTimer)
+  logoutTimer = null
 }
 
 /** 退出登录函数 */
 function logOut() {
-  setTimeout(() => {
+  logoutTimer = setTimeout(() => {
     useUserStore().logOut()
+    logoutTimer = null
   }, LOGOUT_DELAY)
+}
+
+/** 清理所有待处理的登出定时器及401防抖状态 */
+export function clearPendingLogout(): void {
+  if (logoutTimer) {
+    clearTimeout(logoutTimer)
+    logoutTimer = null
+  }
+  if (unauthorizedTimer) {
+    clearTimeout(unauthorizedTimer)
+    unauthorizedTimer = null
+  }
+  isUnauthorizedErrorShown = false
 }
 
 /** 是否需要重试 */

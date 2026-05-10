@@ -1,5 +1,6 @@
 import gc
 import os
+import sys
 import traceback
 from datetime import datetime, timezone
 
@@ -45,7 +46,10 @@ def _build_config(params: GenerateRequest, working_dir: str, input_path: str) ->
             "op_name": "read",
             "type": "source",
             "dependencies": [],
-            "params": {"input_path": [input_path]},
+            "params": {
+                "input_path": [input_path],
+                "text_column": params.content_field,
+            },
         },
         {
             "id": "chunk",
@@ -189,7 +193,12 @@ def execute_pipeline(job_id: str, params: GenerateRequest, input_path: str):
 
         manager.update(job_id, progress=0.1, stage="流水线启动")
 
-        results = engine.execute(ds, output_dir=temp_dir)
+        _stderr_backup = sys.stderr
+        try:
+            sys.stderr = open(log_file, "a", encoding="utf-8", buffering=1)
+            results = engine.execute(ds, output_dir=temp_dir)
+        finally:
+            sys.stderr = _stderr_backup
 
         # ── cancellation checkpoint (post-execution) ────────────────────
         try:

@@ -92,55 +92,76 @@
       </div>
       <!-- 右侧 30%：审计追踪 -->
       <div class="lg:col-span-8">
-        <ArtTimelineListCard
-          title="审计追踪"
-          :list="auditTrailList"
-        />
+        <ArtTimelineListCard title="审计追踪" :list="auditTrailList" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-defineOptions({ name: 'OverviewPage' })
+  defineOptions({ name: 'OverviewPage' })
 
-const serviceHealthList = ref([
-  { title: 'Redis', status: '正常', time: '运行中', class: 'bg-green-100 text-green-600', icon: 'ri:database-2-line' },
-  { title: 'Celery', status: '正常', time: '运行中', class: 'bg-green-100 text-green-600', icon: 'ri:timer-flash-line' },
-  { title: 'WebSocket', status: '正常', time: '运行中', class: 'bg-green-100 text-green-600', icon: 'ri:wifi-line' },
-  { title: 'GPU Driver', status: '正常', time: '就绪', class: 'bg-blue-100 text-blue-600', icon: 'ri:hard-drive-3-line' }
-])
+  const serviceHealthList = ref([
+    {
+      title: 'Redis',
+      status: '正常',
+      time: '运行中',
+      class: 'bg-green-100 text-green-600',
+      icon: 'ri:database-2-line'
+    },
+    {
+      title: 'Celery',
+      status: '正常',
+      time: '运行中',
+      class: 'bg-green-100 text-green-600',
+      icon: 'ri:timer-flash-line'
+    },
+    {
+      title: 'WebSocket',
+      status: '正常',
+      time: '运行中',
+      class: 'bg-green-100 text-green-600',
+      icon: 'ri:wifi-line'
+    },
+    {
+      title: 'GPU Driver',
+      status: '正常',
+      time: '就绪',
+      class: 'bg-blue-100 text-blue-600',
+      icon: 'ri:hard-drive-3-line'
+    }
+  ])
 
-const gpuData = ref([
-  { name: 'GPU 0: RTX 4090', usage: 95 },
-  { name: 'GPU 1: RTX 4090', usage: 80 },
-  { name: 'GPU 2: RTX 4090', usage: 0 },
-  { name: 'GPU 3: RTX 4090', usage: 0 }
-])
+  const gpuData = ref([
+    { name: 'GPU 0: RTX 4090', usage: 95 },
+    { name: 'GPU 1: RTX 4090', usage: 80 },
+    { name: 'GPU 2: RTX 4090', usage: 0 },
+    { name: 'GPU 3: RTX 4090', usage: 0 }
+  ])
 
-const auditTrailList = ref([
-  { time: '10 分钟前', status: 'success', content: 'Admin 启动了 Llama3 微调任务' },
-  { time: '1 小时前', status: 'success', content: '数据集 清洗完成，大小 1.2GB' },
-  { time: '昨天', status: 'success', content: '导出模型 Qwen-7B-chat 完成' },
-  { time: '2 天前', status: 'primary', content: '新建数据集 medical-zh 成功，共 5000 条' },
-  { time: '3 天前', status: 'danger', content: '训练任务 fine-tune-batch-1 失败：OOM' }
-])
+  const auditTrailList = ref([
+    { time: '10 分钟前', status: 'success', content: 'Admin 启动了 Llama3 微调任务' },
+    { time: '1 小时前', status: 'success', content: '数据集 清洗完成，大小 1.2GB' },
+    { time: '昨天', status: 'success', content: '导出模型 Qwen-7B-chat 完成' },
+    { time: '2 天前', status: 'primary', content: '新建数据集 medical-zh 成功，共 5000 条' },
+    { time: '3 天前', status: 'danger', content: '训练任务 fine-tune-batch-1 失败：OOM' }
+  ])
 
-const getGpuUsageClass = (usage: number) => {
-  if (usage > 80) return 'text-red-500'
-  if (usage > 50) return 'text-yellow-500'
-  return 'text-green-500'
-}
+  const getGpuUsageClass = (usage: number) => {
+    if (usage > 80) return 'text-red-500'
+    if (usage > 50) return 'text-yellow-500'
+    return 'text-green-500'
+  }
 
-const getGpuProgressColor = (usage: number) => {
-  if (usage > 80) return '#f56c6c'
-  if (usage > 50) return '#e6a23c'
-  return '#67c23a'
-}
+  const getGpuProgressColor = (usage: number) => {
+    if (usage > 80) return '#f56c6c'
+    if (usage > 50) return '#e6a23c'
+    return '#67c23a'
+  }
 </script>
 
 <style lang="scss" scoped>
-.overview-page {
-  padding: 0;
-}
+  .overview-page {
+    padding: 0;
+  }
 </style>

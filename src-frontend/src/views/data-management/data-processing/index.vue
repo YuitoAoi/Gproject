@@ -89,18 +89,20 @@
   defineOptions({ name: 'DataProcessingPage' })
 
   const DEFAULT_PROCESS_CONFIG: Api.DataManage.DataProcessing.ProcessConfig = {
-    api_key: 'sk-cp-VkpJUr7Be-n8QMuOGwjaeWl5_LWjlj17SV0BFQ-hEkt1x2Fh9hjL8zLvjwhT-Rqc0tXx_Mz4T97dHlM2r6mzGUane7TZNquKlVJyPfNmt4UaVNeShX91Xps',
+    api_key:
+      'sk-cp-VkpJUr7Be-n8QMuOGwjaeWl5_LWjlj17SV0BFQ-hEkt1x2Fh9hjL8zLvjwhT-Rqc0tXx_Mz4T97dHlM2r6mzGUane7TZNquKlVJyPfNmt4UaVNeShX91Xps',
     synthesizer_url: 'https://api.minimaxi.com/v1',
     synthesizer_model: 'MiniMax-M2.7',
     mode: 'atomic',
     data_format: 'Alpaca',
+    content_field: 'content',
     tokenizer: 'cl100k_base',
     chunk_size: 1024,
     chunk_overlap: 100,
     quiz_samples: 2,
     partition_method: 'ece',
     rpm: 1000,
-    tpm: 50000,
+    tpm: 50000
   }
 
   const router = useRouter()
@@ -119,7 +121,9 @@
   const datasets = ref<DatasetItemDTO[]>([])
   const submitting = ref(false)
 
-  const processConfig = reactive<Api.DataManage.DataProcessing.ProcessConfig>({ ...DEFAULT_PROCESS_CONFIG })
+  const processConfig = reactive<Api.DataManage.DataProcessing.ProcessConfig>({
+    ...DEFAULT_PROCESS_CONFIG
+  })
 
   const taskInfo = ref<Api.DataManage.DataProcessing.ProcessingTask | null>(null)
   const taskLogs = ref<Api.DataManage.DataProcessing.ProcessingLog[]>([])
@@ -214,6 +218,7 @@
   // ── WebSocket 进度连接 ────────────────────────────────────
 
   let progressWs: WebSocket | null = null
+  let taskStartTime = 0
 
   function resolveWsBase(): string {
     const env = import.meta.env.VITE_WS_URL
@@ -231,34 +236,48 @@
     progressWs = new WebSocket(url)
 
     progressWs.onopen = () => {
+      taskStartTime = Date.now()
       appendLog('INFO', '已连接任务进度通道')
     }
 
     progressWs.onmessage = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data)
+
+        if (data.type === 'engine_log') {
+          appendEngineLog(data.line)
+          return
+        }
+
+        if (data.type === 'heartbeat') {
+          if (taskInfo.value && taskInfo.value.status === 'processing') {
+            const elapsed = Math.round((Date.now() - taskStartTime) / 1000)
+            const min = Math.floor(elapsed / 60)
+            const sec = elapsed % 60
+            taskInfo.value.eta = min > 0 ? `已运行 ${min}m${sec}s` : `已运行 ${sec}s`
+          }
+          return
+        }
+
         const { stage, progress, status, message } = data
 
         if (taskInfo.value) {
           taskInfo.value.progress = Math.round(progress * 100)
-          taskInfo.value.status = status === 'done'
-            ? 'completed'
-            : status === 'failed' || status === 'cancelled'
-              ? 'failed'
-              : status === 'running'
-                ? 'processing'
-                : 'pending'
-          if (taskInfo.value.status === 'processing') {
-            const remaining = Math.max(1, Math.round((1 - progress) * 30))
-            taskInfo.value.eta = `约 ${remaining} 秒`
-          } else if (taskInfo.value.status === 'completed') {
+          taskInfo.value.status =
+            status === 'done'
+              ? 'completed'
+              : status === 'failed' || status === 'cancelled'
+                ? 'failed'
+                : status === 'running'
+                  ? 'processing'
+                  : 'pending'
+          if (taskInfo.value.status === 'completed') {
             taskInfo.value.eta = '已完成'
           }
         }
 
-        if (stage && message) {
-          const level = status === 'failed' ? 'ERROR' as const : 'INFO' as const
-          appendLog(level, `${message}`)
+        if (stage && status !== 'pending') {
+          appendStageLog(stage, Math.round(progress * 100), status)
         }
 
         if (status === 'done') {
@@ -287,7 +306,11 @@
     }
 
     progressWs.onerror = () => {
-      if (taskInfo.value && taskInfo.value.status !== 'completed' && taskInfo.value.status !== 'failed') {
+      if (
+        taskInfo.value &&
+        taskInfo.value.status !== 'completed' &&
+        taskInfo.value.status !== 'failed'
+      ) {
         appendLog('WARN', '进度通道连接异常')
       }
     }
@@ -304,6 +327,34 @@
     const now = new Date()
     const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
     taskLogs.value.push({ time, level, message })
+  }
+
+  function appendStageLog(stage: string, pct: number, status: string) {
+    const now = new Date()
+    const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+    const level =
+      status === 'done' ? 'STAGE_DONE' : status === 'failed' ? 'STAGE_ERROR' : 'STAGE_INPROGRESS'
+    const displayMsg = status === 'failed' ? `▸ ${stage}` : `▸ ${stage}  ${pct}%`
+    taskLogs.value.push({ time, level: level as any, message: displayMsg })
+  }
+
+  function appendEngineLog(line: string) {
+    const now = new Date()
+    const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+
+    const levelMatch = line.match(/\] (DEBUG|INFO|WARNING|ERROR|CRITICAL) \[/)
+    let level: 'INFO' | 'WARN' | 'ERROR' = 'INFO'
+    if (levelMatch) {
+      const raw = levelMatch[1]
+      if (raw === 'WARNING') level = 'WARN'
+      else if (raw === 'CRITICAL') level = 'ERROR'
+      else if (raw === 'ERROR') level = 'ERROR'
+      else level = 'INFO'
+    }
+
+    const MAX_LEN = 500
+    const display = line.length > MAX_LEN ? line.slice(0, MAX_LEN) + '...' : line
+    taskLogs.value.push({ time, level, message: display })
   }
 
   function handleBack() {
@@ -344,6 +395,39 @@
 
     currentStep.value = step
   }
+
+  function resetForNewTask() {
+    stopProgressWs()
+    taskInfo.value = null
+    taskLogs.value = []
+    currentJobId.value = null
+    selectedDatasetId.value = null
+    previousDatasetId.value = null
+    resetProcessConfig()
+    currentStep.value = 1
+    lastStageKey = ''
+    taskStartTime = 0
+  }
+
+  onDeactivated(() => {
+    resetForNewTask()
+  })
+
+  onActivated(async () => {
+    resetForNewTask()
+    loading.value = true
+    try {
+      const result = await getDatasets()
+      datasets.value = result.records
+      const datasetId = route.query.datasetId
+      if (datasetId) {
+        selectedDatasetId.value = Number(datasetId)
+        currentStep.value = 2
+      }
+    } finally {
+      loading.value = false
+    }
+  })
 
   onMounted(async () => {
     loading.value = true

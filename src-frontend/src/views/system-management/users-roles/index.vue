@@ -9,5 +9,5 @@
 </template>
 
 <script setup lang="ts">
-defineOptions({ name: 'UsersRolesPage' })
+  defineOptions({ name: 'UsersRolesPage' })
 </script>

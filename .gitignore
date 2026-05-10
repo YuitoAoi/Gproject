@@ -20,7 +20,8 @@ src/types/import/components.d.ts
 .auto-import.json
 
 # Local envs
-.env
+.env*
+!.env.example
 
 # logs
 logs/

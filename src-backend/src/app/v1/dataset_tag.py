@@ -46,7 +46,7 @@ def get_tag(
     owner_id = int(current_user.user_id)
     result = svc.dataset_tag().get_tag(owner_id, request.tag_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=404)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=404)
     return result
 
 
@@ -63,7 +63,7 @@ def create_tag(
     owner_id = int(current_user.user_id)
     result = svc.dataset_tag().create_tag(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=400)
     return result
 
 
@@ -80,7 +80,7 @@ def update_tag(
     owner_id = int(current_user.user_id)
     result = svc.dataset_tag().update_tag(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=404)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=404)
     return result
 
 
@@ -97,5 +97,5 @@ def delete_tag(
     owner_id = int(current_user.user_id)
     result = svc.dataset_tag().delete_tag(owner_id, request.tag_id, force=request.force)
     if not result.success:
-        return JSONResponse(content=result.model_dump(), status_code=400)
+        return JSONResponse(content=result.model_dump(mode='json'), status_code=400)
     return result

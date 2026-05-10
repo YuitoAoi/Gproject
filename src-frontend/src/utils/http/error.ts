@@ -122,7 +122,7 @@ export function handleError(error: AxiosError<ErrorResponse>): HttpError {
   // 处理取消的请求
   if (error.code === 'ERR_CANCELED') {
     console.warn('Request cancelled:', error.message)
-    return new HttpError($t('httpMsg.requestCancelled'), ApiStatus.error)
+    return new HttpError($t('httpMsg.requestCancelled'), ApiStatus.clientError)
   }
 
   const statusCode = error.response?.status
@@ -131,7 +131,8 @@ export function handleError(error: AxiosError<ErrorResponse>): HttpError {
 
   // 处理网络错误
   if (!error.response) {
-    return new HttpError($t('httpMsg.networkError'), ApiStatus.error, {
+    const code = error.code === 'ECONNABORTED' ? ApiStatus.requestTimeout : ApiStatus.clientError
+    return new HttpError($t('httpMsg.networkError'), code, {
       url: requestConfig?.url,
       method: requestConfig?.method?.toUpperCase()
     })
@@ -141,7 +142,7 @@ export function handleError(error: AxiosError<ErrorResponse>): HttpError {
   const message = statusCode
     ? getErrorMessage(statusCode)
     : errorMessage || $t('httpMsg.requestFailed')
-  return new HttpError(message, statusCode || ApiStatus.error, {
+  return new HttpError(message, statusCode || ApiStatus.clientError, {
     data: error.response.data,
     url: requestConfig?.url,
     method: requestConfig?.method?.toUpperCase()

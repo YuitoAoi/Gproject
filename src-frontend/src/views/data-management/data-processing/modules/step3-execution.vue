@@ -174,7 +174,14 @@
                 v-for="(log, i) in logs"
                 :key="i"
                 class="terminal-line"
-                :class="`terminal-${log.level.toLowerCase()}`"
+                :class="{
+                  'terminal-info': log.level === 'INFO',
+                  'terminal-warn': log.level === 'WARN',
+                  'terminal-error': log.level === 'ERROR',
+                  'terminal-stage terminal-stage--inprogress': log.level === 'STAGE_INPROGRESS',
+                  'terminal-stage terminal-stage--done': log.level === 'STAGE_DONE',
+                  'terminal-stage terminal-stage--error': log.level === 'STAGE_ERROR'
+                }"
               >
                 <span class="terminal-line__time">[{{ log.time }}]</span>
                 <span class="terminal-line__level">[{{ log.level }}]</span>
@@ -511,26 +518,79 @@
     }
 
     &.terminal-info {
+      .terminal-line__time {
+        color: var(--art-gray-500);
+      }
       .terminal-line__level {
-        color: var(--el-color-primary);
+        color: var(--art-gray-500);
+      }
+      .terminal-line__msg {
+        color: var(--art-gray-500);
       }
     }
 
     &.terminal-warn {
+      .terminal-line__time {
+        color: #d97706;
+      }
       .terminal-line__level {
         color: #d97706;
       }
       .terminal-line__msg {
-        color: #92400e;
+        color: #d97706;
       }
     }
 
     &.terminal-error {
+      .terminal-line__time {
+        color: #dc2626;
+      }
       .terminal-line__level {
         color: #dc2626;
       }
       .terminal-line__msg {
-        color: #b91c1c;
+        color: #dc2626;
+      }
+    }
+
+    &.terminal-stage {
+      font-weight: 700;
+      border-left: 3px solid;
+      padding-left: 9px;
+
+      .terminal-line__level {
+        display: none;
+      }
+
+      &.terminal-stage--inprogress {
+        color: var(--el-color-primary);
+        border-color: var(--el-color-primary);
+        .terminal-line__time {
+          color: var(--el-color-primary);
+        }
+        .terminal-line__msg {
+          color: var(--el-color-primary);
+        }
+      }
+      &.terminal-stage--done {
+        color: #16a34a;
+        border-color: #16a34a;
+        .terminal-line__time {
+          color: #16a34a;
+        }
+        .terminal-line__msg {
+          color: #16a34a;
+        }
+      }
+      &.terminal-stage--error {
+        color: #dc2626;
+        border-color: #dc2626;
+        .terminal-line__time {
+          color: #dc2626;
+        }
+        .terminal-line__msg {
+          color: #dc2626;
+        }
       }
     }
   }

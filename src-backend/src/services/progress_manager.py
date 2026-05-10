@@ -1,6 +1,8 @@
 """WebSocket 连接管理器 —— 按 job_id 订阅 Redis Pub/Sub 并转发进度消息。"""
 import json
+import logging
 import threading
+import time
 from typing import Optional
 
 import redis
@@ -26,10 +28,12 @@ class ProgressManager:
         await websocket.accept()
         with self._lock:
             if job_id not in self._channels:
+                import asyncio
                 self._channels[job_id] = {
                     "connections": set(),
                     "thread": None,
                     "stop_event": threading.Event(),
+                    "loop": asyncio.get_running_loop(),
                 }
             entry = self._channels[job_id]
             entry["connections"].add(websocket)
@@ -63,46 +67,56 @@ class ProgressManager:
                 del self._channels[job_id]
 
     def _listen_redis(self, job_id: str, stop_event: threading.Event) -> None:
-        """后台线程：订阅 Redis Pub/Sub 并广播给所有 WebSocket 连接。"""
-        r: Optional[redis.Redis] = None
-        pubsub: Optional[redis.client.PubSub] = None
-        try:
-            r = redis.Redis.from_url(self._redis_url, decode_responses=True)
-            pubsub = r.pubsub()
-            pubsub.subscribe(f"progress:{job_id}")
+        """后台线程：订阅 Redis Pub/Sub 并广播给所有 WebSocket 连接。
 
-            while not stop_event.is_set():
-                message = pubsub.get_message(timeout=1.0)
-                if message is None:
-                    continue
-                if message["type"] != "message":
-                    continue
-                data_str = message.get("data", "")
-                if not data_str:
-                    continue
-                try:
-                    data = json.loads(data_str)
-                except json.JSONDecodeError:
-                    continue
-                self._broadcast(job_id, data)
-        except Exception:
-            pass
-        finally:
-            if pubsub is not None:
-                try:
-                    pubsub.close()
-                except Exception:
-                    pass
-            if r is not None:
-                try:
-                    r.close()
-                except Exception:
-                    pass
+        自动重连：Redis 重启或网络断开后 3s 重新订阅。
+        """
+        _logger = logging.getLogger("gproject.progress")
+        while not stop_event.is_set():
+            r: Optional[redis.Redis] = None
+            pubsub: Optional[redis.client.PubSub] = None
+            try:
+                r = redis.Redis.from_url(self._redis_url, decode_responses=True)
+                pubsub = r.pubsub()
+                pubsub.subscribe(f"progress:{job_id}")
+                _logger.info("Redis subscribed to progress:%s", job_id)
+
+                while not stop_event.is_set():
+                    message = pubsub.get_message(timeout=1.0)
+                    if message is None:
+                        continue
+                    if message["type"] != "message":
+                        continue
+                    data_str = message.get("data", "")
+                    if not data_str:
+                        continue
+                    try:
+                        data = json.loads(data_str)
+                    except json.JSONDecodeError:
+                        continue
+                    self._broadcast(job_id, data)
+            except Exception as exc:
+                _logger.error(
+                    "Redis listen thread for job_id=%s failed, retry in 3s: %s",
+                    job_id, exc,
+                )
+                time.sleep(3)
+            finally:
+                if pubsub is not None:
+                    try:
+                        pubsub.close()
+                    except Exception:
+                        pass
+                if r is not None:
+                    try:
+                        r.close()
+                    except Exception:
+                        pass
 
     def _broadcast(self, job_id: str, data: dict) -> None:
         """向指定 job_id 的所有 WebSocket 连接广播消息。
 
-        使用线程安全的 asyncio 事件循环调度。
+        使用 asyncio.run_coroutine_threadsafe 从后台线程安全调度到主事件循环。
         """
         import asyncio
 
@@ -110,18 +124,15 @@ class ProgressManager:
             entry = self._channels.get(job_id)
             if entry is None:
                 return
+            loop = entry.get("loop")
+            if loop is None:
+                return
             dead: list[WebSocket] = []
             text = json.dumps(data, ensure_ascii=False)
             for ws in list(entry["connections"]):
                 try:
-                    loop = asyncio.get_event_loop()
-                    if loop.is_running():
-                        loop.call_soon_threadsafe(
-                            lambda w=ws, t=text: asyncio.ensure_future(w.send_text(t))
-                        )
-                    else:
-                        dead.append(ws)
-                except Exception:
+                    asyncio.run_coroutine_threadsafe(ws.send_text(text), loop)
+                except RuntimeError:
                     dead.append(ws)
             for ws in dead:
                 entry["connections"].discard(ws)

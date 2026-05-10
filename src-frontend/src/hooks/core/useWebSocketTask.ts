@@ -55,21 +55,24 @@ export function useWebSocketTask(jobId: string) {
         total: 100,
         percentage: progress,
         phase: stage,
-        status: status === 'done' ? 'success'
-          : status === 'failed' || status === 'cancelled' ? 'failure'
-          : 'running',
-        message,
+        status:
+          status === 'done'
+            ? 'success'
+            : status === 'failed' || status === 'cancelled'
+              ? 'failure'
+              : 'running',
+        message
       })
 
       if (status === 'done') {
         ElNotification.success({
           title: '任务完成',
-          message: message || `任务 ${jobId} 已完成`,
+          message: message || `任务 ${jobId} 已完成`
         })
       } else if (status === 'failed') {
         ElNotification.error({
           title: '任务失败',
-          message: message || `任务 ${jobId} 执行失败`,
+          message: message || `任务 ${jobId} 执行失败`
         })
       }
     } catch (e) {
@@ -144,6 +147,6 @@ export function useWebSocketTask(jobId: string) {
     connected,
     connect,
     disconnect,
-    send,
+    send
   }
 }
