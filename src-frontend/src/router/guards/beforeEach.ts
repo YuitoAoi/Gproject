@@ -175,18 +175,11 @@ async function handleRouteGuard(
 
   // 3. 处理动态路由注册
   if (!routeRegistry?.isRegistered() && userStore.isLogin) {
-    // 自愈检查：路由注册器标记丢失但实际动态路由已存在于 router 中
-    const menuStore = useMenuStore()
-    const existingRouteNames = new Set(router.getRoutes().map((r) => r.name))
-    const menuHasRoutes = menuStore.menuList.length > 0
-    const dynamicRoutesExist = menuStore.menuList.some(
-      (item) => item.name && existingRouteNames.has(item.name)
-    )
+    const dynamicRoutesExist = router.getRoutes().length > staticRoutes.length
 
-    if (menuHasRoutes && dynamicRoutesExist) {
+    if (dynamicRoutesExist) {
       routeRegistry?.markAsRegistered()
     } else if (routeInitInProgress) {
-      // 防止并发请求（快速连续导航场景）
       next(false)
       return
     } else {

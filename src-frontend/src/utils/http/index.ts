@@ -37,6 +37,7 @@ let logoutTimer: ReturnType<typeof setTimeout> | null = null
 interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
   showErrorMessage?: boolean
   showSuccessMessage?: boolean
+  skipAuthMessage?: boolean
 }
 
 const { VITE_API_URL, VITE_WITH_CREDENTIALS } = import.meta.env
@@ -88,11 +89,12 @@ axiosInstance.interceptors.response.use(
       return response.data
     }
     const { code, msg } = response.data || {}
-    if (code === ApiStatus.unauthorized) handleUnauthorizedError(msg)
+    if (code === ApiStatus.unauthorized) handleUnauthorizedError(msg, response.config)
     throw createHttpError(msg || $t('httpMsg.requestFailed'), code)
   },
   (error) => {
-    if (error.response?.status === ApiStatus.unauthorized) handleUnauthorizedError()
+    if (error.response?.status === ApiStatus.unauthorized)
+      handleUnauthorizedError(undefined, error.config)
     return Promise.reject(handleError(error))
   }
 )
@@ -103,8 +105,9 @@ function createHttpError(message: string, code: number) {
 }
 
 /** 处理401错误（带防抖） */
-function handleUnauthorizedError(message?: string): never {
+function handleUnauthorizedError(message?: string, reqConfig?: AxiosRequestConfig): never {
   const error = createHttpError(message || $t('httpMsg.unauthorized'), ApiStatus.unauthorized)
+  const skipMsg = (reqConfig as ExtendedAxiosRequestConfig)?.skipAuthMessage
 
   if (!isUnauthorizedErrorShown) {
     isUnauthorizedErrorShown = true
@@ -112,7 +115,9 @@ function handleUnauthorizedError(message?: string): never {
 
     unauthorizedTimer = setTimeout(resetUnauthorizedError, UNAUTHORIZED_DEBOUNCE_TIME)
 
-    showError(error, true)
+    if (!skipMsg) {
+      showError(error, true)
+    }
     throw error
   }
 
@@ -203,7 +208,7 @@ async function request<T = any>(config: ExtendedAxiosRequestConfig): Promise<T> 
     return res as T
   } catch (error) {
     if (error instanceof HttpError && error.code !== ApiStatus.unauthorized) {
-      const showMsg = config.showErrorMessage !== false
+      const showMsg = config.showErrorMessage !== false && !config.skipAuthMessage
       showError(error, showMsg)
     }
     return Promise.reject(error)
