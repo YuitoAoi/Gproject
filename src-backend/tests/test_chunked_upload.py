@@ -111,12 +111,11 @@ class TestChunkedUploadService:
         data = b"col1,col2\nval1,val2\n"
         data_hash = _compute_sha256(data)
 
-        # 用 MySQL 真实 DB + tmp_path 作为数据集目录
-        from src.db_connections.mysql import MysqlConnection
+        # 用 SQLite 真实 DB + tmp_path 作为数据集目录
+        from src.db_connections.sqlite import SqliteConnection
         from src.adapters.repositories.dataset_repo import DatasetRepositoryAdapter
-        from tests import get_test_db_url
 
-        conn = MysqlConnection(get_test_db_url(), echo=False, pool_size=5, max_overflow=5)
+        conn = SqliteConnection("sqlite:///:memory:", echo=False)
         conn.start()
         repo = DatasetRepositoryAdapter(conn)
         repo.init_table()

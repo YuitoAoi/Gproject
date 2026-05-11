@@ -1,10 +1,11 @@
 """任务路由 —— GET /tasks, GET /tasks/{id}, DELETE /tasks/{id}"""
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from src.app.dependencies import get_current_user, get_services
+from src.core.task_record import TASK_TYPE, TASK_STATUS
 from src.services import ServiceFactory
 from src.services.jwt_service import TokenPayload
 
@@ -14,13 +15,19 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 class TaskItem(BaseModel):
     id: int
     task_name: str
-    task_type: str
-    status: str
+    task_type: TASK_TYPE
+    status: TASK_STATUS
     progress: float
     phase: str
     config: str
     created_at: str
     updated_at: str
+
+
+class TaskCreateRequest(BaseModel):
+    task_name: str
+    task_type: TASK_TYPE = "cleaning"
+    config: str = "{}"
 
 
 class TaskListResponse(BaseModel):
@@ -63,6 +70,25 @@ def list_tasks(
         return TaskListResponse(items=items, total=len(items))
     except Exception as e:
         return TaskListResponse(items=[], total=0, error=str(e))
+
+
+@router.post("", response_model=TaskDetailResponse, status_code=201)
+def create_task(
+    request: TaskCreateRequest,
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    owner_id = int(current_user.user_id)
+    from src.core.task_record import TaskRecord
+
+    task = TaskRecord(
+        owner_id=owner_id,
+        task_name=request.task_name,
+        task_type=request.task_type,
+        config=request.config,
+    )
+    svc.task_repo.insert(task)
+    return TaskDetailResponse(task=_task_to_item(task))
 
 
 @router.get("/{task_id}", response_model=TaskDetailResponse)

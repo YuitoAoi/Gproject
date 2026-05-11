@@ -34,6 +34,7 @@ class Config(BaseSettings):
     SUPER_USER_EMAIL: str = "super@user.net"
     SUPER_USER_PASSWORD: str = "superUser@123"
     JWT_SECRET_KEY: str = "your-secret-key"
+    ACCESS_TOKEN_EXPIRE_SECONDS: int = 21600
 
     GRAPHGEN_API_URL: str = "http://localhost:8001/api/v1"
     SYNTHESIZER_MODEL: str = "Qwen/Qwen2.5-7B-Instruct"

@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.db_connections.mysql import MysqlConnection
+from src.db_connections.sqlite import SqliteConnection
 from src.adapters.repositories.dataset_tag_repo import DatasetTagRepositoryAdapter
 from src.services.dataset_tag_service import (
     DatasetTagCreateRequest,
@@ -12,7 +12,6 @@ from src.services.dataset_tag_service import (
     DatasetTagService,
 )
 from src.services.interfaces.dataset_repository import DatasetRepository
-from tests import get_test_db_url
 
 
 class _FakeDatasetRepo(DatasetRepository):
@@ -55,7 +54,7 @@ class _FakeDatasetRepo(DatasetRepository):
 
 @pytest.fixture(scope="session")
 def tag_svc_conn():
-    conn = MysqlConnection(get_test_db_url(), echo=False, pool_size=5, max_overflow=5)
+    conn = SqliteConnection("sqlite:///:memory:", echo=False)
     conn.start()
     DatasetTagRepositoryAdapter(conn).init_table()
     yield conn

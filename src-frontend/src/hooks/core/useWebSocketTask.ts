@@ -10,6 +10,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { ElNotification } from 'element-plus'
 import { useTaskStore } from '@/store/modules/task'
+import { mapTaskStatusForDisplay } from '@/utils/task'
 import { store } from '@/store'
 
 function resolveWsBase(): string {
@@ -55,12 +56,7 @@ export function useWebSocketTask(jobId: string) {
         total: 100,
         percentage: progress,
         phase: stage,
-        status:
-          status === 'done'
-            ? 'success'
-            : status === 'failed' || status === 'cancelled'
-              ? 'failure'
-              : 'running',
+        status: mapTaskStatusForDisplay(status),
         message
       })
 

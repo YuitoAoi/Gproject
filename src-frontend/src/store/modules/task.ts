@@ -6,16 +6,17 @@
  */
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
+import type { TaskStatus, TaskType } from '@/utils/task'
 
 export interface TaskRecord {
   taskId: string
   taskName: string
-  taskType: 'cleaning' | 'training' | 'upload' | 'export' | 'inference'
+  taskType: TaskType
   current: number
   total: number
   percentage: number
   phase: string
-  status: 'pending' | 'running' | 'success' | 'failure'
+  status: TaskStatus
   message: string
   logPath?: string
   createdAt: string
@@ -37,9 +38,9 @@ export const useTaskStore = defineStore('taskStore', () => {
 
   const pendingTasks = computed(() => taskList.value.filter((t) => t.status === 'pending'))
 
-  const completedTasks = computed(() => taskList.value.filter((t) => t.status === 'success'))
+  const completedTasks = computed(() => taskList.value.filter((t) => t.status === 'done'))
 
-  const failedTasks = computed(() => taskList.value.filter((t) => t.status === 'failure'))
+  const failedTasks = computed(() => taskList.value.filter((t) => t.status === 'failed'))
 
   function updateTask(taskId: string, updates: Partial<TaskRecord>) {
     const existing = tasks.value.get(taskId)
@@ -59,7 +60,7 @@ export const useTaskStore = defineStore('taskStore', () => {
         total: 100,
         percentage: 0,
         phase: '',
-        status: 'pending',
+        status: 'pending' as TaskStatus,
         message: '',
         createdAt: now,
         updatedAt: now,
@@ -81,7 +82,7 @@ export const useTaskStore = defineStore('taskStore', () => {
   function clearCompleted() {
     const toRemove: string[] = []
     tasks.value.forEach((task, key) => {
-      if (task.status === 'success' || task.status === 'failure') {
+      if (task.status === 'done' || task.status === 'failed') {
         toRemove.push(key)
       }
     })

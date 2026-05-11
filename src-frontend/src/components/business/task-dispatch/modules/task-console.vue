@@ -26,7 +26,7 @@
         <ElSelect v-model="filterStatus" placeholder="状态: 全部" class="!w-32" clearable>
           <ElOption label="运行中" value="running" />
           <ElOption label="排队等待" value="pending" />
-          <ElOption label="已完成" value="completed" />
+          <ElOption label="已完成" value="done" />
           <ElOption label="失败" value="failed" />
         </ElSelect>
         <ElButton type="primary" @click="handleSearch">
@@ -72,6 +72,7 @@
   import { ElMessageBox, ElMessage } from 'element-plus'
   import { TASK_STATUS_CONFIG, TASK_TYPE_CONFIG, type TaskItem } from '@/mock/modules/task-dispatch'
   import { getTasks, deleteTask, type TaskItem as ApiTask } from '@/api/task'
+  import { mapTaskStatusForDisplay } from '@/utils/task'
 
   defineOptions({ name: 'TaskConsole' })
 
@@ -95,14 +96,7 @@
       const elapsed = Math.round((Date.now() - new Date(t.created_at).getTime()) / 1000)
       const min = Math.floor(elapsed / 60)
       const sec = elapsed % 60
-      const mappedStatus =
-        t.status === 'done'
-          ? 'completed'
-          : t.status === 'failed'
-            ? 'failed'
-            : t.status === 'running'
-              ? 'running'
-              : 'pending'
+      const mappedStatus = mapTaskStatusForDisplay(t.status)
       return {
         id: String(t.id),
         name: t.task_name,
@@ -261,7 +255,7 @@
               size: 'small',
               type: row.status === 'running' ? 'danger' : 'info',
               text: row.status === 'running',
-              disabled: row.status === 'completed' || row.status === 'failed',
+              disabled: row.status === 'done' || row.status === 'failed',
               onClick: () => handleTerminate(row)
             },
             () => '终止'

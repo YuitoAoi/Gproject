@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Optional
 
+from src.core.config import config
+
 from src.services.dataset_import_export_service import (
     DatasetImportExportService,
     DatasetImportRequest,
@@ -83,7 +85,7 @@ class ServiceFactory:
         dataset_tag_repo: Optional[DatasetTagRepository] = None,
     ) -> None:
         from src.services import JWTService
-        self._jwt = JWTService()
+        self._jwt = JWTService(access_token_expire=config.ACCESS_TOKEN_EXPIRE_SECONDS)
         self.user_repo = user_repo
         self._dataset_repo = dataset_repo
         self._file_repo = file_repo
@@ -211,7 +213,7 @@ class ServiceFactory:
         return self._dataset_process
     def jwt(self) -> JWTService:
         if self._jwt is None:
-            self._jwt = JWTService()
+            self._jwt = JWTService(access_token_expire=config.ACCESS_TOKEN_EXPIRE_SECONDS)
         return self._jwt
     
     def login_user(self) -> UserLoginService:

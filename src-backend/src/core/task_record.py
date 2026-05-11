@@ -1,16 +1,19 @@
 """任务记录实体 —— 清洗/训练/推理/导出任务的通用模型。"""
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 from pydantic import BaseModel, Field
+
+TASK_TYPE = Literal["upload", "cleaning", "training", "inference", "export"]
+TASK_STATUS = Literal["pending", "running", "done", "failed", "cancelled"]
 
 
 class TaskRecord(BaseModel):
     id: Optional[int] = None
     owner_id: int
     task_name: str
-    task_type: str = "cleaning"
-    status: str = "pending"
+    task_type: TASK_TYPE = "cleaning"
+    status: TASK_STATUS = "pending"
     progress: float = 0.0
     phase: str = ""
     config: str = "{}"

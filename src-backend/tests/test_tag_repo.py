@@ -3,14 +3,13 @@ from datetime import datetime
 
 import pytest
 
-from src.db_connections.mysql import MysqlConnection
+from src.db_connections.sqlite import SqliteConnection
 from src.adapters.repositories.dataset_tag_repo import DatasetTagRepositoryAdapter
-from tests import get_test_db_url
 
 
 @pytest.fixture(scope="session")
 def tag_conn():
-    conn = MysqlConnection(get_test_db_url(), echo=False, pool_size=5, max_overflow=5)
+    conn = SqliteConnection("sqlite:///:memory:", echo=False)
     conn.start()
 
     repo = DatasetTagRepositoryAdapter(conn)

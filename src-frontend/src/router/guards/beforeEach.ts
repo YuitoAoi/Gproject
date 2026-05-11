@@ -50,7 +50,6 @@ import { useCommon } from '@/hooks/core/useCommon'
 import { useWorktabStore } from '@/store/modules/worktab'
 import { ApiStatus } from '@/utils/http/status'
 import { isHttpError } from '@/utils/http/error'
-import { clearPendingLogout } from '@/utils/http'
 import { RouteRegistry, MenuProcessor, IframeRouteManager, RoutePermissionValidator } from '../core'
 import { fetchGetUserInfo } from '@/api/auth'
 
@@ -175,11 +174,18 @@ async function handleRouteGuard(
 
   // 3. 处理动态路由注册
   if (!routeRegistry?.isRegistered() && userStore.isLogin) {
-    const dynamicRoutesExist = router.getRoutes().length > staticRoutes.length
+    // 自愈检查：路由注册器标记丢失但实际动态路由已存在于 router 中
+    const menuStore = useMenuStore()
+    const existingRouteNames = new Set(router.getRoutes().map((r) => r.name))
+    const menuHasRoutes = menuStore.menuList.length > 0
+    const dynamicRoutesExist = menuStore.menuList.some(
+      (item) => item.name && existingRouteNames.has(item.name)
+    )
 
-    if (dynamicRoutesExist) {
+    if (menuHasRoutes && dynamicRoutesExist) {
       routeRegistry?.markAsRegistered()
     } else if (routeInitInProgress) {
+      // 防止并发请求（快速连续导航场景）
       next(false)
       return
     } else {
@@ -274,9 +280,8 @@ async function handleDynamicRoutes(
   loadingService.showLoading()
 
   try {
-    // 1. 获取用户信息（开发模式直接使用 mock）
+    // 1. 获取用户信息
     await fetchUserInfo()
-    clearPendingLogout()
 
     // 2. 获取菜单数据
     console.log('[RouteGuard] 开始获取菜单数据...')
@@ -363,11 +368,9 @@ async function handleDynamicRoutes(
     // 关闭 loading
     closeLoading()
 
-    // 401 错误：axios 拦截器已处理退出登录，取消当前导航
+    // 401 错误：HTTP 拦截器已处理退出登录并跳转，此处直接放弃当前导航
     if (isUnauthorizedError(error)) {
-      // 重置状态，允许重新登录后再次初始化
       routeInitInProgress = false
-      next(false)
       return
     }
 
@@ -391,25 +394,7 @@ async function handleDynamicRoutes(
  * 获取用户信息
  */
 async function fetchUserInfo(): Promise<void> {
-  let userInfo: Api.Auth.UserInfo
-
-  try {
-    userInfo = await fetchGetUserInfo()
-  } catch {
-    if (import.meta.env.DEV) {
-      userInfo = {
-        id: 1,
-        name: 'admin',
-        email: 'admin@local.dev',
-        is_admin: true,
-        is_active: true,
-        created_at: '',
-        last_login: ''
-      }
-    } else {
-      throw new Error('获取用户信息失败')
-    }
-  }
+  const userInfo = await fetchGetUserInfo()
 
   const userStore = useUserStore()
   userStore.setUserInfo({

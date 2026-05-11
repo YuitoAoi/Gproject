@@ -22,7 +22,6 @@ import { $t } from '@/locales'
 
 /** 请求配置常量 */
 const REQUEST_TIMEOUT = 15000
-const LOGOUT_DELAY = 500
 const MAX_RETRIES = 2
 const RETRY_DELAY = 1000
 const UNAUTHORIZED_DEBOUNCE_TIME = 3000
@@ -30,14 +29,11 @@ const UNAUTHORIZED_DEBOUNCE_TIME = 3000
 /** 401防抖状态 */
 let isUnauthorizedErrorShown = false
 let unauthorizedTimer: NodeJS.Timeout | null = null
-/** 退出登录定时器，用于在初始化阶段被触发时清理 */
-let logoutTimer: ReturnType<typeof setTimeout> | null = null
 
 /** 扩展 AxiosRequestConfig */
 interface ExtendedAxiosRequestConfig extends AxiosRequestConfig {
   showErrorMessage?: boolean
   showSuccessMessage?: boolean
-  skipAuthMessage?: boolean
 }
 
 const { VITE_API_URL, VITE_WITH_CREDENTIALS } = import.meta.env
@@ -89,12 +85,14 @@ axiosInstance.interceptors.response.use(
       return response.data
     }
     const { code, msg } = response.data || {}
-    if (code === ApiStatus.unauthorized) handleUnauthorizedError(msg, response.config)
+    if (code === ApiStatus.unauthorized) handleUnauthorizedError(msg)
     throw createHttpError(msg || $t('httpMsg.requestFailed'), code)
   },
   (error) => {
-    if (error.response?.status === ApiStatus.unauthorized)
-      handleUnauthorizedError(undefined, error.config)
+    if (error instanceof HttpError) {
+      return Promise.reject(error)
+    }
+    if (error.response?.status === ApiStatus.unauthorized) handleUnauthorizedError()
     return Promise.reject(handleError(error))
   }
 )
@@ -105,9 +103,8 @@ function createHttpError(message: string, code: number) {
 }
 
 /** 处理401错误（带防抖） */
-function handleUnauthorizedError(message?: string, reqConfig?: AxiosRequestConfig): never {
+function handleUnauthorizedError(message?: string): never {
   const error = createHttpError(message || $t('httpMsg.unauthorized'), ApiStatus.unauthorized)
-  const skipMsg = (reqConfig as ExtendedAxiosRequestConfig)?.skipAuthMessage
 
   if (!isUnauthorizedErrorShown) {
     isUnauthorizedErrorShown = true
@@ -115,9 +112,7 @@ function handleUnauthorizedError(message?: string, reqConfig?: AxiosRequestConfi
 
     unauthorizedTimer = setTimeout(resetUnauthorizedError, UNAUTHORIZED_DEBOUNCE_TIME)
 
-    if (!skipMsg) {
-      showError(error, true)
-    }
+    showError(error, true)
     throw error
   }
 
@@ -129,29 +124,11 @@ function resetUnauthorizedError() {
   isUnauthorizedErrorShown = false
   if (unauthorizedTimer) clearTimeout(unauthorizedTimer)
   unauthorizedTimer = null
-  if (logoutTimer) clearTimeout(logoutTimer)
-  logoutTimer = null
 }
 
 /** 退出登录函数 */
 function logOut() {
-  logoutTimer = setTimeout(() => {
-    useUserStore().logOut()
-    logoutTimer = null
-  }, LOGOUT_DELAY)
-}
-
-/** 清理所有待处理的登出定时器及401防抖状态 */
-export function clearPendingLogout(): void {
-  if (logoutTimer) {
-    clearTimeout(logoutTimer)
-    logoutTimer = null
-  }
-  if (unauthorizedTimer) {
-    clearTimeout(unauthorizedTimer)
-    unauthorizedTimer = null
-  }
-  isUnauthorizedErrorShown = false
+  useUserStore().logOut()
 }
 
 /** 是否需要重试 */
@@ -208,7 +185,7 @@ async function request<T = any>(config: ExtendedAxiosRequestConfig): Promise<T> 
     return res as T
   } catch (error) {
     if (error instanceof HttpError && error.code !== ApiStatus.unauthorized) {
-      const showMsg = config.showErrorMessage !== false && !config.skipAuthMessage
+      const showMsg = config.showErrorMessage !== false
       showError(error, showMsg)
     }
     return Promise.reject(error)

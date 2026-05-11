@@ -3,7 +3,7 @@ export interface TaskItem {
   name: string
   type: 'training' | 'cleaning' | 'export' | 'inference'
   typeLabel: string
-  status: 'running' | 'pending' | 'completed' | 'failed'
+  status: 'running' | 'pending' | 'done' | 'failed'
   statusLabel: string
   elapsedTime: string
   progress: number
@@ -14,7 +14,7 @@ export interface TaskItem {
 export interface TaskDetail {
   id: string
   name: string
-  status: 'running' | 'pending' | 'completed' | 'failed'
+  status: 'running' | 'pending' | 'done' | 'failed'
   progress: number
   currentStep: number
   totalSteps: number
@@ -42,9 +42,9 @@ export interface CheckpointItem {
 }
 
 export const TASK_STATUS_CONFIG = {
-  running: { color: '#F56C6C', label: '运行中', dot: '#F56C6C', icon: 'ri:play-circle-line' },
+  running: { color: '#409EFF', label: '运行中', dot: '#409EFF', icon: 'ri:play-circle-line' },
   pending: { color: '#E6A23C', label: '排队等待', dot: '#E6A23C', icon: 'ri:time-line' },
-  completed: { color: '#67C23A', label: '已完成', dot: '#67C23A', icon: 'ri:check-line' },
+  done: { color: '#67C23A', label: '已完成', dot: '#67C23A', icon: 'ri:check-line' },
   failed: { color: '#909399', label: '失败', dot: '#909399', icon: 'ri:close-line' }
 } as const
 
@@ -58,7 +58,7 @@ export const TASK_TYPE_CONFIG = {
 export const taskDashboardMockData = {
   running: 4,
   pending: 12,
-  completed: 15,
+  done: 15,
   failed: 2,
   avgWaitTime: '2.5 小时',
   successRate: '92.5%',
@@ -96,7 +96,7 @@ export const taskListMockData: TaskItem[] = [
     name: '维基去重',
     type: 'cleaning',
     typeLabel: '数据清洗',
-    status: 'completed',
+    status: 'done',
     statusLabel: '已完成',
     elapsedTime: '00h45m',
     progress: 100,
@@ -132,7 +132,7 @@ export const taskListMockData: TaskItem[] = [
     name: '新闻去重',
     type: 'cleaning',
     typeLabel: '数据清洗',
-    status: 'completed',
+    status: 'done',
     statusLabel: '已完成',
     elapsedTime: '01h20m',
     progress: 100,
@@ -156,7 +156,7 @@ export const taskListMockData: TaskItem[] = [
     name: 'Qwen量化导出',
     type: 'export',
     typeLabel: '格式导出',
-    status: 'completed',
+    status: 'done',
     statusLabel: '已完成',
     elapsedTime: '00h30m',
     progress: 100,

@@ -176,40 +176,12 @@
 
                 <!-- 操作按钮 -->
                 <div class="task-actions">
-                  <template v-if="task.status === 'uploading'">
-                    <ElButton
-                      text
-                      size="small"
-                      class="!p-2 hover:!bg-blue-50"
-                      @click="pauseTask(task)"
-                      title="暂停"
-                    >
-                      <ArtSvgIcon
-                        icon="ri:pause-line"
-                        class="text-lg text-g-500 hover:!text-blue-500"
-                      />
-                    </ElButton>
-                  </template>
-                  <template v-if="task.status === 'paused'">
-                    <ElButton
-                      text
-                      size="small"
-                      class="!p-2 hover:!bg-blue-50"
-                      @click="resumeTask(task)"
-                      title="恢复"
-                    >
-                      <ArtSvgIcon
-                        icon="ri:play-line"
-                        class="text-lg text-success hover:!text-blue-500"
-                      />
-                    </ElButton>
-                  </template>
                   <template v-if="task.status === 'error'">
                     <ElButton
                       text
                       size="small"
                       class="!p-2 hover:!bg-blue-50"
-                      @click="resumeTask(task)"
+                      @click="retryTask(task)"
                       title="重试"
                     >
                       <ArtSvgIcon icon="ri:refresh-line" class="text-lg text-blue-500" />
@@ -371,7 +343,7 @@
     id: number
     name: string
     progress: number
-    status: 'preparing' | 'uploading' | 'paused' | 'completed' | 'error'
+    status: 'preparing' | 'uploading' | 'completed' | 'error'
     speed: string
     remaining: string
     file?: File
@@ -724,8 +696,8 @@
 
   // 通过 WebSocket 追踪 Celery 任务进度
   const handleTrackCeleryProgress = (uiTaskId: number, celTaskId: string) => {
-    const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8000'}/ws/progress`
-    const ws = new WebSocket(`${wsUrl}?task_id=${celTaskId}`)
+    const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8088'}/ws/progress`
+    const ws = new WebSocket(`${wsUrl}?job_id=${celTaskId}`)
 
     ws.onopen = () => {
       console.log('[WS] 已连接到任务:', celTaskId)
@@ -740,15 +712,16 @@
         if (idx === -1) return
 
         const updatedTask = { ...uploadTasks.value[idx] }
-        updatedTask.progress = data.percentage || updatedTask.progress
+        updatedTask.progress =
+          data.progress != null ? Math.round(data.progress * 100) : updatedTask.progress
         updatedTask.remaining =
-          data.phase === 'merging'
+          data.stage === 'merging'
             ? `合并中 ${data.current}/${data.total}`
-            : data.phase === 'saving'
+            : data.stage === 'saving'
               ? '保存中...'
-              : data.message || data.phase
+              : data.message || data.stage
 
-        if (data.status === 'success') {
+        if (data.status === 'done') {
           updatedTask.progress = 100
           updatedTask.status = 'completed'
           updatedTask.speed = '—'
@@ -761,7 +734,7 @@
           refreshData()
           fetchTimes()
           return
-        } else if (data.status === 'failure') {
+        } else if (data.status === 'failed') {
           updatedTask.status = 'error'
           updatedTask.remaining = data.message || '合并失败'
           uploadTasks.value[idx] = updatedTask
@@ -798,17 +771,59 @@
   // HTTP轮询Celery任务状态作为兜底方案
   // 注意：任务进度由WebSocket实时推送，此处仅作为极端情况下的降级处理
   const pollTaskStatus = async (celTaskId: string, uiTaskId: number) => {
+    const MAX_POLLS = 12
+    const INTERVAL_MS = 5000
+
+    for (let attempt = 0; attempt < MAX_POLLS; attempt++) {
+      const idx = uploadTasks.value.findIndex((t) => t.id === uiTaskId)
+      if (idx === -1) return
+
+      const currentStatus = uploadTasks.value[idx].status
+      if (currentStatus === 'completed' || currentStatus === 'error') return
+
+      try {
+        const { getTask } = await import('@/api/task')
+        const res = await getTask(Number(celTaskId))
+        if (res.task) {
+          const task = res.task
+          uploadTasks.value[idx] = {
+            ...uploadTasks.value[idx],
+            progress: Math.round(task.progress * 100),
+            remaining: task.phase || '处理中...'
+          }
+          if (task.status === 'done') {
+            completeUploadTask(uiTaskId)
+            ElMessage.success('上传任务完成')
+            refreshData()
+            fetchTimes()
+            return
+          }
+          if (task.status === 'failed') {
+            uploadTasks.value[idx] = {
+              ...uploadTasks.value[idx],
+              status: 'error',
+              remaining: '合并失败'
+            }
+            ElMessage.error('文件合并失败')
+            return
+          }
+        }
+      } catch {
+        // 静默重试
+      }
+
+      if (attempt < MAX_POLLS - 1) {
+        await new Promise((r) => setTimeout(r, INTERVAL_MS))
+      }
+    }
+
     const idx = uploadTasks.value.findIndex((t) => t.id === uiTaskId)
-    if (idx === -1) return
-
-    const currentStatus = uploadTasks.value[idx].status
-    if (currentStatus === 'completed' || currentStatus === 'error') return
-
-    // WebSocket未连接且30秒内未收到完成信号时，提示用户刷新页面确认状态
-    ElMessage.warning('上传已进入最后阶段，请刷新页面查看最新状态')
-    uploadTasks.value[idx] = {
-      ...uploadTasks.value[idx],
-      remaining: '等待最终确认...'
+    if (idx !== -1 && uploadTasks.value[idx].status === 'uploading') {
+      uploadTasks.value[idx] = {
+        ...uploadTasks.value[idx],
+        remaining: '等待最终确认...'
+      }
+      ElMessage.warning('上传已进入最后阶段，请刷新页面查看最新状态')
     }
   }
 
@@ -826,64 +841,54 @@
     }
   }
 
-  const pauseTask = (task: UploadTaskItem) => {
-    task.status = 'paused'
+  const retryTask = (task: UploadTaskItem) => {
     const idx = uploadTasks.value.findIndex((t) => t.id === task.id)
-    if (idx !== -1) uploadTasks.value[idx] = { ...task }
-  }
+    if (idx === -1 || !task.file) return
 
-  const resumeTask = (task: UploadTaskItem) => {
-    const idx = uploadTasks.value.findIndex((t) => t.id === task.id)
-    if (idx === -1) return
+    uploadTasks.value[idx] = { ...task, progress: 0, status: 'uploading', remaining: '计算中...' }
 
-    if (task.status === 'error' && task.file) {
-      uploadTasks.value[idx] = { ...task, progress: 0, status: 'uploading', remaining: '计算中...' }
+    uploadDataset(task.file, (percent, phase) => {
+      const i = uploadTasks.value.findIndex((t) => t.id === task.id)
+      if (i === -1) return
 
-      uploadDataset(task.file, (percent, phase) => {
-        const i = uploadTasks.value.findIndex((t) => t.id === task.id)
-        if (i === -1) return
+      const updated = { ...uploadTasks.value[i] }
+      updated.progress = percent
 
-        const updated = { ...uploadTasks.value[i] }
-        updated.progress = percent
+      if (phase === 'initiating') {
+        updated.remaining = '初始化中...'
+      } else if (phase === 'uploading') {
+        updated.remaining = '上传中...'
+      } else if (phase === 'completing') {
+        updated.remaining = '处理中...'
+      } else if (phase === 'complete') {
+        updated.progress = 100
+        updated.remaining = '文件合并中...'
+      }
 
-        if (phase === 'initiating') {
-          updated.remaining = '初始化中...'
-        } else if (phase === 'uploading') {
-          updated.remaining = '上传中...'
-        } else if (phase === 'completing') {
-          updated.remaining = '处理中...'
-        } else if (phase === 'complete') {
-          updated.progress = 100
-          updated.remaining = '文件合并中...'
+      uploadTasks.value[i] = updated
+    })
+      .then((response: any) => {
+        const celTaskId = response?.task_id
+        if (celTaskId) {
+          handleTrackCeleryProgress(task.id, celTaskId)
+        } else {
+          completeUploadTask(task.id)
+          ElMessage.success(`数据集「${task.name}」上传完成`)
+          refreshData()
+          fetchTimes()
         }
-
-        uploadTasks.value[i] = updated
       })
-        .then((response: any) => {
-          const celTaskId = response?.task_id
-          if (celTaskId) {
-            handleTrackCeleryProgress(task.id, celTaskId)
-          } else {
-            completeUploadTask(task.id)
-            ElMessage.success(`数据集「${task.name}」上传完成`)
-            refreshData()
-            fetchTimes()
+      .catch((err: any) => {
+        const i = uploadTasks.value.findIndex((t) => t.id === task.id)
+        if (i !== -1) {
+          uploadTasks.value[i] = {
+            ...uploadTasks.value[i],
+            status: 'error',
+            remaining: err.response?.data?.detail || err.message || '上传失败'
           }
-        })
-        .catch((err: any) => {
-          const i = uploadTasks.value.findIndex((t) => t.id === task.id)
-          if (i !== -1) {
-            uploadTasks.value[i] = {
-              ...uploadTasks.value[i],
-              status: 'error',
-              remaining: err.response?.data?.detail || err.message || '上传失败'
-            }
-          }
-          ElMessage.error('上传失败: ' + (err.response?.data?.detail || err.message || '未知错误'))
-        })
-    } else if (task.status === 'paused') {
-      uploadTasks.value[idx] = { ...task, status: 'uploading' }
-    }
+        }
+        ElMessage.error('上传失败: ' + (err.response?.data?.detail || err.message || '未知错误'))
+      })
   }
 
   const removeTask = (task: UploadTaskItem) => {

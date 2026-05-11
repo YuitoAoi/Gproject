@@ -5,13 +5,10 @@ from pathlib import Path
 
 
 def run_generate_test(tmp_path: Path, config_name: str):
-    import pytest
     repo_root = Path(__file__).resolve().parents[2]
-    config_path = repo_root / config_name
-    if not config_path.exists():
-        pytest.skip(f"Config file not found: {config_path}")
-
     os.chdir(repo_root)
+
+    config_path = repo_root / config_name
 
     result = subprocess.run(
         [

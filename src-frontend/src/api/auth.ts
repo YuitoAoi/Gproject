@@ -16,7 +16,6 @@ export function fetchRegister(params: Api.Auth.RegisterParams) {
 
 export function fetchGetUserInfo() {
   return request.get<Api.Auth.UserInfo>({
-    url: '/user',
-    skipAuthMessage: import.meta.env.DEV
+    url: '/user'
   })
 }

@@ -51,27 +51,20 @@ export const useUserStore = defineStore(
   () => {
     // 语言设置
     const language = ref(LanguageEnum.ZH)
-    // 登录状态 (开发阶段默认为已登录)
-    const isLogin = ref(true)
+    // 登录状态
+    const isLogin = ref(false)
     // 锁屏状态
     const isLock = ref(false)
     // 锁屏密码
     const lockPassword = ref('')
     // 用户信息
-    const info = ref<Partial<Api.Auth.FrontendUserInfo>>({
-      userId: 1,
-      userName: 'admin',
-      email: 'admin@local.dev',
-      roles: ['R_SUPER'],
-      buttons: ['*'],
-      avatar: ''
-    })
+    const info = ref<Partial<Api.Auth.FrontendUserInfo>>({})
     // 搜索历史记录
     const searchHistory = ref<AppRouteRecord[]>([])
     // 访问令牌
-    const accessToken = ref(import.meta.env.DEV ? 'dev-token' : '')
+    const accessToken = ref('')
     // 刷新令牌
-    const refreshToken = ref(import.meta.env.DEV ? 'dev-refresh-token' : '')
+    const refreshToken = ref('')
 
     // 计算属性：获取用户信息
     const getUserInfo = computed(() => info.value)

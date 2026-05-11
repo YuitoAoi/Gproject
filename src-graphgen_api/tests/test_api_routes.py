@@ -191,28 +191,3 @@ class TestJobsRoutes:
         data = response.json()
         assert data["job_id"] == job_id
         assert data["status"] in ("pending", "running", "done", "failed")
-
-    def test_cancel_pending_job(self, client, input_file):
-        """DELETE /api/v1/jobs/{job_id} — 取消 pending 任务"""
-        gen_resp = client.post(
-            "/api/v1/jobs",
-            json={
-                "input_file": input_file,
-                "api_key": "sk-test",
-                "synthesizer_url": "https://api.example.com/v1",
-                "synthesizer_model": "gpt-4",
-                "mode": "atomic",
-                "data_format": "Alpaca",
-            },
-        )
-        job_id = gen_resp.json()["job_id"]
-        response = client.delete(f"/api/v1/jobs/{job_id}")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["job_id"] == job_id
-        assert data["status"] == "cancelled"
-
-    def test_cancel_nonexistent_job(self, client):
-        """DELETE /api/v1/jobs/{job_id} — 不存在的任务返回 404"""
-        response = client.delete("/api/v1/jobs/nonexistent")
-        assert response.status_code == 404

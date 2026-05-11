@@ -531,7 +531,7 @@
     if (!props.dataset?.id) return
     router.push({
       path: '/data-management/data-processing',
-      query: { datasetId: String(props.dataset.id), step: '2' }
+      query: { datasetId: String(props.dataset.id) }
     })
   }
 

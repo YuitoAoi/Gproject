@@ -124,7 +124,8 @@ export const taskMonitoringRoutes: AppRouteRecord = {
   meta: {
     title: 'menus.taskMonitoring.title',
     icon: 'ri:line-chart-line',
-    roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
+    roles: ['R_SUPER', 'R_ADMIN', 'R_USER'],
+    isHide: true
   },
   children: [
     {

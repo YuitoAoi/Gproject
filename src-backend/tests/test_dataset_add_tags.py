@@ -148,7 +148,7 @@ class TestAddTagsBatchUnit:
 
 
 # ══════════════════════════════════════════════════════════
-# 集成测试（MySQL 测试数据库）
+# 集成测试（SQLite 内存数据库）
 # ══════════════════════════════════════════════════════════
 
 import sys
@@ -158,9 +158,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src" / "service
 
 @pytest.fixture(scope="session")
 def sqlite_conn():
-    from src.db_connections.mysql import MysqlConnection
-    from tests import get_test_db_url
-    conn = MysqlConnection(get_test_db_url(), echo=False, pool_size=5, max_overflow=5)
+    from src.db_connections.sqlite import SqliteConnection
+    conn = SqliteConnection("sqlite:///:memory:", echo=False)
     conn.start()
     from src.adapters.repositories.dataset_repo import DatasetRepositoryAdapter
     DatasetRepositoryAdapter(conn).init_table()
