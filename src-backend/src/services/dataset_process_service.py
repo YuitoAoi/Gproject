@@ -228,6 +228,25 @@ class DatasetProcessService:
             )
             self._task_repo.insert(task)
 
+        # 初始化日志文件（供 Celery Worker 追加写入）
+        if job_id and self._dataset_log_repo is not None:
+            log_dst_dir = os.path.join("data", "logs", "dataset_logs")
+            os.makedirs(log_dst_dir, exist_ok=True)
+            log_dst = os.path.join(log_dst_dir, f"{job_id}.log")
+            try:
+                with open(log_dst, "w", encoding="utf-8") as f:
+                    f.write(f"[{datetime.now().isoformat()}] [INFO] Task submitted, job_id={job_id}\n")
+                from src.core.dataset_log import DatasetLog as DSLog
+                log_record = DSLog(
+                    job_id=job_id,
+                    dataset_id=0,  # 先设为0，完成时会更新
+                    log_path=log_dst,
+                    created_at=datetime.now(),
+                )
+                self._dataset_log_repo.insert(log_record)
+            except Exception:
+                pass  # 日志文件创建失败不影响主流程
+
         # 提交 Celery 异步监控（Celery 不可用时不影响任务提交）
         if job_id and self._celery is not None:
             try:
@@ -297,21 +316,19 @@ class DatasetProcessService:
 
                 if self._dataset_log_repo is not None:
                     log_src = os.path.join("cache", "logs", f"{job_id}.log")
-                    log_dst_dir = os.path.join("dataset", "logs", "dataset_logs")
+                    log_dst_dir = os.path.join("data", "logs", "dataset_logs")
                     os.makedirs(log_dst_dir, exist_ok=True)
                     log_dst = os.path.join(log_dst_dir, f"{job_id}.log")
-                    if os.path.isfile(log_src):
+                    if os.path.isfile(log_src) and not os.path.isfile(log_dst):
                         shutil.copy2(log_src, log_dst)
+                    if not output_ds.meta.log_path:
                         output_ds.meta.log_path = log_dst
                         self._dataset_repo.update(output_ds.id, output_ds)
-                    from src.core.dataset_log import DatasetLog as DSLog
-                    log_record = DSLog(
-                        job_id=job_id,
-                        dataset_id=output_ds.id,
-                        log_path=output_ds.meta.log_path or "",
-                        created_at=datetime.now(),
-                    )
-                    self._dataset_log_repo.insert(log_record)
+                    existing_record = self._dataset_log_repo.find_by_job_id(job_id)
+                    if existing_record:
+                        self._dataset_log_repo.update_by_job_id(
+                            job_id, output_ds.id, output_ds.meta.log_path or log_dst
+                        )
 
                 if self._task_repo is not None:
                     task = self._task_repo.find_by_config_job_id(ds.owner_id, job_id)

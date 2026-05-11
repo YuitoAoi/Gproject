@@ -371,6 +371,9 @@ export const useWorktabStore = defineStore(
 
       if (!keepAliveExclude.value.includes(tab.name)) {
         keepAliveExclude.value.push(tab.name)
+        if (keepAliveExclude.value.length > 100) {
+          keepAliveExclude.value = keepAliveExclude.value.slice(-50)
+        }
       }
     }
 

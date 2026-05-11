@@ -219,6 +219,7 @@
 
   let progressWs: WebSocket | null = null
   let taskStartTime = 0
+  let lastStageKey = ''
 
   function resolveWsBase(): string {
     const env = import.meta.env.VITE_WS_URL
@@ -414,18 +415,14 @@
   })
 
   onActivated(async () => {
-    resetForNewTask()
-    loading.value = true
-    try {
-      const result = await getDatasets()
-      datasets.value = result.records
-      const datasetId = route.query.datasetId
-      if (datasetId) {
-        selectedDatasetId.value = Number(datasetId)
-        currentStep.value = 2
+    if (datasets.value.length === 0) {
+      loading.value = true
+      try {
+        const result = await getDatasets()
+        datasets.value = result.records
+      } finally {
+        loading.value = false
       }
-    } finally {
-      loading.value = false
     }
   })
 

@@ -63,6 +63,15 @@
         <ElButton type="danger" @click="confirmTerminate">确定终止</ElButton>
       </template>
     </ElDialog>
+
+    <!-- 删除确认弹窗 -->
+    <ElDialog v-model="deleteDialogVisible" title="确认删除" width="400px" append-to-body>
+      <p>确定要删除任务「{{ currentTask?.name }}」吗？此操作不可恢复。</p>
+      <template #footer>
+        <ElButton @click="deleteDialogVisible = false">取消</ElButton>
+        <ElButton type="danger" @click="confirmDelete">确定删除</ElButton>
+      </template>
+    </ElDialog>
   </div>
 </template>
 
@@ -118,6 +127,7 @@
   const selectedRows = ref<TaskItem[]>([])
   const terminateDialogVisible = ref(false)
   const currentTask = ref<TaskItem | null>(null)
+  const deleteDialogVisible = ref(false)
 
   const pagination = ref({
     current: 1,
@@ -245,20 +255,31 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 120,
+      width: 160,
       fixed: 'right',
       formatter: (row: TaskItem) => {
+        const isRunning = row.status === 'running' || row.status === 'pending'
         return h('div', { class: 'flex gap-1' }, [
           h(
             ElButton,
             {
               size: 'small',
-              type: row.status === 'running' ? 'danger' : 'info',
-              text: row.status === 'running',
+              type: isRunning ? 'danger' : 'info',
+              text: false,
               disabled: row.status === 'done' || row.status === 'failed',
               onClick: () => handleTerminate(row)
             },
             () => '终止'
+          ),
+          h(
+            ElButton,
+            {
+              size: 'small',
+              type: 'danger',
+              text: true,
+              onClick: () => handleDelete(row)
+            },
+            () => '删除'
           )
         ])
       }
@@ -290,7 +311,14 @@
   }
 
   const handleTaskClick = (row: TaskItem) => {
-    router.push(`/task-monitoring/${row.id}`)
+    const type = row.type
+    if (type === 'inference') {
+      router.push('/model-inference')
+    } else if (type === 'upload') {
+      router.push('/data-management/dataset-hub')
+    } else if (type === 'cleaning' || type === 'training' || type === 'export') {
+      router.push(`/workbench/task-dispatch/task-monitoring/${row.id}?type=${type}`)
+    }
   }
 
   const handleTerminate = (row: TaskItem) => {
@@ -298,42 +326,70 @@
     terminateDialogVisible.value = true
   }
 
-  const confirmTerminate = () => {
-    if (currentTask.value) {
-      const id = Number(currentTask.value.id)
-      if (!isNaN(id)) {
-        deleteTask(id).then(() => fetchTasks())
-      }
-    }
-    ElMessage.success(`任务「${currentTask.value?.name}」已强制终止`)
-    terminateDialogVisible.value = false
-    currentTask.value = null
+  const handleDelete = (row: TaskItem) => {
+    currentTask.value = row
+    deleteDialogVisible.value = true
   }
 
-  const handleBatchClear = () => {
+  const confirmDelete = async () => {
+    if (!currentTask.value) return
+    const id = Number(currentTask.value.id)
+    try {
+      await deleteTask(id)
+      ElMessage.success(`任务「${currentTask.value?.name}」已删除`)
+      deleteDialogVisible.value = false
+      currentTask.value = null
+      await fetchTasks()
+    } catch {
+      ElMessage.error('删除失败')
+    }
+  }
+
+  const confirmTerminate = async () => {
+    if (!currentTask.value) return
+    const id = Number(currentTask.value.id)
+    try {
+      await deleteTask(id)
+      ElMessage.success(`任务「${currentTask.value?.name}」已强制终止`)
+      terminateDialogVisible.value = false
+      currentTask.value = null
+      await fetchTasks()
+    } catch {
+      ElMessage.error('终止失败')
+    }
+  }
+
+  const handleBatchClear = async () => {
     if (selectedRows.value.length === 0) {
       ElMessage.warning('请先选择要清理的任务')
       return
     }
-    ElMessageBox.confirm(
-      `确定要清理选中的 ${selectedRows.value.length} 个历史任务吗？`,
-      '批量清理',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-      .then(() => {
-        selectedRows.value.forEach((row) => {
+    try {
+      await ElMessageBox.confirm(
+        `确定要清理选中的 ${selectedRows.value.length} 个历史任务吗？`,
+        '批量清理',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+      loading.value = true
+      await Promise.all(
+        selectedRows.value.map((row) => {
           const id = Number(row.id)
-          if (!isNaN(id)) deleteTask(id)
+          if (!isNaN(id)) return deleteTask(id)
+          return Promise.resolve()
         })
-        fetchTasks()
-        ElMessage.success('已清理完成')
-        selectedRows.value = []
-      })
-      .catch(() => {})
+      )
+      ElMessage.success('已清理完成')
+      selectedRows.value = []
+      await fetchTasks()
+    } catch (e) {
+      if (e !== 'cancel') ElMessage.error('清理失败')
+    } finally {
+      loading.value = false
+    }
   }
 
   onMounted(() => {

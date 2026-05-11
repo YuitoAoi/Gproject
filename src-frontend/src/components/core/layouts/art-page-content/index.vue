@@ -22,7 +22,7 @@
             class="art-page-view"
             :is="Component"
             :key="route.path"
-            v-if="route.meta.keepAlive"
+            v-if="route.meta.keepAlive === true"
           />
         </KeepAlive>
       </Transition>
@@ -32,8 +32,8 @@
         <component
           class="art-page-view"
           :is="Component"
-          :key="componentKey"
-          v-if="!route.meta.keepAlive"
+          :key="route.path"
+          v-if="route.meta.keepAlive !== true"
         />
       </Transition>
     </RouterView>
@@ -65,13 +65,6 @@
   const isOpenRouteInfo = import.meta.env.VITE_OPEN_ROUTE_INFO
   const showTransitionMask = ref(false)
   const transitionTimer = ref<ReturnType<typeof setTimeout> | null>(null)
-
-  const componentKey = computed(() => {
-    if (route.matched.length > 1) {
-      return route.matched[0].path
-    }
-    return route.path
-  })
 
   // 标记是否是首次加载（浏览器刷新）
   const isFirstLoad = ref(true)

@@ -81,3 +81,31 @@ class DatasetLogRepository:
         except Exception:
             _logger.exception("Failed to find dataset_log by job_id=%s", job_id)
             return None
+
+    def update_by_job_id(self, job_id: str, dataset_id: int, log_path: str) -> Optional[Exception]:
+        try:
+            with self._conn.new_session() as session:
+                session.execute(
+                    text(
+                        "UPDATE dataset_logs SET dataset_id = :dataset_id, log_path = :log_path WHERE job_id = :job_id"
+                    ),
+                    {"job_id": job_id, "dataset_id": dataset_id, "log_path": log_path},
+                )
+                session.commit()
+                return None
+        except Exception as exc:
+            _logger.exception("Failed to update dataset_log by job_id=%s", job_id)
+            return exc
+
+    def remove_by_job_id(self, job_id: str) -> Optional[Exception]:
+        try:
+            with self._conn.new_session() as session:
+                session.execute(
+                    text("DELETE FROM dataset_logs WHERE job_id = :job_id"),
+                    {"job_id": job_id},
+                )
+                session.commit()
+                return None
+        except Exception as exc:
+            _logger.exception("Failed to delete dataset_log by job_id=%s", job_id)
+            return exc

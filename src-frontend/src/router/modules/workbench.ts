@@ -42,7 +42,20 @@ export const workbenchRoutes: AppRouteRecord = {
         icon: 'ri:timer-flash-line',
         keepAlive: false,
         roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
-      }
+      },
+      children: [
+        {
+          path: 'task-monitoring/:id',
+          name: 'TaskMonitoringDetail',
+          component: '/task-monitoring/index',
+          meta: {
+            title: 'menus.taskMonitoring.detail',
+            keepAlive: false,
+            hideInMenu: true,
+            roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
+          }
+        }
+      ]
     }
   ]
 }
@@ -112,37 +125,6 @@ export const modelFactoryRoutes: AppRouteRecord = {
         icon: 'ri:archive-line',
         keepAlive: false,
         roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
-      }
-    }
-  ]
-}
-
-export const taskMonitoringRoutes: AppRouteRecord = {
-  name: 'TaskMonitoring',
-  path: '/task-monitoring',
-  component: '/index/index',
-  meta: {
-    title: 'menus.taskMonitoring.title',
-    icon: 'ri:line-chart-line',
-    roles: ['R_SUPER', 'R_ADMIN', 'R_USER'],
-    isHide: true
-  },
-  children: [
-    {
-      path: ':id',
-      name: 'TaskMonitoringDetail',
-      component: '/task-monitoring/index',
-      meta: {
-        title: 'menus.taskMonitoring.detail',
-        keepAlive: false,
-        roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
-      }
-    },
-    {
-      path: '',
-      redirect: '/workbench/task-dispatch',
-      meta: {
-        hideInMenu: true
       }
     }
   ]

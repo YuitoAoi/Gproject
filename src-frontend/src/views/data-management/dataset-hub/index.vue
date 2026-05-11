@@ -303,6 +303,7 @@
   import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
   import { useTable } from '@/hooks/core/useTable'
   import { useTagStore, type TagInfo } from '@/store/modules/tag'
+  import { useUserStore } from '@/store/modules/user'
   import {
     getDatasets,
     getDatasetTimes,
@@ -310,17 +311,17 @@
     uploadDataset,
     type DatasetItemDTO
   } from '@/api/dataset'
+  import { createTask, updateTask } from '@/api/task'
   import DatasetUpload from './modules/dataset-upload.vue'
   import DatasetDrawer from './modules/dataset-drawer.vue'
-  import { useWebSocketTask } from '@/hooks/core/useWebSocketTask'
-  import { nextTick, ref as vueRef, shallowRef, onMounted } from 'vue'
-  import { ElTag, ElMessageBox, ElMessage, ElTooltip } from 'element-plus'
-  import axios from 'axios'
+  import { nextTick, ref as vueRef, onMounted } from 'vue'
+  import { ElTag, ElMessageBox, ElMessage } from 'element-plus'
 
   defineOptions({ name: 'DatasetHubPage' })
 
   const drawerRef = vueRef<{ setActiveTab: (tab: string) => void } | null>(null)
   const tagStore = useTagStore()
+  const userStore = useUserStore()
 
   // 上传弹窗
   const uploadVisible = ref(false)
@@ -386,12 +387,6 @@
     return 'icon-uploading'
   }
 
-  const getProgressColor = (status: string) => {
-    if (status === 'completed') return '#67C23A'
-    if (status === 'paused') return '#E6A23C'
-    return '#409EFF'
-  }
-
   const getStatusConfig = (status: number) => {
     if (status === 2) return { type: 'success' as const, text: '已就绪', dot: '#67C23A' }
     if (status === 1) return { type: 'warning' as const, text: '清洗中', dot: '#409EFF' }
@@ -448,11 +443,9 @@
 
   const {
     columns,
-    columnChecks,
     data,
     loading,
     pagination,
-    getData,
     searchParams,
     handleSizeChange,
     handleCurrentChange,
@@ -620,6 +613,9 @@
 
   // 非阻塞上传：立即添加到任务队列，后台上传
   const handleUploadStart = (fileInfo: { name: string; size: number; raw: File }) => {
+    const userId = userStore.info.userId
+    let taskId: number | null = null
+
     const task: UploadTaskItem = {
       id: Date.now(),
       name: fileInfo.name,
@@ -631,49 +627,81 @@
     }
     uploadTasks.value.unshift(task)
 
-    uploadDataset(fileInfo.raw, (percent, phase, detail) => {
-      const idx = uploadTasks.value.findIndex((t) => t.id === task.id)
-      if (idx === -1) return
+    uploadDataset(
+      fileInfo.raw,
+      async (percent, phase, detail) => {
+        const idx = uploadTasks.value.findIndex((t) => t.id === task.id)
+        if (idx === -1) return
 
-      const updatedTask = { ...uploadTasks.value[idx] }
-      updatedTask.progress = percent
-
-      switch (phase) {
-        case 'hashing':
-          updatedTask.status = 'preparing'
-          updatedTask.remaining = '计算哈希...'
-          updatedTask.speed = '—'
-          break
-        case 'hash_complete':
-          updatedTask.remaining = '开始上传...'
-          break
-        case 'initiating':
-          updatedTask.status = 'uploading'
-          updatedTask.remaining = '初始化中...'
-          break
-        case 'uploading':
-          updatedTask.status = 'uploading'
-          if (detail) {
-            updatedTask.remaining = `上传分片 ${detail.current}/${detail.total}`
+        if (phase === 'hashing' && !taskId && userId) {
+          try {
+            const result = await createTask({
+              task_name: fileInfo.name,
+              task_type: 'upload',
+              config: JSON.stringify({ job_id: '', dataset_id: 0 })
+            })
+            if (result.task) {
+              taskId = result.task.id
+              await updateTask(taskId, { status: 'pending', progress: 0.05, phase: '初始化中' })
+            }
+          } catch {
+            // ignore
           }
-          break
-        case 'completing':
-          updatedTask.remaining = '合并文件中...'
-          break
-        case 'complete':
-          updatedTask.progress = 100
-          updatedTask.status = 'completed'
-          updatedTask.remaining = '—'
-          updatedTask.speed = '—'
-          break
-      }
+        }
 
-      uploadTasks.value[idx] = updatedTask
-    })
+        const updatedTask = { ...uploadTasks.value[idx] }
+        updatedTask.progress = percent
+
+        switch (phase) {
+          case 'hashing':
+            updatedTask.status = 'preparing'
+            updatedTask.remaining = '计算哈希...'
+            updatedTask.speed = '—'
+            break
+          case 'hash_complete':
+            updatedTask.remaining = '开始上传...'
+            break
+          case 'initiating':
+            updatedTask.status = 'uploading'
+            updatedTask.remaining = '初始化中...'
+            if (taskId) {
+              await updateTask(taskId, { status: 'running', progress: 0.1, phase: '初始化中' })
+            }
+            break
+          case 'uploading':
+            updatedTask.status = 'uploading'
+            if (detail) {
+              updatedTask.remaining = `上传分片 ${detail.current}/${detail.total}`
+            }
+            if (taskId) {
+              await updateTask(taskId, { progress: 0.1 + (percent / 100) * 0.85 })
+            }
+            break
+          case 'completing':
+            updatedTask.remaining = '合并文件中...'
+            if (taskId) {
+              await updateTask(taskId, { phase: '合并文件中' })
+            }
+            break
+          case 'complete':
+            updatedTask.progress = 100
+            updatedTask.status = 'completed'
+            updatedTask.remaining = '—'
+            updatedTask.speed = '—'
+            if (taskId) {
+              await updateTask(taskId, { status: 'done', progress: 1.0, phase: '已完成' })
+            }
+            break
+        }
+
+        uploadTasks.value[idx] = updatedTask
+      },
+      userId
+    )
       .then((response: any) => {
         const celTaskId = response?.task_id
         if (celTaskId) {
-          handleTrackCeleryProgress(task.id, celTaskId)
+          handleTrackCeleryProgress(task.id, celTaskId, taskId)
         } else {
           completeUploadTask(task.id)
           ElMessage.success(`数据集「${fileInfo.name}」上传完成`)
@@ -690,12 +718,19 @@
             remaining: err.message || '上传失败'
           }
         }
+        if (taskId) {
+          updateTask(taskId, { status: 'failed' }).catch(() => {})
+        }
         ElMessage.error('上传失败: ' + (err.message || '未知错误'))
       })
   }
 
   // 通过 WebSocket 追踪 Celery 任务进度
-  const handleTrackCeleryProgress = (uiTaskId: number, celTaskId: string) => {
+  const handleTrackCeleryProgress = (
+    uiTaskId: number,
+    celTaskId: string,
+    taskId: number | null
+  ) => {
     const wsUrl = `${import.meta.env.VITE_WS_URL || 'ws://localhost:8088'}/ws/progress`
     const ws = new WebSocket(`${wsUrl}?job_id=${celTaskId}`)
 
@@ -729,6 +764,9 @@
           uploadTasks.value[idx] = updatedTask
           console.log('[WS] 收到成功信号，任务完成:', uiTaskId)
           ws.close()
+          if (taskId) {
+            updateTask(taskId, { status: 'done', progress: 1.0, phase: '已完成' }).catch(() => {})
+          }
           completeUploadTask(uiTaskId)
           ElMessage.success(data.message || '上传任务完成')
           refreshData()
@@ -740,6 +778,9 @@
           uploadTasks.value[idx] = updatedTask
           console.log('[WS] 收到失败信号:', data.message)
           ws.close()
+          if (taskId) {
+            updateTask(taskId, { status: 'failed', phase: '合并失败' }).catch(() => {})
+          }
           ElMessage.error(data.message || '文件合并失败')
           return
         }

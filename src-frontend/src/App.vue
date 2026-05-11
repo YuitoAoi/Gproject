@@ -1,10 +1,6 @@
 <template>
   <ElConfigProvider size="default" :locale="zh" :z-index="3000" :card="{ shadow: 'never' }">
-    <RouterView v-slot="{ Component }">
-      <KeepAlive :max="20">
-        <component :is="Component" />
-      </KeepAlive>
-    </RouterView>
+    <RouterView />
   </ElConfigProvider>
 </template>
 

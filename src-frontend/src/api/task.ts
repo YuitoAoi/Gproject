@@ -15,6 +15,8 @@ export interface TaskItem {
 export interface TaskListResponse {
   items: TaskItem[]
   total: number
+  page?: number
+  page_size?: number
   error?: string
 }
 
@@ -23,7 +25,23 @@ export interface TaskDetailResponse {
   error?: string
 }
 
-export async function getTasks(params?: { status?: string }): Promise<TaskListResponse> {
+export interface TaskCreateRequest {
+  task_name: string
+  task_type?: 'upload' | 'cleaning' | 'training' | 'inference' | 'export'
+  config?: string
+}
+
+export interface TaskUpdateRequest {
+  status?: 'pending' | 'running' | 'done' | 'failed' | 'cancelled'
+  progress?: number
+  phase?: string
+}
+
+export async function getTasks(params?: {
+  status?: string
+  page?: number
+  page_size?: number
+}): Promise<TaskListResponse> {
   try {
     return await request.get<TaskListResponse>({
       url: '/tasks',
@@ -38,6 +56,28 @@ export async function getTask(id: number): Promise<TaskDetailResponse> {
   try {
     return await request.get<TaskDetailResponse>({
       url: `/tasks/${id}`
+    })
+  } catch {
+    return { error: '请求失败' }
+  }
+}
+
+export async function createTask(data: TaskCreateRequest): Promise<TaskDetailResponse> {
+  try {
+    return await request.post<TaskDetailResponse>({
+      url: '/tasks',
+      data
+    })
+  } catch {
+    return { error: '请求失败' }
+  }
+}
+
+export async function updateTask(id: number, data: TaskUpdateRequest): Promise<TaskDetailResponse> {
+  try {
+    return await request.patch<TaskDetailResponse>({
+      url: `/tasks/${id}`,
+      data
     })
   } catch {
     return { error: '请求失败' }

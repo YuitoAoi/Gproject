@@ -7,8 +7,8 @@
  * 使用方式:
  *   const { connect, disconnect, connected } = useWebSocketTask(jobId)
  */
-import { ref, onMounted, onUnmounted } from 'vue'
-import { ElNotification } from 'element-plus'
+import { ref, watch } from 'vue'
+import { ElMessage, ElNotification } from 'element-plus'
 import { useTaskStore } from '@/store/modules/task'
 import { mapTaskStatusForDisplay } from '@/utils/task'
 import { store } from '@/store'
@@ -26,14 +26,21 @@ function resolveWsBase(): string {
 const WS_BASE = resolveWsBase()
 const WS_PATH = '/ws/progress'
 
-export function useWebSocketTask(jobId: string) {
+export function useWebSocketTask(initialJobId: string = '') {
   const taskStore = useTaskStore(store)
   const ws = ref<WebSocket | null>(null)
   const connected = ref(false)
   const retryCount = ref(0)
   const maxRetries = 5
   const retryDelay = 3000
+  const jobId = ref(initialJobId)
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+
+  let currentJobId = initialJobId
+
+  watch(jobId, (newVal) => {
+    currentJobId = newVal
+  })
 
   const handleMessage = (event: MessageEvent) => {
     try {
@@ -63,12 +70,12 @@ export function useWebSocketTask(jobId: string) {
       if (status === 'done') {
         ElNotification.success({
           title: '任务完成',
-          message: message || `任务 ${jobId} 已完成`
+          message: message || `任务 ${currentJobId} 已完成`
         })
       } else if (status === 'failed') {
         ElNotification.error({
           title: '任务失败',
-          message: message || `任务 ${jobId} 执行失败`
+          message: message || `任务 ${currentJobId} 执行失败`
         })
       }
     } catch (e) {
@@ -79,31 +86,34 @@ export function useWebSocketTask(jobId: string) {
   const handleOpen = () => {
     connected.value = true
     retryCount.value = 0
-    console.log('[WS] WebSocket连接已建立:', jobId)
+    console.log('[WS] WebSocket连接已建立:', currentJobId)
   }
 
   const handleClose = (event: CloseEvent) => {
     connected.value = false
-    console.log('[WS] WebSocket连接已关闭:', jobId, event.code, event.reason)
+    console.log('[WS] WebSocket连接已关闭:', currentJobId, event.code, event.reason)
 
     if (retryCount.value < maxRetries && event.code !== 1000) {
       retryCount.value++
       console.log(`[WS] ${retryCount.value}/${maxRetries} 重连中...`)
       reconnectTimer = setTimeout(connect, retryDelay * retryCount.value)
+    } else if (retryCount.value >= maxRetries) {
+      ElMessage.warning('实时连接已断开，请刷新页面重试')
     }
   }
 
   const handleError = (error: Event) => {
-    console.error('[WS] WebSocket错误:', jobId, error)
+    console.error('[WS] WebSocket错误:', currentJobId, error)
   }
 
   const connect = () => {
+    if (!currentJobId) return
     if (ws.value) {
       ws.value.close()
       ws.value = null
     }
 
-    const url = `${WS_BASE}${WS_PATH}?job_id=${jobId}`
+    const url = `${WS_BASE}${WS_PATH}?job_id=${currentJobId}`
     ws.value = new WebSocket(url)
 
     ws.value.onopen = handleOpen
@@ -130,19 +140,12 @@ export function useWebSocketTask(jobId: string) {
     }
   }
 
-  onMounted(() => {
-    connect()
-  })
-
-  onUnmounted(() => {
-    disconnect()
-  })
-
   return {
     ws,
     connected,
     connect,
     disconnect,
-    send
+    send,
+    jobId
   }
 }

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from sqlalchemy import Column, DateTime, Float, Integer, MetaData, String, Table, Text, text
 
@@ -125,6 +125,59 @@ class TaskRepository:
         except Exception:
             _logger.exception("Failed to find tasks by owner_id=%s", owner_id)
             return []
+
+    def find_by_owner_paged(
+        self, owner_id: int, page: int, page_size: int, status: Optional[str] = None
+    ) -> Tuple[List[TaskRecord], int]:
+        try:
+            offset = (page - 1) * page_size
+            with self._conn.new_session() as session:
+                if status:
+                    count_row = session.execute(
+                        text("SELECT COUNT(*) FROM tasks WHERE owner_id = :owner_id AND status = :status"),
+                        {"owner_id": owner_id, "status": status},
+                    ).fetchone()
+                    rows = session.execute(
+                        text(
+                            f"SELECT {self._COLUMNS} FROM tasks "
+                            "WHERE owner_id = :owner_id AND status = :status ORDER BY id DESC LIMIT :limit OFFSET :offset"
+                        ),
+                        {"owner_id": owner_id, "status": status, "limit": page_size, "offset": offset},
+                    ).fetchall()
+                else:
+                    count_row = session.execute(
+                        text("SELECT COUNT(*) FROM tasks WHERE owner_id = :owner_id"),
+                        {"owner_id": owner_id},
+                    ).fetchone()
+                    rows = session.execute(
+                        text(
+                            f"SELECT {self._COLUMNS} FROM tasks "
+                            "WHERE owner_id = :owner_id ORDER BY id DESC LIMIT :limit OFFSET :offset"
+                        ),
+                        {"owner_id": owner_id, "limit": page_size, "offset": offset},
+                    ).fetchall()
+                total = count_row[0] if count_row else 0
+                return [self._row_to_task(r) for r in rows], total
+        except Exception:
+            _logger.exception("Failed to find tasks paged for owner_id=%s", owner_id)
+            return [], 0
+
+    def find_by_job_id(self, job_id: str) -> Optional[TaskRecord]:
+        try:
+            with self._conn.new_session() as session:
+                row = session.execute(
+                    text(
+                        f"SELECT {self._COLUMNS} FROM tasks "
+                        "WHERE config LIKE :job_id ORDER BY id DESC LIMIT 1"
+                    ),
+                    {"job_id": f"%{job_id}%"},
+                ).fetchone()
+                if row is None:
+                    return None
+                return self._row_to_task(row)
+        except Exception:
+            _logger.exception("Failed to find task by job_id=%s", job_id)
+            return None
 
     def update(self, id: int, task: TaskRecord) -> Optional[Exception]:
         try:

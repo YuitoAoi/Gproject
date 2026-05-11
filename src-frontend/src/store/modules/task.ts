@@ -82,7 +82,7 @@ export const useTaskStore = defineStore('taskStore', () => {
   function clearCompleted() {
     const toRemove: string[] = []
     tasks.value.forEach((task, key) => {
-      if (task.status === 'done' || task.status === 'failed') {
+      if (task.status === 'done' || task.status === 'failed' || task.status === 'cancelled') {
         toRemove.push(key)
       }
     })

@@ -178,13 +178,14 @@ export async function completeUpload(
   uploadId: string,
   filename: string,
   fileFormat: string,
-  fileSize: number
+  fileSize: number,
+  ownerId?: number
 ): Promise<UploadCompleteResponse> {
   const response = await request.post<UploadCompleteResponse>({
     url: '/dataset/upload/complete',
     data: {
       upload_id: uploadId,
-      owner_id: 0,
+      owner_id: ownerId ?? 0,
       name: filename.replace(/\.[^.]+$/, ''),
       file_format: fileFormat,
       file_size: fileSize
@@ -195,7 +196,8 @@ export async function completeUpload(
 
 export async function uploadDataset(
   file: File,
-  onProgress?: (percent: number, phase: string, detail?: Record<string, any>) => void
+  onProgress?: (percent: number, phase: string, detail?: Record<string, any>) => void,
+  ownerId?: number
 ): Promise<UploadCompleteResponse> {
   const format = file.name.split('.').pop() || 'csv'
 
@@ -232,7 +234,7 @@ export async function uploadDataset(
   }
 
   onProgress?.(95, 'completing')
-  const completeResponse = await completeUpload(upload_id, file.name, format, file.size)
+  const completeResponse = await completeUpload(upload_id, file.name, format, file.size, ownerId)
 
   onProgress?.(100, 'complete', { datasetId: completeResponse.dataset_id })
   return completeResponse

@@ -1,5 +1,6 @@
-"""GraphGen 监控任务 —— 轮询 + 回调 backend。"""
+"""GraphGen 监控任务 —— 轮询 + 回调 backend + 写入日志文件。"""
 import json
+import os
 import time
 from typing import Any, Dict
 
@@ -13,6 +14,22 @@ _CALLBACK_URL = (
     f"http://{config.BACKEND_HOST}:{config.BACKEND_PORT}"
     f"/api/v1/dataset/process/callback"
 )
+
+_LOG_DIR = os.path.join("data", "logs", "dataset_logs")
+
+
+def _get_log_path(job_id: str) -> str:
+    return os.path.join(_LOG_DIR, f"{job_id}.log")
+
+
+def _append_log(job_id: str, line: str) -> None:
+    try:
+        os.makedirs(_LOG_DIR, exist_ok=True)
+        log_path = _get_log_path(job_id)
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception:
+        pass
 
 
 def _publish_progress(job_id: str, stage: str, progress: float, message: str, status: str = ""):
@@ -34,6 +51,7 @@ def _publish_progress(job_id: str, stage: str, progress: float, message: str, st
 
 
 def _publish_log(job_id: str, line: str):
+    _append_log(job_id, line)
     try:
         r = redis.Redis.from_url(config.REDIS_URL, decode_responses=True)
         r.publish(

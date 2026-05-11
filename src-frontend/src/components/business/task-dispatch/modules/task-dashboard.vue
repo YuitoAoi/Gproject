@@ -96,15 +96,24 @@
     const completed = rawTasks.value.filter((t) => t.status === 'done').length
     const failed = rawTasks.value.filter((t) => t.status === 'failed').length
     const total = rawTasks.value.length
+
+    const avgWaitTimeMs =
+      pending > 0
+        ? rawTasks.value
+            .filter((t) => t.status === 'pending')
+            .reduce((sum, t) => sum + (Date.now() - new Date(t.created_at).getTime()), 0) / pending
+        : 0
+    const avgWaitMin = Math.round(avgWaitTimeMs / 60000)
+
     return {
       running,
       pending,
       completed,
       failed,
-      avgWaitTime: '—',
+      avgWaitTime: avgWaitMin > 0 ? `${avgWaitMin} 分钟` : '—',
       successRate: total > 0 ? `${Math.round((completed / total) * 100)}%` : '—',
       totalGpu: 8,
-      allocatedGpu: running * 2
+      allocatedGpu: running
     }
   })
 
