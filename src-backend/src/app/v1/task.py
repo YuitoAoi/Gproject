@@ -212,3 +212,38 @@ def delete_task(
 
     svc.task_repo.remove(task_id)
     return {"success": True}
+
+
+class CleaningSummaryResponse(BaseModel):
+    raw_count: int = 0
+    final_count: int = 0
+    status: str = "pending"
+    current_stage: str = ""
+    error: Optional[str] = None
+
+
+@router.get("/{task_id}/cleaning-summary", response_model=CleaningSummaryResponse)
+def get_cleaning_summary(
+    task_id: int,
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    owner_id = int(current_user.user_id)
+    t = svc.task_repo.find_by_id(task_id)
+    if t is None or t.owner_id != owner_id:
+        return CleaningSummaryResponse(error=f"Task not found: {task_id}")
+
+    try:
+        config = json.loads(t.config)
+    except Exception:
+        config = {}
+
+    raw_count = config.get('raw_count', 0)
+    final_count = config.get('final_count', 0)
+
+    return CleaningSummaryResponse(
+        raw_count=raw_count,
+        final_count=final_count,
+        status=t.status.value if hasattr(t.status, 'value') else str(t.status),
+        current_stage=t.phase or "read"
+    )

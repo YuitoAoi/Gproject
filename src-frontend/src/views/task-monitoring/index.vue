@@ -12,8 +12,8 @@
       />
     </template>
 
-    <!-- 训练/清洗任务：使用原有布局 -->
-    <template v-else>
+    <!-- 训练任务：使用原有训练布局 -->
+    <template v-else-if="taskType === 'training'">
       <!-- 顶部导航栏 -->
       <div class="monitoring-header">
         <div class="header-left">
@@ -93,6 +93,28 @@
         <div class="checkpoint-section">
           <CheckpointTable :checkpoints="checkpoints" />
         </div>
+      </div>
+    </template>
+
+    <!-- 清洗/导出任务：不支持在此页面查看 -->
+    <template v-else>
+      <div class="unsupported-task">
+        <div class="unsupported-task__icon">
+          <span class="ri:error-warning-line text-5xl text-warning"></span>
+        </div>
+        <h2 class="unsupported-task__title">此页面不支持查看该任务类型</h2>
+        <p class="unsupported-task__desc">
+          当前页面仅支持查看
+          <strong>训练任务</strong>详情。
+        </p>
+        <p class="unsupported-task__desc">
+          <template v-if="taskType === 'cleaning'">请前往 <strong>清洗监控页面</strong> 查看。</template>
+          <template v-else-if="taskType === 'export'">格式导出任务详情暂未开放。</template>
+          <template v-else>任务类型：{{ taskType }}</template>
+        </p>
+        <ElButton type="primary" @click="handleBack">
+          <span class="ri:arrow-left-line mr-1"></span>返回任务调度中心
+        </ElButton>
       </div>
     </template>
   </div>
@@ -411,6 +433,34 @@
     .config-section,
     .checkpoint-section {
       min-height: 280px;
+    }
+  }
+
+  .unsupported-task {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 400px;
+    padding: 40px;
+    text-align: center;
+
+    &__icon {
+      margin-bottom: 24px;
+    }
+
+    &__title {
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--art-gray-800);
+      margin: 0 0 12px;
+    }
+
+    &__desc {
+      font-size: 14px;
+      color: var(--art-gray-600);
+      margin: 0 0 8px;
     }
   }
 </style>

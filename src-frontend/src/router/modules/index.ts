@@ -4,6 +4,7 @@ import {
   dataManagementRoutes,
   modelFactoryRoutes,
   taskMonitoringRoutes,
+  cleaningMonitoringRoutes,
   modelInferenceRoutes,
   systemManagementRoutes
 } from './workbench'
@@ -13,6 +14,7 @@ export const routeModules: AppRouteRecord[] = [
   dataManagementRoutes,
   modelFactoryRoutes,
   taskMonitoringRoutes,
+  cleaningMonitoringRoutes,
   modelInferenceRoutes,
   systemManagementRoutes
 ]

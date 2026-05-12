@@ -25,6 +25,14 @@ export interface TaskDetailResponse {
   error?: string
 }
 
+export interface CleaningSummaryResponse {
+  raw_count: number
+  final_count: number
+  status: string
+  current_stage: string
+  error?: string
+}
+
 export interface TaskCreateRequest {
   task_name: string
   task_type?: 'upload' | 'cleaning' | 'training' | 'inference' | 'export'
@@ -59,6 +67,16 @@ export async function getTask(id: number): Promise<TaskDetailResponse> {
     })
   } catch {
     return { error: '请求失败' }
+  }
+}
+
+export async function getCleaningSummary(id: number): Promise<CleaningSummaryResponse> {
+  try {
+    return await request.get<CleaningSummaryResponse>({
+      url: `/tasks/${id}/cleaning-summary`
+    })
+  } catch {
+    return { error: '请求失败', raw_count: 0, final_count: 0, status: 'pending', current_stage: '' }
   }
 }
 

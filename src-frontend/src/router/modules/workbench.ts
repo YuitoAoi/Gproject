@@ -42,20 +42,58 @@ export const workbenchRoutes: AppRouteRecord = {
         icon: 'ri:timer-flash-line',
         keepAlive: false,
         roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
-      },
-      children: [
-        {
-          path: 'task-monitoring/:id',
-          name: 'TaskMonitoringDetail',
-          component: '/task-monitoring/index',
-          meta: {
-            title: 'menus.taskMonitoring.detail',
-            keepAlive: false,
-            hideInMenu: true,
-            roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
-          }
-        }
-      ]
+      }
+    }
+  ]
+}
+
+export const taskMonitoringRoutes: AppRouteRecord = {
+  name: 'TaskMonitoring',
+  path: '/workbench/task-monitoring',
+  component: '/index/index',
+  meta: {
+    title: 'menus.taskMonitoring.title',
+    icon: 'ri:line-chart-line',
+    roles: ['R_SUPER', 'R_ADMIN', 'R_USER'],
+    isHide: true
+  },
+  children: [
+    {
+      path: ':id',
+      name: 'TaskMonitoringDetail',
+      component: '/task-monitoring/index',
+      meta: {
+        title: 'menus.taskMonitoring.detail',
+        keepAlive: false,
+        hideInMenu: true,
+        roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
+      }
+    }
+  ]
+}
+
+export const cleaningMonitoringRoutes: AppRouteRecord = {
+  name: 'CleaningMonitoring',
+  path: '/workbench/cleaning-monitor',
+  component: '/index/index',
+  meta: {
+    title: 'menus.cleaningMonitoring.title',
+    icon: 'ri: broom-line',
+    roles: ['R_SUPER', 'R_ADMIN', 'R_USER'],
+    isHide: true
+  },
+  children: [
+    {
+      path: ':id',
+      name: 'CleaningMonitoringDetail',
+      component: '/cleaning-monitor/index',
+      meta: {
+        title: 'menus.cleaningMonitoring.detail',
+        keepAlive: false,
+        hideInMenu: true,
+        isHide: true,
+        roles: ['R_SUPER', 'R_ADMIN', 'R_USER']
+      }
     }
   ]
 }

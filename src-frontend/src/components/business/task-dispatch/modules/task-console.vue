@@ -275,8 +275,8 @@
             ElButton,
             {
               size: 'small',
-              type: 'danger',
-              text: true,
+              type: 'primary',
+              text: false,
               onClick: () => handleDelete(row)
             },
             () => '删除'
@@ -316,8 +316,12 @@
       router.push('/model-inference')
     } else if (type === 'upload') {
       router.push('/data-management/dataset-hub')
-    } else if (type === 'cleaning' || type === 'training' || type === 'export') {
-      router.push(`/workbench/task-dispatch/task-monitoring/${row.id}?type=${type}`)
+    } else if (type === 'cleaning') {
+      router.push(`/workbench/cleaning-monitor/${row.id}`)
+    } else if (type === 'training') {
+      router.push(`/workbench/task-monitoring/${row.id}?type=${type}`)
+    } else if (type === 'export') {
+      ElMessage.warning('格式导出任务详情页暂未开放')
     }
   }
 
