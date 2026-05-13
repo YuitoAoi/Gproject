@@ -66,6 +66,7 @@
 <script setup lang="ts">
   import { useAppStore, type MenuItem } from '@/store/modules/app'
   import { useUserStore } from '@/store/modules/user'
+  import { HOME_PATH } from '@/router'
 
   defineOptions({ name: 'ArtSidebarMenu' })
 
@@ -106,7 +107,7 @@
 
   /** 导航到首页 */
   const navigateToHome = () => {
-    router.push('/workbench/dashboard')
+    router.push(HOME_PATH)
   }
 
   /** 导航到指定路径 */

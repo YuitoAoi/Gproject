@@ -107,7 +107,7 @@ export const useAppStore = defineStore(
 )
 
 /**
- * 从路由配置构建菜单数据
+ * 从路由配置构建菜单数据（仅支持两级嵌套：父路由 + 一层 children，与当前路由表结构对齐）
  */
 function buildMenuFromRoutes(routes: RouteRecordRaw[]): MenuItem[] {
   return routes

@@ -7,17 +7,16 @@
 import type { App } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import NProgress from 'nprogress'
-import { publicRoutes, businessRoutes } from './routes'
+import { publicRoutes, businessRoutes, HOME_PATH } from './routes'
 import { useUserStore } from '@/store/modules/user'
+
+export { HOME_PATH }
 
 // 创建路由实例
 export const router = createRouter({
   history: createWebHashHistory(),
   routes: [...publicRoutes, ...businessRoutes]
 })
-
-/** 默认首页路径 */
-export const HOME_PATH = '/workbench/dashboard'
 
 /** 不需要登录的路由路径前缀 */
 const isPublicPath = (path: string): boolean => {
@@ -60,8 +59,7 @@ router.beforeEach((to) => {
   // 角色权限检查
   const requiredRoles = to.meta.roles as string[] | undefined
   if (requiredRoles && requiredRoles.length > 0) {
-    const userRoles = userStore.info?.roles || []
-    const hasPermission = requiredRoles.some((role) => userRoles.includes(role))
+    const hasPermission = requiredRoles.some((role) => userStore.roles.includes(role))
     if (!hasPermission) {
       return { path: '/403' }
     }
