@@ -8,21 +8,20 @@
 
       <div class="auth-right-wrap">
         <div class="form">
-          <h3 class="title">{{ $t('register.title') }}</h3>
-          <p class="sub-title">{{ $t('register.subTitle') }}</p>
+          <h3 class="title">注册</h3>
+          <p class="sub-title">创建您的账号</p>
           <ElForm
             class="mt-7.5"
             ref="formRef"
             :model="formData"
             :rules="rules"
             label-position="top"
-            :key="formKey"
           >
             <ElFormItem prop="name">
               <ElInput
                 class="custom-height"
                 v-model.trim="formData.name"
-                :placeholder="$t('register.placeholder.name')"
+                placeholder="请输入用户名"
               />
             </ElFormItem>
 
@@ -30,7 +29,7 @@
               <ElInput
                 class="custom-height"
                 v-model.trim="formData.email"
-                :placeholder="$t('register.placeholder.email')"
+                placeholder="请输入邮箱"
               />
             </ElFormItem>
 
@@ -38,7 +37,7 @@
               <ElInput
                 class="custom-height"
                 v-model.trim="formData.password"
-                :placeholder="$t('register.placeholder.password')"
+                placeholder="请输入密码"
                 type="password"
                 autocomplete="off"
                 show-password
@@ -49,7 +48,7 @@
               <ElInput
                 class="custom-height"
                 v-model.trim="formData.confirmPassword"
-                :placeholder="$t('register.placeholder.confirmPassword')"
+                placeholder="请确认密码"
                 type="password"
                 autocomplete="off"
                 @keyup.enter="register"
@@ -65,15 +64,13 @@
                 :loading="loading"
                 v-ripple
               >
-                {{ $t('register.submitBtnText') }}
+                注册
               </ElButton>
             </div>
 
             <div class="mt-5 text-sm text-g-600">
-              <span>{{ $t('register.hasAccount') }}</span>
-              <RouterLink class="text-theme" :to="{ name: 'Login' }">{{
-                $t('register.toLogin')
-              }}</RouterLink>
+              <span>已有账号？</span>
+              <RouterLink class="text-theme" :to="{ name: 'Login' }">去登录</RouterLink>
             </div>
           </ElForm>
         </div>
@@ -83,7 +80,6 @@
 </template>
 
 <script setup lang="ts">
-  import { useI18n } from 'vue-i18n'
   import { ElMessage } from 'element-plus'
   import type { FormInstance, FormRules } from 'element-plus'
   import { fetchRegister } from '@/api/auth'
@@ -103,17 +99,10 @@
   const PASSWORD_MIN_LENGTH = 8
   const REDIRECT_DELAY = 1000
 
-  const { t, locale } = useI18n()
   const router = useRouter()
   const formRef = ref<FormInstance>()
 
   const loading = ref(false)
-  const formKey = ref(0)
-
-  // 监听语言切换，重置表单
-  watch(locale, () => {
-    formKey.value++
-  })
 
   const formData = reactive<RegisterForm>({
     name: '',
@@ -127,11 +116,11 @@
    */
   const validateName = (_rule: any, value: string, callback: (error?: Error) => void) => {
     if (!value) {
-      callback(new Error(t('register.placeholder.name')))
+      callback(new Error('请输入用户名'))
       return
     }
     if (value.length < USERNAME_MIN_LENGTH || value.length > USERNAME_MAX_LENGTH) {
-      callback(new Error(t('register.rule.nameLength')))
+      callback(new Error('用户名长度需在3-50个字符之间'))
       return
     }
     callback()
@@ -142,12 +131,12 @@
    */
   const validateEmail = (_rule: any, value: string, callback: (error?: Error) => void) => {
     if (!value) {
-      callback(new Error(t('register.placeholder.email')))
+      callback(new Error('请输入邮箱'))
       return
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(value)) {
-      callback(new Error(t('register.rule.emailFormat')))
+      callback(new Error('邮箱格式不正确'))
       return
     }
     callback()
@@ -159,11 +148,11 @@
    */
   const validatePassword = (_rule: any, value: string, callback: (error?: Error) => void) => {
     if (!value) {
-      callback(new Error(t('register.placeholder.password')))
+      callback(new Error('请输入密码'))
       return
     }
     if (value.length < 8) {
-      callback(new Error(t('register.rule.passwordLength')))
+      callback(new Error('密码长度不能少于8位'))
       return
     }
     let count = 0
@@ -172,7 +161,7 @@
     if (/\d/.test(value)) count++
     if (/[^a-zA-Z0-9]/.test(value)) count++
     if (count < 2) {
-      callback(new Error(t('register.rule.passwordWeak')))
+      callback(new Error('密码强度不够，需包含大小写字母、数字或特殊字符中的至少2类'))
       return
     }
 
@@ -193,12 +182,12 @@
     callback: (error?: Error) => void
   ) => {
     if (!value) {
-      callback(new Error(t('register.rule.confirmPasswordRequired')))
+      callback(new Error('请确认密码'))
       return
     }
 
     if (value !== formData.password) {
-      callback(new Error(t('register.rule.passwordMismatch')))
+      callback(new Error('两次输入的密码不一致'))
       return
     }
 
@@ -230,14 +219,14 @@
       })
 
       if (response.success) {
-        ElMessage.success(t('register.success'))
+        ElMessage.success('注册成功')
         toLogin()
       } else {
-        ElMessage.error(response.error || t('register.fail'))
+        ElMessage.error(response.error || '注册失败')
       }
     } catch (error) {
       console.error('[Register] error:', error)
-      ElMessage.error(t('register.fail'))
+      ElMessage.error('注册失败')
     } finally {
       loading.value = false
     }

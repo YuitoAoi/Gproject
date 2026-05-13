@@ -18,6 +18,7 @@
           </template>
         </ElInput>
         <ElSelect v-model="filterType" placeholder="类型: 全部" class="!w-32" clearable>
+          <ElOption label="文件上传" value="upload" />
           <ElOption label="指令微调" value="training" />
           <ElOption label="数据清洗" value="cleaning" />
           <ElOption label="格式导出" value="export" />
@@ -102,10 +103,12 @@
 
   const allTaskItems = computed<TaskItem[]>(() =>
     rawTasks.value.map((t: ApiTask) => {
-      const elapsed = Math.round((Date.now() - new Date(t.created_at).getTime()) / 1000)
+      const mappedStatus = mapTaskStatusForDisplay(t.status)
+      const isFinished = ['done', 'failed', 'cancelled'].includes(mappedStatus)
+      const endTime = isFinished ? new Date(t.updated_at).getTime() : Date.now()
+      const elapsed = Math.round((endTime - new Date(t.created_at).getTime()) / 1000)
       const min = Math.floor(elapsed / 60)
       const sec = elapsed % 60
-      const mappedStatus = mapTaskStatusForDisplay(t.status)
       return {
         id: String(t.id),
         name: t.task_name,
@@ -199,7 +202,11 @@
       label: '类型/阶段',
       width: 140,
       formatter: (row: TaskItem) => {
-        const config = TASK_TYPE_CONFIG[row.type]
+        const config = TASK_TYPE_CONFIG[row.type] || {
+          label: row.type,
+          icon: 'ri:question-line',
+          color: '#909399'
+        }
         return h(
           'div',
           {
@@ -255,7 +262,7 @@
     {
       prop: 'operation',
       label: '操作',
-      width: 160,
+      width: 180,
       fixed: 'right',
       formatter: (row: TaskItem) => {
         const isRunning = row.status === 'running' || row.status === 'pending'

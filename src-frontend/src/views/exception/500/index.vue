@@ -3,8 +3,8 @@
   <ArtException
     :data="{
       title: '500',
-      desc: $t('exceptionPage.500'),
-      btnText: $t('exceptionPage.gohome'),
+      desc: '服务器错误',
+      btnText: '返回首页',
       imgUrl
     }"
   />

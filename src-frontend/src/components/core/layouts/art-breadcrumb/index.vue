@@ -36,9 +36,11 @@
   import { computed } from 'vue'
   import { useRouter, useRoute } from 'vue-router'
   import type { RouteLocationMatched, RouteRecordRaw } from 'vue-router'
-  import { formatMenuTitle } from '@/utils/router'
 
   defineOptions({ name: 'ArtBreadcrumb' })
+
+  /** 格式化菜单标题 - 直接返回标题字符串 */
+  const formatMenuTitle = (title: string): string => title || ''
 
   export interface BreadcrumbItem {
     path: string

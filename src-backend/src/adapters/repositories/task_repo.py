@@ -47,7 +47,7 @@ class TaskRepository:
     def insert(self, task: TaskRecord) -> Optional[Exception]:
         try:
             with self._conn.new_session() as session:
-                session.execute(
+                result = session.execute(
                     text(
                         "INSERT INTO tasks "
                         "(owner_id, task_name, task_type, status, progress, phase, config, created_at, updated_at) "
@@ -65,7 +65,16 @@ class TaskRepository:
                         "updated_at": task.updated_at,
                     },
                 )
+                # 获取自增 ID（在 commit 之前，cursor 仍然有效）
+                last_id = result.lastrowid
+                if not last_id:
+                    # fallback: 通过 LAST_INSERT_ID() 获取
+                    row = session.execute(text("SELECT LAST_INSERT_ID()")).fetchone()
+                    last_id = row[0] if row else None
                 session.commit()
+                # 回填自增 ID
+                if last_id:
+                    task.id = last_id
                 return None
         except Exception as exc:
             _logger.exception("Failed to insert task")
@@ -215,6 +224,29 @@ class TaskRepository:
                 return None
         except Exception as exc:
             _logger.exception("Failed to delete task id=%s", id)
+            return exc
+
+    def remove_by_config_dataset_id(
+        self, owner_id: int, dataset_id: int
+    ) -> Optional[Exception]:
+        """删除 config 中包含指定 dataset_id 的所有任务记录。"""
+        try:
+            with self._conn.new_session() as session:
+                pattern = f'%"dataset_id": {dataset_id}%'
+                session.execute(
+                    text(
+                        "DELETE FROM tasks WHERE owner_id = :owner_id AND config LIKE :pattern"
+                    ),
+                    {"owner_id": owner_id, "pattern": pattern},
+                )
+                session.commit()
+                return None
+        except Exception as exc:
+            _logger.exception(
+                "Failed to delete tasks by dataset_id=%s for owner=%s",
+                dataset_id,
+                owner_id,
+            )
             return exc
 
     @staticmethod

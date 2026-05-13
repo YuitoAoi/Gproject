@@ -108,7 +108,9 @@
           <strong>训练任务</strong>详情。
         </p>
         <p class="unsupported-task__desc">
-          <template v-if="taskType === 'cleaning'">请前往 <strong>清洗监控页面</strong> 查看。</template>
+          <template v-if="taskType === 'cleaning'"
+            >请前往 <strong>清洗监控页面</strong> 查看。</template
+          >
           <template v-else-if="taskType === 'export'">格式导出任务详情暂未开放。</template>
           <template v-else>任务类型：{{ taskType }}</template>
         </p>

@@ -128,13 +128,24 @@
   import { TableSizeEnum } from '@/enums/formEnum'
   import { useTableStore } from '@/store/modules/table'
   import { VueDraggable } from 'vue-draggable-plus'
-  import { useI18n } from 'vue-i18n'
   import type { ColumnOption } from '@/types/component'
   import { ElScrollbar } from 'element-plus'
 
   defineOptions({ name: 'ArtTableHeader' })
 
-  const { t } = useI18n()
+  /** i18n 替代：直接返回中文文本 */
+  const t = (key: string): string => {
+    const map: Record<string, string> = {
+      'table.selection': '选择',
+      'table.zebra': '斑马纹',
+      'table.border': '边框',
+      'table.headerBackground': '表头背景',
+      'table.sizeOptions.small': '紧凑',
+      'table.sizeOptions.default': '默认',
+      'table.sizeOptions.large': '宽松'
+    }
+    return map[key] || key
+  }
 
   interface Props {
     /** 斑马纹 */

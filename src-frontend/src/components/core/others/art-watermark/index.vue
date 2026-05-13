@@ -19,12 +19,12 @@
 
 <script setup lang="ts">
   import AppConfig from '@/config'
-  import { useSettingStore } from '@/store/modules/setting'
+  import { useAppStore } from '@/store/modules/app'
 
   defineOptions({ name: 'ArtWatermark' })
 
-  const settingStore = useSettingStore()
-  const { watermarkVisible } = storeToRefs(settingStore)
+  const appStore = useAppStore()
+  const watermarkVisible = computed(() => false)
 
   interface WatermarkProps {
     /** 水印内容 */

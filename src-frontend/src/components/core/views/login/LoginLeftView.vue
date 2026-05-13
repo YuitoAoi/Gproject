@@ -11,8 +11,8 @@
     </div>
 
     <div class="text-wrap">
-      <h1> {{ $t('login.leftView.title') }} </h1>
-      <p> {{ $t('login.leftView.subTitle') }} </p>
+      <h1> 开箱即用的中后台管理系统 </h1>
+      <p> 基于 Vue3 + TypeScript + Element Plus </p>
     </div>
 
     <!-- 几何装饰元素 -->

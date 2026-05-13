@@ -5,21 +5,11 @@
 </template>
 
 <script setup lang="ts">
-  import { useUserStore } from './store/modules/user'
   import zh from 'element-plus/es/locale/lang/zh-cn'
-  import { LanguageEnum } from '@/enums/appEnum'
-  import { checkStorageCompatibility } from './utils/storage'
-  import { initializeTheme } from './hooks/core/useTheme'
-
-  const userStore = useUserStore()
-
-  onBeforeMount(() => {
-    initializeTheme()
-  })
+  import { useAppStore } from './store/modules/app'
 
   onMounted(() => {
-    checkStorageCompatibility()
-    // 默认使用中文
-    userStore.setLanguage(LanguageEnum.ZH)
+    // 应用持久化的主题设置
+    useAppStore().applyTheme()
   })
 </script>

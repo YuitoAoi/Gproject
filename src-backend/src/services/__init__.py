@@ -253,7 +253,7 @@ class ServiceFactory:
     def remove_datasets(self) -> DatasetRemoveService:
         if self._datasets_remove is None:
             self._datasets_remove = DatasetRemoveService(
-                self.dataset_repo, self.file_repo
+                self.dataset_repo, self.file_repo, self.task_repo
             )
         return self._datasets_remove
 

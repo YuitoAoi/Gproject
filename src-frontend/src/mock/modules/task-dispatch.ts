@@ -1,7 +1,7 @@
 export interface TaskItem {
   id: string
   name: string
-  type: 'training' | 'cleaning' | 'export' | 'inference'
+  type: 'training' | 'cleaning' | 'export' | 'inference' | 'upload'
   typeLabel: string
   status: 'running' | 'pending' | 'done' | 'failed'
   statusLabel: string
@@ -49,6 +49,7 @@ export const TASK_STATUS_CONFIG = {
 } as const
 
 export const TASK_TYPE_CONFIG = {
+  upload: { label: '文件上传', icon: 'ri:upload-2-line', color: '#909399' },
   training: { label: '指令微调', icon: 'ri:brain-line', color: '#409EFF' },
   cleaning: { label: '数据清洗', icon: 'ri:brush-3-line', color: '#67C23A' },
   export: { label: '格式导出', icon: 'ri:download-2-line', color: '#E6A23C' },

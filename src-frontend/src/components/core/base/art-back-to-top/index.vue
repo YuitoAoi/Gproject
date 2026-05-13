@@ -19,11 +19,11 @@
 </template>
 
 <script setup lang="ts">
-  import { useCommon } from '@/hooks/core/useCommon'
-
   defineOptions({ name: 'ArtBackToTop' })
 
-  const { scrollToTop } = useCommon()
+  const scrollToTop = () => {
+    document.getElementById('app-main')?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const showButton = ref(false)
   const scrollThreshold = 300

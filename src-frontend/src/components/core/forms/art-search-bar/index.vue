@@ -105,7 +105,6 @@
 <script setup lang="ts">
   import { ArrowUpBold, ArrowDownBold } from '@element-plus/icons-vue'
   import { useWindowSize } from '@vueuse/core'
-  import { useI18n } from 'vue-i18n'
   import { toRaw, type Component } from 'vue'
   import {
     ElCascader,
@@ -129,6 +128,17 @@
 
   defineOptions({ name: 'ArtSearchBar' })
 
+  /** i18n 替代：直接返回中文文本 */
+  const t = (key: string): string => {
+    const map: Record<string, string> = {
+      'table.searchBar.reset': '重置',
+      'table.searchBar.search': '搜索',
+      'table.searchBar.collapse': '收起',
+      'table.searchBar.expand': '展开'
+    }
+    return map[key] || key
+  }
+
   const componentMap = {
     input: ElInput, // 输入框
     inputTag: ElInputTag, // 标签输入框
@@ -151,7 +161,6 @@
   }
 
   const { width } = useWindowSize()
-  const { t } = useI18n()
   const isMobile = computed(() => width.value < 500)
 
   const formInstance = useTemplateRef<FormInstance>('formRef')

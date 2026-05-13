@@ -311,7 +311,13 @@
     uploadDataset,
     type DatasetItemDTO
   } from '@/api/dataset'
-  import { createTask, updateTask } from '@/api/task'
+  import {
+    createTask,
+    updateTask,
+    getTasks,
+    deleteTask,
+    type TaskItem as ApiTaskItem
+  } from '@/api/task'
   import DatasetUpload from './modules/dataset-upload.vue'
   import DatasetDrawer from './modules/dataset-drawer.vue'
   import { nextTick, ref as vueRef, onMounted } from 'vue'
@@ -598,9 +604,45 @@
     refreshSoft()
   }
 
+  /**
+   * 从后端加载 upload 类型的历史任务，映射为 UploadTaskItem 展示
+   * 仅加载非 completed 状态的任务（避免已完成任务堆积）
+   */
+  const loadUploadTasksFromBackend = async () => {
+    try {
+      const resp = await getTasks()
+      if (!resp.items) return
+      const uploadItems = resp.items.filter((t: ApiTaskItem) => t.task_type === 'upload')
+      // 将后端任务映射为前端 UploadTaskItem 格式
+      const mapped: UploadTaskItem[] = uploadItems.map((t: ApiTaskItem) => {
+        let status: UploadTaskItem['status'] = 'preparing'
+        if (t.status === 'done') status = 'completed'
+        else if (t.status === 'failed') status = 'error'
+        else if (t.status === 'running') status = 'uploading'
+        else status = 'preparing'
+
+        return {
+          id: t.id,
+          name: t.task_name,
+          progress: Math.round(t.progress * 100),
+          status,
+          speed: '—',
+          remaining: t.phase || '—'
+        }
+      })
+      // 合并：保留当前正在上传的本地任务，追加后端历史任务（去重）
+      const localIds = new Set(uploadTasks.value.map((t) => t.id))
+      const newTasks = mapped.filter((t) => !localIds.has(t.id))
+      uploadTasks.value = [...uploadTasks.value, ...newTasks]
+    } catch (e) {
+      console.warn('[DatasetHub] 加载上传任务历史失败:', e)
+    }
+  }
+
   onMounted(() => {
     tagStore.fetchTags()
     fetchTimes()
+    loadUploadTasksFromBackend()
   })
 
   const openDatasetDrawer = (row: DatasetItemDTO, tab: string = 'meta') => {
@@ -612,9 +654,8 @@
   }
 
   // 非阻塞上传：立即添加到任务队列，后台上传
-  const handleUploadStart = (fileInfo: { name: string; size: number; raw: File }) => {
+  const handleUploadStart = async (fileInfo: { name: string; size: number; raw: File }) => {
     const userId = userStore.info.userId
-    let taskId: number | null = null
 
     const task: UploadTaskItem = {
       id: Date.now(),
@@ -627,27 +668,30 @@
     }
     uploadTasks.value.unshift(task)
 
+    // 同步创建后端任务记录（在上传之前完成，确保 taskId 可用）
+    let taskId: number | null = null
+    let uploadDone = false // 标志位：上传完成后阻止过期的中间 PATCH 请求
+    try {
+      const result = await createTask({
+        task_name: fileInfo.name,
+        task_type: 'upload',
+        config: JSON.stringify({ job_id: '', dataset_id: 0 })
+      })
+      if (result.task) {
+        taskId = result.task.id
+      } else {
+        console.warn('[Upload] 创建任务记录失败:', result.error)
+      }
+    } catch (e) {
+      console.error('[Upload] 创建任务记录异常:', e)
+    }
+
     uploadDataset(
       fileInfo.raw,
       async (percent, phase, detail) => {
+        if (uploadDone) return // 上传已完成，忽略过期回调
         const idx = uploadTasks.value.findIndex((t) => t.id === task.id)
         if (idx === -1) return
-
-        if (phase === 'hashing' && !taskId && userId) {
-          try {
-            const result = await createTask({
-              task_name: fileInfo.name,
-              task_type: 'upload',
-              config: JSON.stringify({ job_id: '', dataset_id: 0 })
-            })
-            if (result.task) {
-              taskId = result.task.id
-              await updateTask(taskId, { status: 'pending', progress: 0.05, phase: '初始化中' })
-            }
-          } catch {
-            // ignore
-          }
-        }
 
         const updatedTask = { ...uploadTasks.value[idx] }
         updatedTask.progress = percent
@@ -664,33 +708,21 @@
           case 'initiating':
             updatedTask.status = 'uploading'
             updatedTask.remaining = '初始化中...'
-            if (taskId) {
-              await updateTask(taskId, { status: 'running', progress: 0.1, phase: '初始化中' })
-            }
             break
           case 'uploading':
             updatedTask.status = 'uploading'
             if (detail) {
               updatedTask.remaining = `上传分片 ${detail.current}/${detail.total}`
             }
-            if (taskId) {
-              await updateTask(taskId, { progress: 0.1 + (percent / 100) * 0.85 })
-            }
             break
           case 'completing':
             updatedTask.remaining = '合并文件中...'
-            if (taskId) {
-              await updateTask(taskId, { phase: '合并文件中' })
-            }
             break
           case 'complete':
             updatedTask.progress = 100
             updatedTask.status = 'completed'
             updatedTask.remaining = '—'
             updatedTask.speed = '—'
-            if (taskId) {
-              await updateTask(taskId, { status: 'done', progress: 1.0, phase: '已完成' })
-            }
             break
         }
 
@@ -698,18 +730,24 @@
       },
       userId
     )
-      .then((response: any) => {
+      .then(async (response: any) => {
+        uploadDone = true
         const celTaskId = response?.task_id
         if (celTaskId) {
           handleTrackCeleryProgress(task.id, celTaskId, taskId)
         } else {
           completeUploadTask(task.id)
+          // 唯一一次后端状态同步：上传完成
+          if (taskId) {
+            await updateTask(taskId, { status: 'done', progress: 1.0, phase: '已完成' })
+          }
           ElMessage.success(`数据集「${fileInfo.name}」上传完成`)
           refreshData()
           fetchTimes()
         }
       })
       .catch((err: any) => {
+        uploadDone = true
         const idx = uploadTasks.value.findIndex((t) => t.id === task.id)
         if (idx !== -1) {
           uploadTasks.value[idx] = {
@@ -718,8 +756,9 @@
             remaining: err.message || '上传失败'
           }
         }
+        // 唯一一次后端状态同步：上传失败
         if (taskId) {
-          updateTask(taskId, { status: 'failed' }).catch(() => {})
+          updateTask(taskId, { status: 'failed', phase: err.message || '上传失败' }).catch(() => {})
         }
         ElMessage.error('上传失败: ' + (err.message || '未知错误'))
       })
@@ -932,10 +971,26 @@
       })
   }
 
-  const removeTask = (task: UploadTaskItem) => {
-    const idx = uploadTasks.value.findIndex((t) => t.id === task.id)
-    if (idx !== -1) {
-      uploadTasks.value.splice(idx, 1)
+  const removeTask = async (task: UploadTaskItem) => {
+    try {
+      await ElMessageBox.confirm(
+        `确定要删除任务「${task.name}」吗？`, '删除任务',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+      )
+      await deleteTask(task.id)
+      const idx = uploadTasks.value.findIndex((t) => t.id === task.id)
+      if (idx !== -1) {
+        uploadTasks.value.splice(idx, 1)
+      }
+      ElMessage.success(`任务「${task.name}」已删除`)
+    } catch (err: any) {
+      if (err !== 'cancel') {
+        ElMessage.error('删除失败')
+      }
     }
   }
 

@@ -4,9 +4,7 @@
       <div class="left-panel">
         <ElScrollbar>
           <div class="left-panel__inner">
-            <h3 class="panel-title">
-              <span class="ri:broom-line mr-2"></span>清洗任务监控
-            </h3>
+            <h3 class="panel-title"> <span class="ri:broom-line mr-2"></span>清洗任务监控 </h3>
 
             <template v-if="rawTask">
               <div class="status-card" :class="`status-${taskStatus}`">
@@ -37,10 +35,7 @@
                   <span v-if="taskIdParam" class="text-xs text-g-500">#{{ taskIdParam }}</span>
                 </div>
 
-                <div
-                  v-if="taskStatus === 'processing' || taskStatus === 'running'"
-                  class="mb-3"
-                >
+                <div v-if="taskStatus === 'processing' || taskStatus === 'running'" class="mb-3">
                   <ElProgress
                     :percentage="Math.round((rawTask.progress || 0) * 100)"
                     :stroke-width="8"
@@ -78,7 +73,10 @@
                   >
                     <div class="phase-item__indicator">
                       <span v-if="stage.status === 'done'" class="ri:check-line"></span>
-                      <span v-else-if="stage.status === 'inprogress'" class="ri:loader-4-line animate-spin"></span>
+                      <span
+                        v-else-if="stage.status === 'inprogress'"
+                        class="ri:loader-4-line animate-spin"
+                      ></span>
                       <span v-else class="phase-item__num">{{ index + 1 }}</span>
                     </div>
                     <div class="phase-item__content">
@@ -204,7 +202,7 @@
 
 <script setup lang="ts">
   import { ElMessage } from 'element-plus'
-  import { getTask as fetchTask, deleteTask, type TaskItem } from '@/api/task'
+  import { getTask as fetchTask, type TaskItem } from '@/api/task'
   import { getDatasetLogs } from '@/api/dataset'
   import { useWebSocketTask } from '@/hooks/core/useWebSocketTask'
 
@@ -245,7 +243,7 @@
     const stageKeys = ['read', 'build_kg', 'generate', 'save']
     const mappedStages: Stage[] = []
 
-    stageKeys.forEach((key, idx) => {
+    stageKeys.forEach((key) => {
       let status: Stage['status'] = 'pending'
       if (!isRunning && rawTask.value?.status === 'completed') {
         status = 'done'
@@ -394,7 +392,9 @@
           const cfg = JSON.parse(resp.task.config)
           summaryData.value.rawCount = cfg.raw_count || 0
           summaryData.value.finalCount = cfg.final_count || 0
-        } catch {}
+        } catch {
+          // config 解析失败时使用默认值
+        }
       }
 
       await loadLogs()
