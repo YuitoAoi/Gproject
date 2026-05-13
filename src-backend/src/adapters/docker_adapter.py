@@ -21,6 +21,30 @@ from src.services.interfaces.docker_client import DockerClient
 _logger = logging.getLogger(__name__)
 
 
+def _parse_docker_time(raw: str | None) -> datetime | None:
+    """Docker emits RFC3339 with nanoseconds and 'Z'. Parse or return None."""
+    if not raw or raw.startswith("0001-01-01"):
+        return None
+    # Truncate to microseconds; replace trailing Z with +00:00 for fromisoformat.
+    core, _, frac_tz = raw.partition(".")
+    if frac_tz:
+        # keep up to 6 digits of fraction, then whatever timezone tail is there
+        digits = ""
+        tail = ""
+        for i, ch in enumerate(frac_tz):
+            if ch.isdigit() and len(digits) < 6:
+                digits += ch
+            else:
+                tail = frac_tz[i:]
+                break
+        raw = f"{core}.{digits}{tail}"
+    raw = raw.replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+
+
 class DockerClientAdapter(DockerClient):
     def __init__(self) -> None:
         self._client = docker.from_env()
@@ -111,7 +135,42 @@ class DockerClientAdapter(DockerClient):
     # ── unimplemented in this task ──────────────────────────────
 
     def status(self, job_id: str) -> DockerJobStatus:
-        raise NotImplementedError
+        try:
+            container = self._client.containers.get(job_id)
+        except docker.errors.NotFound:
+            return DockerJobStatus(state="missing")
+        except docker.errors.APIError as exc:
+            raise DockerJobError(f"failed to inspect {job_id}: {exc}") from exc
+
+        state_map = {
+            "created": "pending",
+            "running": "running",
+            "paused": "running",
+            "restarting": "running",
+            "exited": "exited",
+            "dead": "exited",
+            "removing": "removed",
+        }
+        state = state_map.get(container.status, "running")
+
+        attrs = container.attrs or {}
+        state_attrs = attrs.get("State", {})
+        net_attrs = attrs.get("NetworkSettings", {}).get("Ports") or {}
+
+        host_port: int | None = None
+        for _, bindings in net_attrs.items():
+            if bindings:
+                host_port = int(bindings[0]["HostPort"])
+                break
+
+        return DockerJobStatus(
+            state=state,  # type: ignore[arg-type]
+            exit_code=state_attrs.get("ExitCode"),
+            started_at=_parse_docker_time(state_attrs.get("StartedAt")),
+            finished_at=_parse_docker_time(state_attrs.get("FinishedAt")),
+            host_port=host_port,
+            error=(state_attrs.get("Error") or None),
+        )
 
     def stream_logs(self, job_id: str, *, follow: bool = False) -> Iterator[str]:
         raise NotImplementedError

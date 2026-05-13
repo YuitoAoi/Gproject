@@ -113,3 +113,63 @@ def _minimal_job():
         image="img:tag",
         command=["true"],
     )
+
+
+@pytest.mark.parametrize("docker_status,expected_state", [
+    ("created", "pending"),
+    ("running", "running"),
+    ("exited", "exited"),
+    ("dead", "exited"),
+    ("removing", "removed"),
+    ("paused", "running"),
+    ("restarting", "running"),
+])
+def test_status_maps_container_state(fake_docker, docker_status, expected_state):
+    from src.adapters.docker_adapter import DockerClientAdapter
+
+    container = MagicMock()
+    container.status = docker_status
+    container.attrs = {
+        "State": {
+            "ExitCode": 0,
+            "StartedAt": "2026-05-13T10:00:00.000000000Z",
+            "FinishedAt": "0001-01-01T00:00:00Z",
+            "Error": "",
+        },
+        "NetworkSettings": {"Ports": {}},
+    }
+    fake_docker.containers.get.return_value = container
+
+    result = DockerClientAdapter().status("lf-training-1")
+    assert result.state == expected_state
+
+
+def test_status_returns_missing_when_container_not_found(fake_docker):
+    from src.adapters.docker_adapter import DockerClientAdapter
+    import docker.errors as derr
+
+    fake_docker.containers.get.side_effect = derr.NotFound("nf")
+    result = DockerClientAdapter().status("lf-training-1")
+    assert result.state == "missing"
+
+
+def test_status_extracts_host_port_from_network_settings(fake_docker):
+    from src.adapters.docker_adapter import DockerClientAdapter
+
+    container = MagicMock()
+    container.status = "running"
+    container.attrs = {
+        "State": {
+            "ExitCode": 0,
+            "StartedAt": "2026-05-13T10:00:00.000000000Z",
+            "FinishedAt": "0001-01-01T00:00:00Z",
+            "Error": "",
+        },
+        "NetworkSettings": {
+            "Ports": {"8000/tcp": [{"HostIp": "0.0.0.0", "HostPort": "18000"}]},
+        },
+    }
+    fake_docker.containers.get.return_value = container
+
+    result = DockerClientAdapter().status("lf-training-1")
+    assert result.host_port == 18000
