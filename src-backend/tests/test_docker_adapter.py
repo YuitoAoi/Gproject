@@ -64,3 +64,52 @@ def test_submit_passes_expected_args_to_containers_run(fake_docker):
 def _not_found():
     import docker.errors
     return docker.errors.NotFound("not found")
+
+
+def test_submit_force_removes_existing_container_with_same_name(fake_docker):
+    from src.adapters.docker_adapter import DockerClientAdapter
+
+    existing = MagicMock()
+    fake_docker.containers.get.return_value = existing
+    fake_docker.images.get.return_value = MagicMock()
+    fake_docker.containers.run.return_value = MagicMock(id="new")
+
+    DockerClientAdapter().submit(_minimal_job())
+
+    existing.remove.assert_called_once_with(force=True)
+
+
+def test_submit_pulls_image_when_missing(fake_docker):
+    from src.adapters.docker_adapter import DockerClientAdapter
+    import docker.errors as derr
+
+    fake_docker.containers.get.side_effect = derr.NotFound("nf")
+    fake_docker.images.get.side_effect = derr.ImageNotFound("nope")
+    fake_docker.containers.run.return_value = MagicMock(id="new")
+
+    DockerClientAdapter().submit(_minimal_job())
+
+    fake_docker.images.pull.assert_called_once_with("img:tag")
+
+
+def test_submit_translates_api_error_to_docker_job_error(fake_docker):
+    from src.adapters.docker_adapter import DockerClientAdapter
+    from src.core.docker_job import DockerJobError
+    import docker.errors as derr
+
+    fake_docker.containers.get.side_effect = derr.NotFound("nf")
+    fake_docker.images.get.return_value = MagicMock()
+    fake_docker.containers.run.side_effect = derr.APIError("boom")
+
+    with pytest.raises(DockerJobError) as exc_info:
+        DockerClientAdapter().submit(_minimal_job())
+    assert "lf-training-1" in str(exc_info.value)
+
+
+def _minimal_job():
+    from src.core.docker_job import DockerJob
+    return DockerJob(
+        job_id="lf-training-1",
+        image="img:tag",
+        command=["true"],
+    )
