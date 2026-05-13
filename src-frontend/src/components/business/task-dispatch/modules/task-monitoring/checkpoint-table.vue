@@ -1,7 +1,7 @@
 <template>
   <div class="checkpoint-table">
     <h4 class="checkpoint-title">
-      <ArtSvgIcon icon="ri:archive-line" class="text-base text-primary mr-2" />
+      <LfpSvgIcon icon="ri:archive-line" class="text-base text-primary mr-2" />
       产物与断点
     </h4>
     <div class="table-container">
@@ -10,7 +10,7 @@
           <template #default="{ row }">
             <div class="checkpoint-name">
               <span>{{ row.name }}</span>
-              <ArtSvgIcon v-if="row.isBest" icon="ri:award-fill" class="text-warning ml-1" />
+              <LfpSvgIcon v-if="row.isBest" icon="ri:award-fill" class="text-warning ml-1" />
             </div>
           </template>
         </ElTableColumn>
@@ -33,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import { ElMessage } from 'element-plus'
   import { checkpointListMockData, type CheckpointItem } from '@/mock/modules/task-dispatch'
 

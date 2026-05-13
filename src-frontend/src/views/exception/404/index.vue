@@ -1,6 +1,6 @@
 <!-- 404页面 -->
 <template>
-  <ArtException
+  <LfpException
     :data="{
       title: '404',
       desc: '页面不存在',

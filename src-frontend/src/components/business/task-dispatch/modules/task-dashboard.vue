@@ -4,7 +4,7 @@
     <div class="dashboard-left">
       <div class="stat-card">
         <div class="stat-header">
-          <ArtSvgIcon icon="ri:target-line" class="text-lg text-primary" />
+          <LfpSvgIcon icon="ri:target-line" class="text-lg text-primary" />
           <span class="stat-title">任务状态分布</span>
         </div>
         <div class="stat-content">
@@ -33,7 +33,7 @@
 
       <div class="stat-card">
         <div class="stat-header">
-          <ArtSvgIcon icon="ri:time-line" class="text-lg text-warning" />
+          <LfpSvgIcon icon="ri:time-line" class="text-lg text-warning" />
           <span class="stat-title">平均等待时长</span>
         </div>
         <div class="stat-value-large">{{ data.avgWaitTime }}</div>
@@ -41,7 +41,7 @@
 
       <div class="stat-card">
         <div class="stat-header">
-          <ArtSvgIcon icon="ri:line-chart-line" class="text-lg text-success" />
+          <LfpSvgIcon icon="ri:line-chart-line" class="text-lg text-success" />
           <span class="stat-title">任务成功率</span>
         </div>
         <div class="stat-value-large">{{ data.successRate }}</div>
@@ -52,7 +52,7 @@
     <div class="dashboard-right">
       <div class="gpu-quota-card">
         <div class="gpu-quota-header">
-          <ArtSvgIcon icon="ri:flashlight-line" class="text-lg text-primary" />
+          <LfpSvgIcon icon="ri:flashlight-line" class="text-lg text-primary" />
           <span class="gpu-quota-title">平台可用逻辑 GPU 总量</span>
           <span class="gpu-quota-total">{{ data.totalGpu }} 卡</span>
         </div>
@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import { getTasks, type TaskItem } from '@/api/task'
 
   defineOptions({ name: 'TaskDashboard' })

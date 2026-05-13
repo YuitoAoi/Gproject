@@ -4,7 +4,7 @@
     <div class="wizard-header">
       <div class="wizard-header__left">
         <ElButton class="wizard-back-btn" text @click="handleBack">
-          <ArtSvgIcon icon="ri:arrow-left-line" class="mr-2" />
+          <LfpSvgIcon icon="ri:arrow-left-line" class="mr-2" />
           返回管理页
         </ElButton>
       </div>
@@ -80,7 +80,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import { getDatasets, processDataset, type DatasetItemDTO } from '@/api/dataset'
   import Step1DataSource from './modules/step1-datasource.vue'
   import Step2Mapping from './modules/step2-mapping.vue'

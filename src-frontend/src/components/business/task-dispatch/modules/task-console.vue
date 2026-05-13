@@ -45,7 +45,7 @@
     </div>
 
     <!-- 表格 -->
-    <ArtTable
+    <LfpTable
       :loading="loading"
       :data="filteredData"
       :columns="columns"
@@ -77,8 +77,8 @@
 </template>
 
 <script setup lang="ts">
-  import ArtTable from '@/components/core/tables/art-table/index.vue'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpTable from '@/components/core/tables/lfp-table/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import { ElMessageBox, ElMessage } from 'element-plus'
   import { TASK_STATUS_CONFIG, TASK_TYPE_CONFIG, type TaskItem } from '@/mock/modules/task-dispatch'
   import { getTasks, deleteTask, type TaskItem as ApiTask } from '@/api/task'
@@ -213,7 +213,7 @@
             class: 'flex items-center gap-1.5'
           },
           [
-            h(ArtSvgIcon, {
+            h(LfpSvgIcon, {
               icon: config.icon,
               class: 'text-base',
               style: { color: config.color }

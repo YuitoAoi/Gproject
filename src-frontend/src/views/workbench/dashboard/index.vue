@@ -2,28 +2,28 @@
   <div class="overview-page">
     <!-- 模块一：全局状态概览 -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-      <ArtStatsCard
+      <LfpStatsCard
         title="运行中 / 排队中"
         :count="3"
         description="当前活动任务数"
         icon="ri:timer-line"
         iconStyle="bg-blue-500"
       />
-      <ArtStatsCard
+      <LfpStatsCard
         title="已纳管数据集"
         :count="12"
         description="总容量 4.5 GB"
         icon="ri:database-2-line"
         iconStyle="bg-green-500"
       />
-      <ArtStatsCard
+      <LfpStatsCard
         title="已微调模型"
         :count="5"
         description="可用模型数量"
         icon="ri:robot-3-line"
         iconStyle="bg-purple-500"
       />
-      <ArtStatsCard
+      <LfpStatsCard
         title="累计算力消耗"
         :count="128"
         description="本周新增: 12 小时"
@@ -36,7 +36,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-6 items-stretch">
       <!-- 左侧 25%：全局健康枢纽 -->
       <div class="lg:col-span-3 flex">
-        <ArtDataListCard
+        <LfpDataListCard
           class="flex-1"
           title="全局健康枢纽"
           subtitle="系统守护进程状态"
@@ -49,7 +49,7 @@
       <div class="lg:col-span-6 h-[360px] overflow-hidden">
         <div class="art-card p-5 h-full flex flex-col">
           <h3 class="text-lg font-medium mb-4 flex-shrink-0">
-            <ArtSvgIcon icon="ri:hard-drive-3-line" class="mr-2 text-blue-500 inline-block" />
+            <LfpSvgIcon icon="ri:hard-drive-3-line" class="mr-2 text-blue-500 inline-block" />
             算力负载池
           </h3>
           <ElScrollbar class="flex-1">
@@ -78,7 +78,7 @@
       </div>
       <!-- 右侧 25%：存储水位 -->
       <div class="lg:col-span-3 flex">
-        <ArtDonutChartCard
+        <LfpDonutChartCard
           class="flex-1"
           title="存储水位"
           :value="750"
@@ -95,7 +95,7 @@
     <div class="grid grid-cols-1 lg:grid-cols-10 gap-5 mb-6">
       <!-- 左侧 40%：系统吞吐量趋势 -->
       <div class="lg:col-span-4 h-[450px]">
-        <ArtBarChartCard
+        <LfpBarChartCard
           class="h-full"
           :value="42"
           label="过去7天完成任务"
@@ -107,7 +107,7 @@
       </div>
       <!-- 中间 30%：任务简报 -->
       <div class="lg:col-span-3 h-[450px] overflow-hidden">
-        <ArtTaskListCard
+        <LfpTaskListCard
           class="h-full"
           title="任务简报"
           :list="taskProgressList"
@@ -117,7 +117,7 @@
       </div>
       <!-- 右侧 30%：审计追踪 -->
       <div class="lg:col-span-3 h-[450px] overflow-hidden">
-        <ArtTimelineListCard
+        <LfpTimelineListCard
           class="h-full"
           title="审计追踪"
           :list="auditTrailList"

@@ -18,11 +18,11 @@
       <div class="monitoring-header">
         <div class="header-left">
           <ElButton text @click="handleBack">
-            <ArtSvgIcon icon="ri:arrow-left-line" class="mr-1" />
+            <LfpSvgIcon icon="ri:arrow-left-line" class="mr-1" />
             调度中心
           </ElButton>
           <span class="header-separator">|</span>
-          <ArtSvgIcon icon="ri:brain-line" class="text-lg text-primary mr-2" />
+          <LfpSvgIcon icon="ri:brain-line" class="text-lg text-primary mr-2" />
           <span class="task-name">任务: #{{ taskId }} ({{ taskData.name }})</span>
           <ElTag :type="statusConfig.type" effect="dark" class="ml-3">
             {{ statusConfig.label }}
@@ -30,7 +30,7 @@
         </div>
         <div class="header-right">
           <ElButton type="danger" @click="handleForceTerminate">
-            <ArtSvgIcon icon="ri:stop-circle-line" class="mr-1" />
+            <LfpSvgIcon icon="ri:stop-circle-line" class="mr-1" />
             强制终止
           </ElButton>
         </div>
@@ -46,7 +46,7 @@
             Step {{ taskData.currentStep }} / {{ taskData.totalSteps }} ({{ taskData.progress }}%)
           </span>
           <span class="progress-time">
-            <ArtSvgIcon icon="ri:time-line" class="mr-1" />
+            <LfpSvgIcon icon="ri:time-line" class="mr-1" />
             已用时间: {{ taskData.elapsedTime }}
           </span>
         </div>
@@ -57,19 +57,19 @@
         <!-- 左侧：训练指标 -->
         <div class="metrics-section">
           <div class="section-header">
-            <ArtSvgIcon icon="ri:line-chart-line" class="text-base text-primary mr-2" />
+            <LfpSvgIcon icon="ri:line-chart-line" class="text-base text-primary mr-2" />
             <span>训练指标 (Metrics)</span>
             <div class="metrics-stats ml-auto">
               <span class="stat-item">
-                <ArtSvgIcon icon="ri:flask-line" class="mr-1" />
+                <LfpSvgIcon icon="ri:flask-line" class="mr-1" />
                 LR: {{ taskData.learningRateValue }}
               </span>
               <span class="stat-item">
-                <ArtSvgIcon icon="ri:speed-line" class="mr-1" />
+                <LfpSvgIcon icon="ri:speed-line" class="mr-1" />
                 吞吐: {{ taskData.throughput }}
               </span>
               <span class="stat-item">
-                <ArtSvgIcon icon="ri:memory-device-line" class="mr-1" />
+                <LfpSvgIcon icon="ri:memory-device-line" class="mr-1" />
                 分配显存: {{ taskData.memoryUsage }}
               </span>
             </div>
@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import ExecutionPanel from '@/components/business/execution-panel.vue'
   import LossChart from '@/components/business/task-dispatch/modules/task-monitoring/loss-chart.vue'
   import Terminal from '@/components/business/task-dispatch/modules/task-monitoring/terminal.vue'

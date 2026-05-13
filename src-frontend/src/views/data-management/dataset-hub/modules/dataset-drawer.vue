@@ -80,7 +80,7 @@
                   {{ tag.tag_name }}
                 </ElTag>
                 <span class="tag-add-btn" @click="tagDialogVisible = true">
-                  <ArtSvgIcon icon="ri:add-line" class="tag-add-icon" />
+                  <LfpSvgIcon icon="ri:add-line" class="tag-add-icon" />
                 </span>
               </div>
             </ElFormItem>
@@ -209,7 +209,7 @@
                 class="tag-delete-btn"
                 @click.stop="handleDeleteTag(tag)"
               >
-                <ArtSvgIcon icon="ri-close-line" />
+                <LfpSvgIcon icon="ri-close-line" />
               </span>
             </div>
             <span v-if="tagStore.tags.length === 0" class="text-xs text-g-400">暂无可用标签</span>
@@ -304,7 +304,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import { useRouter } from 'vue-router'
   import { ElMessage } from 'element-plus'
   import {

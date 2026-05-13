@@ -1,7 +1,7 @@
 <template>
   <div class="config-snapshot">
     <h4 class="config-title">
-      <ArtSvgIcon icon="ri:file-settings-line" class="text-base text-primary mr-2" />
+      <LfpSvgIcon icon="ri:file-settings-line" class="text-base text-primary mr-2" />
       参数快照
     </h4>
     <div class="config-list">
@@ -12,7 +12,7 @@
     </div>
     <div class="config-actions">
       <ElButton type="primary" size="small" @click="handleClone">
-        <ArtSvgIcon icon="ri:file-copy-line" class="mr-1" />
+        <LfpSvgIcon icon="ri:file-copy-line" class="mr-1" />
         复制参数并新建任务
       </ElButton>
     </div>
@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import { ElMessage } from 'element-plus'
   import { taskDetailMockData } from '@/mock/modules/task-dispatch'
 

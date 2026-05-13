@@ -2,20 +2,20 @@
 <template>
   <div class="app-layout">
     <aside id="app-sidebar">
-      <ArtSidebarMenu />
+      <LfpSidebarMenu />
     </aside>
 
     <main id="app-main">
       <div id="app-header">
-        <ArtHeaderBar />
+        <LfpHeaderBar />
       </div>
       <div id="app-content">
-        <ArtPageContent />
+        <LfpPageContent />
       </div>
     </main>
 
     <div id="app-global">
-      <ArtGlobalComponent />
+      <LfpGlobalComponent />
     </div>
   </div>
 </template>

@@ -34,7 +34,7 @@
 
     <!-- 标题 -->
     <div class="section-title mb-4">
-      <ArtSvgIcon icon="ri:database-2-line" class="text-xl text-theme mr-2" />
+      <LfpSvgIcon icon="ri:database-2-line" class="text-xl text-theme mr-2" />
       <span>请从下方资产池中选择一个要清洗的数据集：</span>
     </div>
 
@@ -85,7 +85,7 @@
 
     <!-- 空状态 -->
     <div v-else class="art-card p-12 text-center">
-      <ArtSvgIcon icon="ri:inbox-line" class="text-5xl text-g-400 mb-3" />
+      <LfpSvgIcon icon="ri:inbox-line" class="text-5xl text-g-400 mb-3" />
       <p class="text-g-500">未找到匹配的数据集</p>
       <p class="text-xs text-g-400 mt-1">尝试调整筛选条件或上传新数据集</p>
     </div>
@@ -108,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import type { DatasetItemDTO } from '@/api/dataset'
   import DatasetUpload from '../../dataset-hub/modules/dataset-upload.vue'
 

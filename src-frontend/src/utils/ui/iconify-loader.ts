@@ -7,7 +7,7 @@
  * 使用方式：
  * 1. 安装所需图标集：pnpm add -D @iconify-json/[icon-set-name]
  * 2. 在此文件中导入并注册图标集
- * 3. 在组件中使用：<ArtSvgIcon icon="ri:home-line" />
+ * 3. 在组件中使用：<LfpSvgIcon icon="ri:home-line" />
  *
  * @module utils/ui/iconify-loader
  * @author Art Design Pro Team

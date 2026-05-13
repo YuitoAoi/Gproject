@@ -17,7 +17,7 @@ export const globalComponentsConfig: GlobalComponentConfig[] = [
     name: '全局搜索',
     key: 'global-search',
     component: defineAsyncComponent(
-      () => import('@/components/core/layouts/art-global-search/index.vue')
+      () => import('@/components/core/layouts/lfp-global-search/index.vue')
     ),
     enabled: true
   }
