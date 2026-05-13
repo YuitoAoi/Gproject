@@ -51,7 +51,7 @@
 
 import { echarts, type EChartsOption } from '@/plugins/echarts'
 import { storeToRefs } from 'pinia'
-import { useSettingStore } from '@/store/modules/setting'
+import { useAppStore } from '@/store/modules/app'
 import { getCssVar } from '@/utils/ui'
 import type { BaseChartProps, ChartThemeConfig, UseChartOptions } from '@/types/component/chart'
 
@@ -85,8 +85,10 @@ const RESIZE_DEBOUNCE_DELAY = 100
 export function useChart(options: UseChartOptions = {}) {
   const { initOptions, initDelay = 0, threshold = 0.1, autoTheme = true } = options
 
-  const settingStore = useSettingStore()
-  const { isDark, menuOpen, menuType } = storeToRefs(settingStore)
+  const settingStore = useAppStore()
+  const { isDark } = storeToRefs(settingStore)
+  const menuOpen = ref(true)
+  const menuType = ref('left')
 
   const chartRef = ref<HTMLElement>()
   let chart: echarts.ECharts | null = null

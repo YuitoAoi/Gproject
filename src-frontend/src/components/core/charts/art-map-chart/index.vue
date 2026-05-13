@@ -11,7 +11,7 @@
 
 <script setup lang="ts">
   import { echarts } from '@/plugins/echarts'
-  import { useSettingStore } from '@/store/modules/setting'
+  import { useAppStore } from '@/store/modules/app'
   import chinaMapJson from '@/mock/json/chinaMap.json'
   import type { MapChartProps } from '@/types/component/chart'
 
@@ -19,8 +19,8 @@
 
   const chinaMapRef = ref<HTMLElement | null>(null)
   const chartInstance = shallowRef<echarts.ECharts | null>(null)
-  const settingStore = useSettingStore()
-  const { isDark } = storeToRefs(settingStore)
+  const appStore = useAppStore()
+  const { isDark } = storeToRefs(appStore)
 
   const props = withDefaults(defineProps<MapChartProps>(), {
     mapData: () => [],

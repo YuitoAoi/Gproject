@@ -1,5 +1,6 @@
 """任务路由 —— GET /tasks, POST /tasks, GET /tasks/{id}, PATCH /tasks/{id}, DELETE /tasks/{id}, POST /tasks/{id}/dispatch"""
 import os
+import logging
 from datetime import datetime
 from typing import List, Literal, Optional
 import json
@@ -11,6 +12,8 @@ from src.app.dependencies import get_current_user, get_services
 from src.core.task_record import TASK_TYPE, TASK_STATUS
 from src.services import ServiceFactory
 from src.services.jwt_service import TokenPayload
+
+_logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -107,7 +110,15 @@ def create_task(
         task_type=request.task_type,
         config=request.config,
     )
-    svc.task_repo.insert(task)
+    _logger.info(f"[create_task] Creating task: name={request.task_name}, type={request.task_type}, owner={owner_id}")
+    error = svc.task_repo.insert(task)
+    if error:
+        _logger.error(f"[create_task] Insert failed: {error}")
+        raise HTTPException(status_code=500, detail=f"Failed to create task: {error}")
+    if task.id is None:
+        _logger.error("[create_task] task.id is None after insert")
+        raise HTTPException(status_code=500, detail="Failed to retrieve task ID after insert")
+    _logger.info(f"[create_task] Task created successfully: id={task.id}")
     return TaskDetailResponse(task=_task_to_item(task))
 
 

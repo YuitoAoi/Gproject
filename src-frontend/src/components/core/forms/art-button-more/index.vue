@@ -24,11 +24,9 @@
 </template>
 
 <script setup lang="ts">
-  import { useAuth } from '@/hooks/core/useAuth'
-
   defineOptions({ name: 'ArtButtonMore' })
 
-  const { hasAuth } = useAuth()
+  const hasAuth = (_auth?: string) => true
 
   export interface ButtonMoreItem {
     /** 按钮标识，可用于点击事件 */

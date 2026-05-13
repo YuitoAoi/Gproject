@@ -77,7 +77,6 @@
   import { storeToRefs } from 'pinia'
   import { ColumnOption } from '@/types'
   import { useTableStore } from '@/store/modules/table'
-  import { useCommon } from '@/hooks/core/useCommon'
   import { useTableHeight } from '@/hooks/core/useTableHeight'
   import { useResizeObserver, useWindowSize } from '@vueuse/core'
 
@@ -300,7 +299,9 @@
     scrollToTop() // 页码改变后滚动到表格顶部
   }
 
-  const { scrollToTop: scrollPageToTop } = useCommon()
+  const { scrollToTop: scrollPageToTop } = { scrollToTop: () => {
+    document.getElementById('app-main')?.scrollTo({ top: 0, behavior: 'smooth' })
+  } }
 
   // 滚动表格内容到顶部，并可以联动页面滚动到顶部
   const scrollToTop = () => {

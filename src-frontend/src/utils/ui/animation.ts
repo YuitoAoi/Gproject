@@ -27,10 +27,9 @@
  * @module utils/theme/animation
  * @author Art Design Pro Team
  */
-import { useCommon } from '@/hooks/core/useCommon'
 import { useTheme } from '@/hooks/core/useTheme'
 import { SystemThemeEnum } from '@/enums/appEnum'
-import { useSettingStore } from '@/store/modules/setting'
+import { useAppStore } from '@/store/modules/app'
 const { LIGHT, DARK } = SystemThemeEnum
 
 /**
@@ -59,8 +58,8 @@ export const themeAnimation = (e: any) => {
  * 切换主题
  */
 const toggleTheme = () => {
-  useTheme().switchThemeStyles(useSettingStore().systemThemeType === LIGHT ? DARK : LIGHT)
-  useCommon().refresh()
+  const appStore = useAppStore()
+  useTheme().switchThemeStyles(appStore.isDark ? LIGHT : DARK)
 }
 
 /**

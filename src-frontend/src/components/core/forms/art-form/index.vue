@@ -98,7 +98,6 @@
 
 <script setup lang="ts">
   import { useWindowSize } from '@vueuse/core'
-  import { useI18n } from 'vue-i18n'
   import { toRaw, type Component } from 'vue'
   import {
     ElCascader,
@@ -122,6 +121,15 @@
 
   defineOptions({ name: 'ArtForm' })
 
+  /** i18n 替代：直接返回中文文本 */
+  const t = (key: string): string => {
+    const map: Record<string, string> = {
+      'table.form.reset': '重置',
+      'table.form.submit': '提交'
+    }
+    return map[key] || key
+  }
+
   const componentMap = {
     input: ElInput, // 输入框
     inputtag: ElInputTag, // 标签输入框
@@ -144,7 +152,6 @@
   }
 
   const { width } = useWindowSize()
-  const { t } = useI18n()
   const isMobile = computed(() => width.value < 500)
 
   const formInstance = useTemplateRef<FormInstance>('formRef')

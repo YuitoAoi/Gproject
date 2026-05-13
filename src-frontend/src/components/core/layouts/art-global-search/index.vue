@@ -11,7 +11,7 @@
     >
       <ElInput
         v-model.trim="searchVal"
-        :placeholder="$t('search.placeholder')"
+        placeholder="搜索菜单"
         @input="search"
         @blur="searchBlur"
         ref="searchInput"
@@ -46,7 +46,7 @@
         </div>
 
         <div v-show="!searchVal && searchResult.length === 0 && historyResult.length > 0">
-          <p class="text-xs text-g-500">{{ $t('search.historyTitle') }}</p>
+          <p class="text-xs text-g-500">搜索历史</p>
           <div class="mt-1.5 w-full">
             <div
               class="box mt-2 h-12 c-p flex-cb rounded-custom-sm bg-g-200/80 px-4 text-sm text-g-800"
@@ -76,16 +76,16 @@
         <div class="dialog-footer box-border flex-c border-t-d pt-4.5 pb-1">
           <div class="flex-cc">
             <ArtSvgIcon icon="fluent:arrow-enter-left-20-filled" class="keyboard" />
-            <span class="mr-3.5 text-xs text-g-700">{{ $t('search.selectKeydown') }}</span>
+            <span class="mr-3.5 text-xs text-g-700">确认</span>
           </div>
           <div class="flex-c">
             <ArtSvgIcon icon="ri:arrow-up-wide-fill" class="keyboard" />
             <ArtSvgIcon icon="ri:arrow-down-wide-fill" class="keyboard" />
-            <span class="mr-3.5 text-xs text-g-700">{{ $t('search.switchKeydown') }}</span>
+            <span class="mr-3.5 text-xs text-g-700">切换</span>
           </div>
           <div class="flex-c">
             <i class="keyboard !w-8 flex-cc"><p class="text-[10px] font-medium">ESC</p></i>
-            <span class="mr-3.5 text-xs text-g-700">{{ $t('search.exitKeydown') }}</span>
+            <span class="mr-3.5 text-xs text-g-700">关闭</span>
           </div>
         </div>
       </template>
@@ -98,15 +98,18 @@
   import { AppRouteRecord } from '@/types/router'
   import { Search } from '@element-plus/icons-vue'
   import { mittBus } from '@/utils/sys'
-  import { useMenuStore } from '@/store/modules/menu'
-  import { formatMenuTitle } from '@/utils/router'
-  import { handleMenuJump } from '@/utils/navigation'
+  import { useAppStore } from '@/store/modules/app'
   import { type ScrollbarInstance } from 'element-plus'
 
   defineOptions({ name: 'ArtGlobalSearch' })
 
+  const router = useRouter()
   const userStore = useUserStore()
-  const { menuList } = storeToRefs(useMenuStore())
+  const appStore = useAppStore()
+  const menuList = computed(() => appStore.menuList as unknown as AppRouteRecord[])
+
+  /** 格式化菜单标题 - 直接返回标题字符串 */
+  const formatMenuTitle = (title: string): string => title || ''
 
   const showSearchDialog = ref(false)
   const searchVal = ref('')
@@ -303,7 +306,11 @@
   const searchGoPage = (item: AppRouteRecord) => {
     showSearchDialog.value = false
     addHistory(item)
-    handleMenuJump(item)
+    if (item.meta?.link) {
+      window.open(item.meta.link as string, '_blank')
+    } else if (item.path) {
+      router.push(item.path)
+    }
     searchVal.value = ''
     searchResult.value = []
   }

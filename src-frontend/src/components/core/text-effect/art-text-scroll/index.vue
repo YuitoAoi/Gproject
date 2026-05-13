@@ -50,7 +50,7 @@
     useDebounceFn,
     useTimeoutFn
   } from '@vueuse/core'
-  import { useSettingStore } from '@/store/modules/setting'
+  import { useAppStore } from '@/store/modules/app'
 
   type ThemeType =
     | 'theme'
@@ -106,8 +106,8 @@
     emit('close')
   }
 
-  const settingStore = useSettingStore()
-  const { isDark } = storeToRefs(settingStore)
+  const appStore = useAppStore()
+  const { isDark } = storeToRefs(appStore)
 
   const containerRef = ref<HTMLElement>()
   const contentRef = ref<HTMLElement>()

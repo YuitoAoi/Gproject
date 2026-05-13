@@ -27,31 +27,15 @@
           />
           <div class="w-[calc(100%-60px)] h-full">
             <span class="block text-sm font-medium text-g-800 truncate">{{
-              userInfo.userName
+              userStore.info.userName || '用户'
             }}</span>
-            <span class="block mt-0.5 text-xs text-g-500 truncate">{{ userInfo.email }}</span>
+            <span class="block mt-0.5 text-xs text-g-500 truncate">{{ userStore.info.email }}</span>
           </div>
         </div>
         <ul class="py-4 mt-3 border-t border-g-300/80">
-          <li class="btn-item" @click="goPage('/system/user-center')">
-            <ArtSvgIcon icon="ri:user-3-line" />
-            <span>{{ $t('topBar.user.userCenter') }}</span>
-          </li>
-          <li class="btn-item" @click="toDocs()">
-            <ArtSvgIcon icon="ri:book-2-line" />
-            <span>{{ $t('topBar.user.docs') }}</span>
-          </li>
-          <li class="btn-item" @click="toGithub()">
-            <ArtSvgIcon icon="ri:github-line" />
-            <span>{{ $t('topBar.user.github') }}</span>
-          </li>
-          <li class="btn-item" @click="lockScreen()">
-            <ArtSvgIcon icon="ri:lock-line" />
-            <span>{{ $t('topBar.user.lockScreen') }}</span>
-          </li>
           <div class="w-full h-px my-2 bg-g-300/80"></div>
           <div class="log-out c-p" @click="loginOut">
-            {{ $t('topBar.user.logout') }}
+            退出登录
           </div>
         </ul>
       </div>
@@ -60,104 +44,32 @@
 </template>
 
 <script setup lang="ts">
-  import { useI18n } from 'vue-i18n'
-  import { useRouter } from 'vue-router'
   import { ElMessageBox } from 'element-plus'
   import { useUserStore } from '@/store/modules/user'
-  import { WEB_LINKS } from '@/utils/constants'
-  import { mittBus } from '@/utils/sys'
 
   defineOptions({ name: 'ArtUserMenu' })
 
-  const router = useRouter()
-  const { t } = useI18n()
   const userStore = useUserStore()
-
-  const { getUserInfo: userInfo } = storeToRefs(userStore)
   const userMenuPopover = ref()
-  const pendingTimers: ReturnType<typeof setTimeout>[] = []
 
-  /**
-   * 页面跳转
-   * @param {string} path - 目标路径
-   */
-  const goPage = (path: string): void => {
-    router.push(path)
-  }
-
-  /**
-   * 打开文档页面
-   */
-  const toDocs = (): void => {
-    window.open(WEB_LINKS.DOCS)
-  }
-
-  /**
-   * 打开 GitHub 页面
-   */
-  const toGithub = (): void => {
-    window.open(WEB_LINKS.GITHUB)
-  }
-
-  /**
-   * 打开锁屏功能
-   */
-  const lockScreen = (): void => {
-    mittBus.emit('openLockScreen')
-  }
-
-  /**
-   * 用户登出确认
-   */
   const loginOut = (): void => {
-    closeUserMenu()
-    const timer = setTimeout(() => {
-      ElMessageBox.confirm(t('common.logOutTips'), t('common.tips'), {
-        confirmButtonText: t('common.confirm'),
-        cancelButtonText: t('common.cancel'),
+    setTimeout(() => {
+      userMenuPopover.value?.hide()
+    }, 100)
+    setTimeout(() => {
+      ElMessageBox.confirm('确定要退出登录吗？', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
         customClass: 'login-out-dialog'
       }).then(() => {
         userStore.logOut()
       })
     }, 200)
-    pendingTimers.push(timer)
   }
-
-  /**
-   * 关闭用户菜单弹出层
-   */
-  const closeUserMenu = (): void => {
-    const timer = setTimeout(() => {
-      userMenuPopover.value.hide()
-    }, 100)
-    pendingTimers.push(timer)
-  }
-
-  onUnmounted(() => {
-    pendingTimers.forEach(clearTimeout)
-  })
 </script>
 
 <style scoped>
   @reference '@styles/core/tailwind.css';
-
-  @layer components {
-    .btn-item {
-      @apply flex items-center p-2 mb-3 select-none rounded-md cursor-pointer last:mb-0;
-
-      span {
-        @apply text-sm;
-      }
-
-      .art-svg-icon {
-        @apply mr-2 text-base;
-      }
-
-      &:hover {
-        background-color: var(--art-gray-200);
-      }
-    }
-  }
 
   .log-out {
     @apply py-1.5
@@ -170,5 +82,6 @@
     transition-all
     duration-200
     hover:shadow-xl;
+    cursor: pointer;
   }
 </style>

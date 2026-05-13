@@ -13,7 +13,6 @@
 </template>
 
 <script setup lang="ts">
-  import { useCommon } from '@/hooks/core/useCommon'
   import { useUserStore } from '@/store/modules/user'
 
   const router = useRouter()
@@ -37,19 +36,17 @@
     {}
   )
 
-  const { homePath } = useCommon()
+  const homePath = '/workbench/dashboard'
 
   const backHome = () => {
-    const targetHomePath = homePath.value || '/'
-
     if (!userStore.isLogin) {
       router.push({
         name: 'Login',
-        query: { redirect: targetHomePath }
+        query: { redirect: homePath }
       })
       return
     }
 
-    router.push(targetHomePath)
+    router.push(homePath)
   }
 </script>

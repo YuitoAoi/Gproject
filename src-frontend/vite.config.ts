@@ -17,22 +17,22 @@ export default ({ mode }: { mode: string }) => {
   const { VITE_VERSION, VITE_PORT, VITE_BASE_URL, VITE_API_URL, VITE_API_PROXY_URL } = env
 
   console.log(`🚀 API_URL = ${VITE_API_URL}`)
-  console.log(`🚀 VERSION = ${VITE_VERSION}`)
+  console.log(`🚀 VERSION = ${VITE_VERSION || 'dev'}`)
 
   return defineConfig({
     define: {
-      __APP_VERSION__: JSON.stringify(VITE_VERSION)
+      __APP_VERSION__: JSON.stringify(VITE_VERSION || '0.0.0')
     },
-    base: VITE_BASE_URL,
+    base: VITE_BASE_URL || '/',
     server: {
-      port: Number(VITE_PORT),
+      port: Number(VITE_PORT) || 3000,
       proxy: {
         '/api': {
-          target: VITE_API_PROXY_URL,
+          target: VITE_API_PROXY_URL || 'http://localhost:8000',
           changeOrigin: true
         },
         '/ws': {
-          target: VITE_API_PROXY_URL.replace('http', 'ws'),
+          target: (VITE_API_PROXY_URL || 'http://localhost:8000').replace('http', 'ws'),
           changeOrigin: true,
           ws: true
         }
