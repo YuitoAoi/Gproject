@@ -1,6 +1,6 @@
 <!-- 折线图卡片 -->
 <template>
-  <div class="art-card relative overflow-hidden" :style="{ height: `${height}rem` }">
+  <div class="lfp-card relative overflow-hidden" :style="{ height: `${height}rem` }">
     <div class="mb-2.5 flex-b items-start p-5">
       <div>
         <p class="text-2xl font-medium leading-none">

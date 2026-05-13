@@ -17,7 +17,7 @@ const appConfig = {
     {
       theme: 'design',
       background: '#FFFFFF',
-      systemNameColor: 'var(--art-gray-800)',
+      systemNameColor: 'var(--lfp-gray-800)',
       iconColor: '#6B6B6B',
       textColor: '#29343D'
     },

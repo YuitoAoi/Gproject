@@ -412,7 +412,7 @@
   .task-console {
     background: var(--el-bg-color);
     border-radius: var(--custom-radius, 8px);
-    border: 1px solid var(--art-gray-200);
+    border: 1px solid var(--lfp-gray-200);
   }
 
   .toolbar {
@@ -426,11 +426,11 @@
     gap: 4px;
 
     .task-id {
-      color: var(--art-gray-500);
+      color: var(--lfp-gray-500);
     }
 
     .task-name {
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
 
       &:hover {
         color: var(--el-color-primary);

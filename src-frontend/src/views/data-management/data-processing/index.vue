@@ -483,7 +483,7 @@
   }
 
   .wizard-back-btn {
-    color: var(--art-gray-600);
+    color: var(--lfp-gray-600);
     &:hover {
       color: var(--el-color-primary);
     }
@@ -504,7 +504,7 @@
       top: 50%;
       width: 60px;
       height: 2px;
-      background: var(--art-gray-200);
+      background: var(--lfp-gray-200);
       transform: translateY(-50%);
     }
 
@@ -559,9 +559,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 2px solid var(--art-gray-300);
+      border: 2px solid var(--lfp-gray-300);
       background: #fff;
-      color: var(--art-gray-500);
+      color: var(--lfp-gray-500);
       font-size: 13px;
       font-weight: 600;
       flex-shrink: 0;
@@ -570,7 +570,7 @@
 
     &__label {
       font-size: 14px;
-      color: var(--art-gray-600);
+      color: var(--lfp-gray-600);
       white-space: nowrap;
       transition: color 0.3s ease;
     }

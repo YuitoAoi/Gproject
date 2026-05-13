@@ -1,6 +1,6 @@
 <!-- 时间轴列表卡片 -->
 <template>
-  <div class="art-card p-5 flex flex-col overflow-hidden">
+  <div class="lfp-card p-5 flex flex-col overflow-hidden">
     <div class="pb-3.5 flex-shrink-0">
       <p class="text-lg font-medium">{{ title }}</p>
       <p class="text-sm text-g-600">{{ subtitle }}</p>

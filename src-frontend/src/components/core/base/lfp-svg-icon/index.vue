@@ -1,6 +1,6 @@
 <!-- 图标组件 -->
 <template>
-  <Icon v-if="icon" :icon="icon" v-bind="bindAttrs" class="art-svg-icon inline" />
+  <Icon v-if="icon" :icon="icon" v-bind="bindAttrs" class="lfp-svg-icon inline" />
 </template>
 
 <script setup lang="ts">

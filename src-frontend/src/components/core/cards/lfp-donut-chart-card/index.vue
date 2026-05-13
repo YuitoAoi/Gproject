@@ -1,7 +1,7 @@
 <!-- 环型图卡片 -->
 <template>
   <div
-    class="art-card overflow-hidden"
+    class="lfp-card overflow-hidden"
     :class="flex ? 'flex flex-col' : ''"
     :style="flex ? {} : { height: `${height}rem` }"
   >

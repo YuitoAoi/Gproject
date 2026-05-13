@@ -20,7 +20,7 @@
       <!-- 左侧 40%：动态指标卡片 -->
       <div class="lg:col-span-2 grid grid-cols-2 gap-4">
         <!-- 总数据集卡片 -->
-        <div class="art-card p-5 relative">
+        <div class="lfp-card p-5 relative">
           <div class="flex flex-col justify-between h-full">
             <div>
               <p class="text-sm text-g-500">数据集总量</p>
@@ -36,7 +36,7 @@
           </div>
         </div>
         <!-- 存储水位卡片 -->
-        <div class="art-card p-5 relative">
+        <div class="lfp-card p-5 relative">
           <div class="flex flex-col justify-between h-full">
             <div>
               <p class="text-sm text-g-500">存储水位</p>
@@ -56,7 +56,7 @@
 
       <!-- 右侧 60%：任务队列 -->
       <div class="lg:col-span-3">
-        <div class="art-card p-0" style="height: 240px">
+        <div class="lfp-card p-0" style="height: 240px">
           <!-- 任务队列头部 -->
           <div class="task-queue-header">
             <div class="flex items-center gap-2">
@@ -208,7 +208,7 @@
     </div>
 
     <!-- ========== 模块三：数据集列表看板 ========== -->
-    <ElCard class="art-card !p-0" shadow="never">
+    <ElCard class="lfp-card !p-0" shadow="never">
       <!-- 工具栏：搜索筛选（左） + 批量操作（右） -->
       <div
         class="toolbar flex items-center justify-between flex-wrap gap-3 px-5 py-3 border-b border-g-100"
@@ -1121,7 +1121,7 @@
     justify-content: space-between;
     height: 50px;
     padding: 0 20px;
-    border-bottom: 1px solid var(--art-gray-200);
+    border-bottom: 1px solid var(--lfp-gray-200);
 
     .task-count-badge {
       display: inline-flex;
@@ -1158,14 +1158,14 @@
     gap: 12px;
     padding: 10px 14px;
     margin-top: 8px;
-    background-color: var(--art-gray-100);
-    border: 1px solid var(--art-gray-200);
+    background-color: var(--lfp-gray-100);
+    border: 1px solid var(--lfp-gray-200);
     border-radius: calc(var(--custom-radius, 8px) + 2px);
     transition: all 0.2s ease;
 
     &:hover {
-      background-color: var(--art-gray-200);
-      border-color: var(--art-gray-300);
+      background-color: var(--lfp-gray-200);
+      border-color: var(--lfp-gray-300);
     }
 
     &.task-item-error {
@@ -1231,13 +1231,13 @@
     .task-name {
       font-size: 13px;
       font-weight: 500;
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
     }
 
     .task-percent {
       font-size: 12px;
       font-weight: 500;
-      color: var(--art-gray-600);
+      color: var(--lfp-gray-600);
     }
 
     .task-progress {
@@ -1246,7 +1246,7 @@
 
       .el-progress {
         .el-progress-bar__outer {
-          background-color: var(--art-gray-200) !important;
+          background-color: var(--lfp-gray-200) !important;
         }
       }
     }
@@ -1257,7 +1257,7 @@
       gap: 6px;
       margin-top: 6px;
       font-size: 12px;
-      color: var(--art-gray-600);
+      color: var(--lfp-gray-600);
 
       .text-success {
         color: #67c23a;

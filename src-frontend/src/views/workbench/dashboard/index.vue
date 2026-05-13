@@ -47,7 +47,7 @@
       </div>
       <!-- 中间 50%：算力负载池 -->
       <div class="lg:col-span-6 h-[360px] overflow-hidden">
-        <div class="art-card p-5 h-full flex flex-col">
+        <div class="lfp-card p-5 h-full flex flex-col">
           <h3 class="text-lg font-medium mb-4 flex-shrink-0">
             <LfpSvgIcon icon="ri:hard-drive-3-line" class="mr-2 text-blue-500 inline-block" />
             算力负载池
@@ -57,7 +57,7 @@
               <div
                 v-for="gpu in gpuData"
                 :key="gpu.name"
-                class="art-card h-28 flex flex-col justify-center px-4"
+                class="lfp-card h-28 flex flex-col justify-center px-4"
               >
                 <div class="flex flex-col mb-2">
                   <span class="text-lg font-semibold" :class="getGpuUsageClass(gpu.usage)"

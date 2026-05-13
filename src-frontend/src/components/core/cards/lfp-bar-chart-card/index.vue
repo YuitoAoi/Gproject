@@ -1,7 +1,7 @@
 <!-- 柱状图卡片 -->
 <template>
   <div
-    class="art-card overflow-hidden flex flex-col"
+    class="lfp-card overflow-hidden flex flex-col"
     :style="{ height: flex ? '100%' : `${height}rem` }"
   >
     <div class="mb-2.5 flex-b items-start p-5 flex-shrink-0">

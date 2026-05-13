@@ -60,7 +60,7 @@
     padding: 16px;
     background: var(--el-fill-color-lighter);
     border-radius: var(--custom-radius, 8px);
-    border: 1px solid var(--art-gray-200);
+    border: 1px solid var(--lfp-gray-200);
 
     .checkpoint-title {
       display: flex;
@@ -68,7 +68,7 @@
       margin: 0 0 16px;
       font-size: 14px;
       font-weight: 600;
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
     }
 
     .table-container {

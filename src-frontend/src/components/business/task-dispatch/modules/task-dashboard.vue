@@ -159,7 +159,7 @@
     padding: 16px 20px;
     background: var(--el-fill-color-lighter);
     border-radius: var(--custom-radius, 8px);
-    border: 1px solid var(--art-gray-200);
+    border: 1px solid var(--lfp-gray-200);
 
     .stat-header {
       display: flex;
@@ -170,7 +170,7 @@
       .stat-title {
         font-size: 14px;
         font-weight: 500;
-        color: var(--art-gray-700);
+        color: var(--lfp-gray-700);
       }
     }
 
@@ -209,21 +209,21 @@
 
       .stat-label {
         font-size: 13px;
-        color: var(--art-gray-600);
+        color: var(--lfp-gray-600);
       }
 
       .stat-value {
         margin-left: auto;
         font-size: 14px;
         font-weight: 600;
-        color: var(--art-gray-800);
+        color: var(--lfp-gray-800);
       }
     }
 
     .stat-value-large {
       font-size: 24px;
       font-weight: 600;
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
     }
   }
 
@@ -234,7 +234,7 @@
     padding: 16px 20px;
     background: var(--el-fill-color-lighter);
     border-radius: var(--custom-radius, 8px);
-    border: 1px solid var(--art-gray-200);
+    border: 1px solid var(--lfp-gray-200);
 
     .gpu-quota-header {
       display: flex;
@@ -245,14 +245,14 @@
       .gpu-quota-title {
         font-size: 14px;
         font-weight: 500;
-        color: var(--art-gray-700);
+        color: var(--lfp-gray-700);
       }
 
       .gpu-quota-total {
         margin-left: auto;
         font-size: 16px;
         font-weight: 600;
-        color: var(--art-gray-800);
+        color: var(--lfp-gray-800);
       }
     }
 
@@ -268,13 +268,13 @@
 
         .gpu-label {
           font-size: 13px;
-          color: var(--art-gray-600);
+          color: var(--lfp-gray-600);
         }
 
         .gpu-value {
           font-size: 14px;
           font-weight: 600;
-          color: var(--art-gray-800);
+          color: var(--lfp-gray-800);
         }
       }
 

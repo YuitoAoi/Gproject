@@ -44,7 +44,7 @@
       </div>
       <!-- 中间 50%：算力负载池 -->
       <div class="lg:col-span-6">
-        <div class="art-card p-5">
+        <div class="lfp-card p-5">
           <h3 class="text-lg font-medium mb-4">
             <LfpSvgIcon icon="ri:hard-drive-3-line" class="mr-2 text-blue-500 inline-block" />
             算力负载池

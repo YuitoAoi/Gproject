@@ -6,7 +6,7 @@
         <ElScrollbar>
           <div class="left-panel__inner">
             <!-- 当前数据集信息 -->
-            <div class="dataset-info art-card" v-if="dataset">
+            <div class="dataset-info lfp-card" v-if="dataset">
               <div class="flex items-center gap-2 mb-1">
                 <span class="ri:file-text-line text-theme"></span>
                 <span class="text-sm font-medium text-g-700 truncate">{{ dataset.name }}</span>
@@ -301,7 +301,7 @@
       align-items: center;
       justify-content: space-between;
       padding: 14px 16px;
-      border-bottom: 1px solid var(--art-gray-100);
+      border-bottom: 1px solid var(--lfp-gray-100);
       flex-shrink: 0;
     }
 
@@ -315,7 +315,7 @@
   .panel-title {
     font-size: 15px;
     font-weight: 600;
-    color: var(--art-gray-800);
+    color: var(--lfp-gray-800);
     display: flex;
     align-items: center;
   }
@@ -336,12 +336,12 @@
     :deep(.el-collapse-item__header) {
       font-size: 15px;
       font-weight: 500;
-      color: var(--art-gray-700);
+      color: var(--lfp-gray-700);
       padding: 12px 0;
-      border-bottom-color: var(--art-gray-100);
+      border-bottom-color: var(--lfp-gray-100);
     }
     :deep(.el-collapse-item__wrap) {
-      border-bottom-color: var(--art-gray-100);
+      border-bottom-color: var(--lfp-gray-100);
     }
     :deep(.el-collapse-item__content) {
       padding-bottom: 12px;
@@ -354,7 +354,7 @@
 
   .operator-desc {
     font-size: 12px;
-    color: var(--art-gray-500);
+    color: var(--lfp-gray-500);
     margin: 0 0 12px;
   }
 
@@ -367,8 +367,8 @@
     &__badge {
       font-size: 11px;
       font-weight: 400;
-      color: var(--art-gray-400);
-      background: var(--art-gray-100);
+      color: var(--lfp-gray-400);
+      background: var(--lfp-gray-100);
       padding: 1px 6px;
       border-radius: 4px;
       text-transform: uppercase;
@@ -378,7 +378,7 @@
 
   // 字段映射表格式布局
   .field-map-table {
-    border: 1px solid var(--art-gray-150);
+    border: 1px solid var(--lfp-gray-150);
     border-radius: calc(var(--custom-radius, 8px));
     overflow: hidden;
 
@@ -387,11 +387,11 @@
       grid-template-columns: 1fr 40px 1fr;
       align-items: center;
       padding: 8px 12px;
-      background: var(--art-gray-50);
+      background: var(--lfp-gray-50);
       font-size: 14px;
       font-weight: 500;
-      color: var(--art-gray-700);
-      border-bottom: 1px solid var(--art-gray-150);
+      color: var(--lfp-gray-700);
+      border-bottom: 1px solid var(--lfp-gray-150);
     }
 
     &__row {
@@ -433,7 +433,7 @@
     &__name {
       font-size: 14px;
       font-weight: 600;
-      color: var(--art-gray-700);
+      color: var(--lfp-gray-700);
       font-family: 'Cascadia Code', 'Fira Code', 'JetBrains Mono', monospace;
     }
 
@@ -460,7 +460,7 @@
 
   .target-desc {
     font-size: 11px;
-    color: var(--art-gray-600);
+    color: var(--lfp-gray-600);
     padding-left: 2px;
   }
 
@@ -515,7 +515,7 @@
       text-align: center;
       font-size: 12px;
       font-weight: 600;
-      color: var(--art-gray-700);
+      color: var(--lfp-gray-700);
     }
   }
 
@@ -589,7 +589,7 @@
   }
 
   .sample-item {
-    border: 1px solid var(--art-gray-200);
+    border: 1px solid var(--lfp-gray-200);
     border-radius: calc(var(--custom-radius, 8px) + 2px);
     overflow: hidden;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
@@ -606,7 +606,7 @@
 
   .sample-field {
     padding: 14px 16px;
-    border-bottom: 1px solid var(--art-gray-150);
+    border-bottom: 1px solid var(--lfp-gray-150);
 
     &:last-child {
       border-bottom: none;
@@ -615,7 +615,7 @@
     &__label {
       font-size: 13px;
       font-weight: 700;
-      color: var(--art-gray-600);
+      color: var(--lfp-gray-600);
       text-transform: uppercase;
       letter-spacing: 0.8px;
       margin-bottom: 10px;
@@ -627,7 +627,7 @@
         content: '';
         flex: 1;
         height: 1px;
-        background: var(--art-gray-200);
+        background: var(--lfp-gray-200);
       }
     }
   }
@@ -658,11 +658,11 @@
 
     &__text {
       font-size: 13px;
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
       line-height: 1.6;
       word-break: break-all;
       padding: 10px 12px;
-      background: var(--art-gray-50);
+      background: var(--lfp-gray-50);
       border-radius: 6px;
       white-space: pre-wrap;
       min-height: 40px;

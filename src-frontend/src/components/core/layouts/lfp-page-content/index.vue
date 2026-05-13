@@ -7,7 +7,7 @@
 
     <RouterView v-slot="{ Component, route }">
       <Transition name="fade" mode="out-in" appear>
-        <component class="art-page-view" :is="Component" :key="route.path" />
+        <component class="lfp-page-view" :is="Component" :key="route.path" />
       </Transition>
     </RouterView>
   </div>

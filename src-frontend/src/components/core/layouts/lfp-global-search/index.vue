@@ -389,14 +389,14 @@
 
     .el-input {
       :deep(.el-input__wrapper) {
-        background-color: var(--art-gray-200);
+        background-color: var(--lfp-gray-200);
         border: 1px solid var(--default-border-dashed);
         border-radius: calc(var(--custom-radius) / 2 + 2px) !important;
         box-shadow: none;
       }
 
       :deep(.el-input__inner) {
-        color: var(--art-gray-800) !important;
+        color: var(--lfp-gray-800) !important;
       }
     }
   }

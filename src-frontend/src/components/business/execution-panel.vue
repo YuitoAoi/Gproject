@@ -340,7 +340,7 @@
       align-items: center;
       justify-content: space-between;
       padding: 14px 16px;
-      border-bottom: 1px solid var(--art-gray-100);
+      border-bottom: 1px solid var(--lfp-gray-100);
       flex-shrink: 0;
     }
   }
@@ -348,7 +348,7 @@
   .panel-title {
     font-size: 15px;
     font-weight: 600;
-    color: var(--art-gray-800);
+    color: var(--lfp-gray-800);
     display: flex;
     align-items: center;
   }
@@ -357,7 +357,7 @@
     padding: 18px;
     border-radius: calc(var(--custom-radius, 8px) + 2px);
     margin-bottom: 18px;
-    border: 1px solid var(--art-gray-100);
+    border: 1px solid var(--lfp-gray-100);
 
     &.status-processing,
     &.status-running {
@@ -384,7 +384,7 @@
     color: #fff;
 
     &.indicator-pending {
-      background: var(--art-gray-400);
+      background: var(--lfp-gray-400);
     }
     &.indicator-processing,
     &.indicator-running {
@@ -429,7 +429,7 @@
     align-items: center;
     font-size: 13px;
     font-weight: 600;
-    color: var(--art-gray-700);
+    color: var(--lfp-gray-700);
     margin: 0 0 14px;
   }
 
@@ -474,7 +474,7 @@
       transform: translateY(-50%);
       font-size: 12px;
       font-weight: 500;
-      color: var(--art-gray-600);
+      color: var(--lfp-gray-600);
     }
 
     &__count {
@@ -484,7 +484,7 @@
       transform: translateY(-50%);
       font-size: 13px;
       font-weight: 700;
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
     }
   }
 
@@ -511,7 +511,7 @@
     flex: 1;
     min-height: 0;
     background: #f8f9fb;
-    border-top: 1px solid var(--art-gray-150);
+    border-top: 1px solid var(--lfp-gray-150);
     overflow: hidden;
 
     &__scroll {
@@ -532,7 +532,7 @@
     line-height: 1.8;
 
     &__time {
-      color: var(--art-gray-400);
+      color: var(--lfp-gray-400);
       flex-shrink: 0;
     }
 
@@ -542,18 +542,18 @@
     }
 
     &__msg {
-      color: var(--art-gray-700);
+      color: var(--lfp-gray-700);
     }
 
     &.terminal-info {
       .terminal-line__time {
-        color: var(--art-gray-500);
+        color: var(--lfp-gray-500);
       }
       .terminal-line__level {
-        color: var(--art-gray-500);
+        color: var(--lfp-gray-500);
       }
       .terminal-line__msg {
-        color: var(--art-gray-500);
+        color: var(--lfp-gray-500);
       }
     }
 

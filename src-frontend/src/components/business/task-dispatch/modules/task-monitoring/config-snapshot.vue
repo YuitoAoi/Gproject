@@ -63,7 +63,7 @@
     padding: 16px;
     background: var(--el-fill-color-lighter);
     border-radius: var(--custom-radius, 8px);
-    border: 1px solid var(--art-gray-200);
+    border: 1px solid var(--lfp-gray-200);
 
     .config-title {
       display: flex;
@@ -71,7 +71,7 @@
       margin: 0 0 16px;
       font-size: 14px;
       font-weight: 600;
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
     }
 
     .config-list {
@@ -89,17 +89,17 @@
       padding: 8px 12px;
       background: var(--el-bg-color);
       border-radius: 6px;
-      border: 1px solid var(--art-gray-200);
+      border: 1px solid var(--lfp-gray-200);
 
       .config-label {
         font-size: 13px;
-        color: var(--art-gray-600);
+        color: var(--lfp-gray-600);
       }
 
       .config-value {
         font-size: 13px;
         font-weight: 500;
-        color: var(--art-gray-800);
+        color: var(--lfp-gray-800);
         font-family: 'Consolas', 'Monaco', monospace;
       }
     }
@@ -107,7 +107,7 @@
     .config-actions {
       margin-top: 16px;
       padding-top: 16px;
-      border-top: 1px solid var(--art-gray-200);
+      border-top: 1px solid var(--lfp-gray-200);
 
       .el-button {
         width: 100%;

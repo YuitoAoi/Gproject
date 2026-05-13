@@ -332,7 +332,7 @@
     padding: 12px 16px;
     background: var(--el-fill-color-lighter);
     border-radius: var(--custom-radius, 8px);
-    border: 1px solid var(--art-gray-200);
+    border: 1px solid var(--lfp-gray-200);
 
     .header-left {
       display: flex;
@@ -340,14 +340,14 @@
       gap: 8px;
 
       .header-separator {
-        color: var(--art-gray-400);
+        color: var(--lfp-gray-400);
         margin: 0 8px;
       }
 
       .task-name {
         font-size: 14px;
         font-weight: 600;
-        color: var(--art-gray-800);
+        color: var(--lfp-gray-800);
       }
     }
   }
@@ -356,7 +356,7 @@
     padding: 16px 20px;
     background: var(--el-fill-color-lighter);
     border-radius: var(--custom-radius, 8px);
-    border: 1px solid var(--art-gray-200);
+    border: 1px solid var(--lfp-gray-200);
 
     .progress-bar-container {
       margin-bottom: 12px;
@@ -370,12 +370,12 @@
       .progress-text {
         font-size: 14px;
         font-weight: 500;
-        color: var(--art-gray-800);
+        color: var(--lfp-gray-800);
       }
 
       .progress-time {
         font-size: 13px;
-        color: var(--art-gray-600);
+        color: var(--lfp-gray-600);
       }
     }
   }
@@ -392,7 +392,7 @@
       padding: 16px;
       background: var(--el-fill-color-lighter);
       border-radius: var(--custom-radius, 8px);
-      border: 1px solid var(--art-gray-200);
+      border: 1px solid var(--lfp-gray-200);
 
       .section-header {
         display: flex;
@@ -400,7 +400,7 @@
         margin-bottom: 12px;
         font-size: 14px;
         font-weight: 600;
-        color: var(--art-gray-800);
+        color: var(--lfp-gray-800);
 
         .metrics-stats {
           display: flex;
@@ -411,7 +411,7 @@
             align-items: center;
             font-size: 12px;
             font-weight: 400;
-            color: var(--art-gray-600);
+            color: var(--lfp-gray-600);
           }
         }
       }
@@ -455,13 +455,13 @@
     &__title {
       font-size: 20px;
       font-weight: 600;
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
       margin: 0 0 12px;
     }
 
     &__desc {
       font-size: 14px;
-      color: var(--art-gray-600);
+      color: var(--lfp-gray-600);
       margin: 0 0 8px;
     }
   }

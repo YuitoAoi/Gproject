@@ -43,7 +43,7 @@
       <div
         v-for="ds in filteredDatasets"
         :key="ds.id"
-        class="dataset-card art-card"
+        class="dataset-card lfp-card"
         :class="{
           'is-selected': selectedId === ds.id,
           'is-disabled': ds.status === -1
@@ -59,7 +59,7 @@
                 : 'ri:checkbox-blank-circle-line text-xl'
             "
             :style="{
-              color: selectedId === ds.id ? 'var(--el-color-primary)' : 'var(--art-gray-300)'
+              color: selectedId === ds.id ? 'var(--el-color-primary)' : 'var(--lfp-gray-300)'
             }"
           ></span>
         </div>
@@ -84,7 +84,7 @@
     </div>
 
     <!-- 空状态 -->
-    <div v-else class="art-card p-12 text-center">
+    <div v-else class="lfp-card p-12 text-center">
       <LfpSvgIcon icon="ri:inbox-line" class="text-5xl text-g-400 mb-3" />
       <p class="text-g-500">未找到匹配的数据集</p>
       <p class="text-xs text-g-400 mt-1">尝试调整筛选条件或上传新数据集</p>
@@ -92,7 +92,7 @@
 
     <!-- 加载状态 -->
     <div v-if="loading" class="dataset-grid">
-      <div v-for="i in 6" :key="i" class="dataset-card art-card skeleton-card">
+      <div v-for="i in 6" :key="i" class="dataset-card lfp-card skeleton-card">
         <div class="skeleton-line w-3/4 mb-3"></div>
         <div class="skeleton-line w-1/2 mb-3"></div>
         <div class="flex gap-2">
@@ -197,7 +197,7 @@
     align-items: center;
     font-size: 14px;
     font-weight: 500;
-    color: var(--art-gray-700);
+    color: var(--lfp-gray-700);
   }
 
   .dataset-grid {
@@ -234,7 +234,7 @@
     &.is-disabled {
       opacity: 0.5;
       cursor: not-allowed;
-      background: var(--art-gray-50);
+      background: var(--lfp-gray-50);
     }
 
     &__radio {
@@ -253,7 +253,7 @@
     &__name {
       font-size: 14px;
       font-weight: 600;
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
     }
 
     &__tag {
@@ -281,14 +281,14 @@
 
   .skeleton-line {
     height: 14px;
-    background: var(--art-gray-200);
+    background: var(--lfp-gray-200);
     border-radius: 4px;
     animation: shimmer 1.5s ease-in-out infinite;
   }
 
   .skeleton-tag {
     height: 20px;
-    background: var(--art-gray-200);
+    background: var(--lfp-gray-200);
     border-radius: 4px;
     animation: shimmer 1.5s ease-in-out infinite;
   }

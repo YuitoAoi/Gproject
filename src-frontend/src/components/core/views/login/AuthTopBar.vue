@@ -67,7 +67,7 @@
   .color-dots {
     pointer-events: none;
     backdrop-filter: blur(10px);
-    box-shadow: 0 2px 12px var(--art-gray-300);
+    box-shadow: 0 2px 12px var(--lfp-gray-300);
     transition:
       opacity 0.3s ease,
       transform 0.3s ease;
@@ -98,11 +98,11 @@
   }
 
   .dark .color-dots {
-    background-color: var(--art-gray-200);
+    background-color: var(--lfp-gray-200);
     box-shadow: none;
   }
 
-  .color-picker-expandable:hover .palette-btn :deep(.art-svg-icon) {
+  .color-picker-expandable:hover .palette-btn :deep(.lfp-svg-icon) {
     color: v-bind(color);
   }
 </style>
