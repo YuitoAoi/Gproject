@@ -36,6 +36,7 @@ class Config(BaseSettings):
     JWT_SECRET_KEY: str = "your-secret-key"
     ACCESS_TOKEN_EXPIRE_SECONDS: int = 21600
 
+    LLAMAFACTORY_URL: str = "http://localhost:8000"
     LLAMAFACTORY_API_PREFIX: str = "/v1"
     LLAMAFACTORY_TIMEOUT_MS: int = 30000
     LLAMAFACTORY_RETRIES: int = 2

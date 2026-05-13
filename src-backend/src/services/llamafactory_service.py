@@ -24,6 +24,13 @@ class LlamaFactoryChatRequest(BaseModel):
     max_tokens: int | None = Field(default=None, ge=1)
 
 
+class LlamaFactoryModelsResponse(BaseModel):
+    success: bool = False
+    models: list[str] = Field(default_factory=list)
+    raw_response: dict[str, Any] | None = None
+    error: str | None = None
+
+
 class LlamaFactoryChatResponse(BaseModel):
     success: bool = False
     content: str | None = None
@@ -52,6 +59,26 @@ class LlamaFactoryService:
             file_name=result["file_name"],
             target_path=result["target_path"],
         )
+
+    def list_models(self) -> LlamaFactoryModelsResponse:
+        try:
+            response = self._llama.inference.list_models()
+            data = response.json()
+        except Exception as exc:
+            return LlamaFactoryModelsResponse(error=str(exc))
+
+        items = data.get("data")
+        if not isinstance(items, list):
+            return LlamaFactoryModelsResponse(error="Invalid LlamaFactory models response: data")
+
+        models: list[str] = []
+        for item in items:
+            if isinstance(item, dict):
+                model_id = item.get("id")
+                if isinstance(model_id, str) and model_id:
+                    models.append(model_id)
+
+        return LlamaFactoryModelsResponse(success=True, models=models, raw_response=data)
 
     def chat(self, request: LlamaFactoryChatRequest) -> LlamaFactoryChatResponse:
         try:
