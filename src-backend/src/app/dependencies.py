@@ -1,8 +1,7 @@
+# ruff: noqa: RUF002
 """FastAPI 依赖注入：服务工厂、认证与授权。"""
-from typing import Optional
 
 from fastapi import Header, HTTPException, Request, status
-
 from src.services import ServiceFactory
 from src.services.jwt_service import TokenPayload
 
@@ -14,7 +13,7 @@ def get_services(request: Request) -> ServiceFactory:
 
 def get_current_user(
     request: Request,
-    authorization: Optional[str] = Header(None),
+    authorization: str | None = Header(None),
 ) -> TokenPayload:
     """从 Authorization 头提取并验证 Bearer token，返回 TokenPayload。
 

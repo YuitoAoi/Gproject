@@ -1,14 +1,15 @@
+# ruff: noqa: RUF002
 """获取当前用户信息服务。"""
+
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
-
 from src.services.interfaces.user_repository import UserRepository
 
 
 class UserInfoResponse(BaseModel):
     """用户信息响应（不含密码）。"""
+
     id: int
     name: str
     email: str
@@ -16,7 +17,7 @@ class UserInfoResponse(BaseModel):
     is_active: bool
     created_at: datetime
     last_login: datetime
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class UserGetService:
@@ -29,8 +30,13 @@ class UserGetService:
         user = self._user_repo.find_by_id(user_id)
         if user is None:
             return UserInfoResponse(
-                id=0, name="", email="", is_admin=False, is_active=False,
-                created_at=datetime.min, last_login=datetime.min,
+                id=0,
+                name="",
+                email="",
+                is_admin=False,
+                is_active=False,
+                created_at=datetime.min,
+                last_login=datetime.min,
                 error="User not found",
             )
         return UserInfoResponse(

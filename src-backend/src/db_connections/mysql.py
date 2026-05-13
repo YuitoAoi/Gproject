@@ -1,10 +1,10 @@
+# ruff: noqa: RUF002, RUF003, RUF001
 from __future__ import annotations
 
 from typing import Any
 
 from sqlalchemy import Engine, create_engine, event, pool, text
 from sqlalchemy.orm import Session, sessionmaker
-
 from src.services.interfaces.db_conn import DatabaseConnection
 
 
@@ -58,7 +58,9 @@ class MysqlConnection(DatabaseConnection):
         if self._started:
             return
         retries = kwargs.pop("_retries", 3)
-        import time, logging
+        import logging
+        import time
+
         logger = logging.getLogger(__name__)
         last_error = None
 
@@ -86,11 +88,8 @@ class MysqlConnection(DatabaseConnection):
                     self._engine.dispose()
                     self._engine = None
                 if attempt < retries:
-                    wait = 2 ** attempt
-                    logger.warning(
-                        f"MySQL connection attempt {attempt}/{retries} failed, "
-                        f"retrying in {wait}s: {e}"
-                    )
+                    wait = 2**attempt
+                    logger.warning(f"MySQL connection attempt {attempt}/{retries} failed, retrying in {wait}s: {e}")
                     # 可中断 sleep：每 0.1s 检查一次，支持 Ctrl+C
                     for _ in range(int(wait * 10)):
                         time.sleep(0.1)
@@ -148,9 +147,7 @@ class MysqlConnection(DatabaseConnection):
 
     def _ensure_started(self) -> None:
         if not self._started:
-            raise RuntimeError(
-                "MysqlDatabaseConnection 尚未启动，请先调用 .start()"
-            )
+            raise RuntimeError("MysqlDatabaseConnection 尚未启动，请先调用 .start()")
 
     def __repr__(self) -> str:
         return f"<MysqlDatabaseConnection url={_mask_url(self._database_url)} started={self._started}>"

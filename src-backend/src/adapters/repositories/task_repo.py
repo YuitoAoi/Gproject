@@ -1,12 +1,11 @@
+# ruff: noqa: RUF003
 """任务仓储实现 —— SQLAlchemy Core Table。"""
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from typing import List, Optional, Tuple
 
 from sqlalchemy import Column, DateTime, Float, Integer, MetaData, String, Table, Text, text
-
 from src.adapters.repositories._utils import ensure_datetime
 from src.core.task_record import TaskRecord
 from src.services.interfaces.db_conn import DatabaseConnection
@@ -44,7 +43,7 @@ class TaskRepository:
         assert self._conn.engine is not None
         _metadata.create_all(self._conn.engine)
 
-    def insert(self, task: TaskRecord) -> Optional[Exception]:
+    def insert(self, task: TaskRecord) -> Exception | None:
         try:
             with self._conn.new_session() as session:
                 result = session.execute(
@@ -80,7 +79,7 @@ class TaskRepository:
             _logger.exception("Failed to insert task")
             return exc
 
-    def find_by_id(self, id: int) -> Optional[TaskRecord]:
+    def find_by_id(self, id: int) -> TaskRecord | None:
         try:
             with self._conn.new_session() as session:
                 row = session.execute(
@@ -94,7 +93,7 @@ class TaskRepository:
             _logger.exception("Failed to find task by id=%s", id)
             return None
 
-    def find_by_config_job_id(self, owner_id: int, job_id: str) -> Optional[TaskRecord]:
+    def find_by_config_job_id(self, owner_id: int, job_id: str) -> TaskRecord | None:
         try:
             with self._conn.new_session() as session:
                 row = session.execute(
@@ -111,7 +110,7 @@ class TaskRepository:
             _logger.exception("Failed to find task by config job_id=%s", job_id)
             return None
 
-    def find_by_owner(self, owner_id: int, status: Optional[str] = None) -> List[TaskRecord]:
+    def find_by_owner(self, owner_id: int, status: str | None = None) -> list[TaskRecord]:
         try:
             with self._conn.new_session() as session:
                 if status:
@@ -124,10 +123,7 @@ class TaskRepository:
                     ).fetchall()
                 else:
                     rows = session.execute(
-                        text(
-                            f"SELECT {self._COLUMNS} FROM tasks "
-                            "WHERE owner_id = :owner_id ORDER BY id DESC"
-                        ),
+                        text(f"SELECT {self._COLUMNS} FROM tasks WHERE owner_id = :owner_id ORDER BY id DESC"),
                         {"owner_id": owner_id},
                     ).fetchall()
                 return [self._row_to_task(r) for r in rows]
@@ -136,8 +132,8 @@ class TaskRepository:
             return []
 
     def find_by_owner_paged(
-        self, owner_id: int, page: int, page_size: int, status: Optional[str] = None
-    ) -> Tuple[List[TaskRecord], int]:
+        self, owner_id: int, page: int, page_size: int, status: str | None = None
+    ) -> tuple[list[TaskRecord], int]:
         try:
             offset = (page - 1) * page_size
             with self._conn.new_session() as session:
@@ -171,14 +167,11 @@ class TaskRepository:
             _logger.exception("Failed to find tasks paged for owner_id=%s", owner_id)
             return [], 0
 
-    def find_by_job_id(self, job_id: str) -> Optional[TaskRecord]:
+    def find_by_job_id(self, job_id: str) -> TaskRecord | None:
         try:
             with self._conn.new_session() as session:
                 row = session.execute(
-                    text(
-                        f"SELECT {self._COLUMNS} FROM tasks "
-                        "WHERE config LIKE :job_id ORDER BY id DESC LIMIT 1"
-                    ),
+                    text(f"SELECT {self._COLUMNS} FROM tasks WHERE config LIKE :job_id ORDER BY id DESC LIMIT 1"),
                     {"job_id": f"%{job_id}%"},
                 ).fetchone()
                 if row is None:
@@ -188,7 +181,7 @@ class TaskRepository:
             _logger.exception("Failed to find task by job_id=%s", job_id)
             return None
 
-    def update(self, id: int, task: TaskRecord) -> Optional[Exception]:
+    def update(self, id: int, task: TaskRecord) -> Exception | None:
         try:
             with self._conn.new_session() as session:
                 session.execute(
@@ -213,7 +206,7 @@ class TaskRepository:
             _logger.exception("Failed to update task id=%s", id)
             return exc
 
-    def remove(self, id: int) -> Optional[Exception]:
+    def remove(self, id: int) -> Exception | None:
         try:
             with self._conn.new_session() as session:
                 session.execute(
@@ -226,17 +219,13 @@ class TaskRepository:
             _logger.exception("Failed to delete task id=%s", id)
             return exc
 
-    def remove_by_config_dataset_id(
-        self, owner_id: int, dataset_id: int
-    ) -> Optional[Exception]:
+    def remove_by_config_dataset_id(self, owner_id: int, dataset_id: int) -> Exception | None:
         """删除 config 中包含指定 dataset_id 的所有任务记录。"""
         try:
             with self._conn.new_session() as session:
                 pattern = f'%"dataset_id": {dataset_id}%'
                 session.execute(
-                    text(
-                        "DELETE FROM tasks WHERE owner_id = :owner_id AND config LIKE :pattern"
-                    ),
+                    text("DELETE FROM tasks WHERE owner_id = :owner_id AND config LIKE :pattern"),
                     {"owner_id": owner_id, "pattern": pattern},
                 )
                 session.commit()

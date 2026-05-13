@@ -1,8 +1,8 @@
-from src.adapters.llamafactory_client import LlamaFactoryClient
-from src.core.config import Config
 from unittest.mock import MagicMock, patch
 
 import pytest
+from src.adapters.llamafactory_client import LlamaFactoryClient
+from src.core.config import Config
 
 
 def test_llamafactory_config_defaults():

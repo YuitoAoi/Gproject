@@ -5,12 +5,11 @@ from __future__ import annotations
 import json
 import logging
 from datetime import datetime
-from typing import List, Optional, cast
+from typing import cast
 
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, text
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
-
 from src.adapters.repositories._utils import ensure_datetime
 from src.core.dataset import Dataset, DatasetMeta
 from src.services.interfaces.dataset_repository import DatasetRepository
@@ -38,10 +37,7 @@ _dataset_table = Table(
 class DatasetRepositoryAdapter(DatasetRepository):
     """数据集仓储实现。SQLAlchemy Core Table 自动适配 MySQL / SQLite。"""
 
-    _COLUMNS = (
-        "id, owner_id, name, description, meta, status, tag_ids, "
-        "created_at, updated_at"
-    )
+    _COLUMNS = "id, owner_id, name, description, meta, status, tag_ids, created_at, updated_at"
 
     def __init__(self, connection: DatabaseConnection) -> None:
         self._conn = connection
@@ -87,7 +83,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
 
     # ── DatasetRepository 实现 ─────────────────────────────────
 
-    def create(self, dataset: Dataset) -> Optional[Exception]:
+    def create(self, dataset: Dataset) -> Exception | None:
         try:
             with self._session() as session:
                 result = session.execute(
@@ -113,7 +109,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
         except Exception as exc:
             return exc
 
-    def find_by_id(self, id: int) -> Optional[Dataset]:
+    def find_by_id(self, id: int) -> Dataset | None:
         try:
             with self._session() as session:
                 row = session.execute(
@@ -127,14 +123,11 @@ class DatasetRepositoryAdapter(DatasetRepository):
             _logger.exception("Failed to find dataset by id=%s", id)
             return None
 
-    def find_by_owner(self, owner_id: int) -> List[Dataset]:
+    def find_by_owner(self, owner_id: int) -> list[Dataset]:
         try:
             with self._session() as session:
                 rows = session.execute(
-                    text(
-                        f"SELECT {self._COLUMNS} FROM datasets "
-                        "WHERE owner_id = :owner_id ORDER BY id DESC"
-                    ),
+                    text(f"SELECT {self._COLUMNS} FROM datasets WHERE owner_id = :owner_id ORDER BY id DESC"),
                     {"owner_id": owner_id},
                 ).fetchall()
                 return [self._row_to_dataset(r) for r in rows]
@@ -142,7 +135,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
             _logger.exception("Failed to find datasets by owner_id=%s", owner_id)
             return []
 
-    def find_all(self) -> List[Dataset]:
+    def find_all(self) -> list[Dataset]:
         try:
             with self._session() as session:
                 rows = session.execute(
@@ -165,7 +158,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
             _logger.exception("Failed to check dataset existence id=%s", id)
             return False
 
-    def update(self, id: int, dataset: Dataset) -> Optional[Exception]:
+    def update(self, id: int, dataset: Dataset) -> Exception | None:
         try:
             with self._session() as session:
                 result = cast(
@@ -199,7 +192,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
         except Exception as exc:
             return exc
 
-    def remove(self, id: int) -> Optional[Exception]:
+    def remove(self, id: int) -> Exception | None:
         try:
             dataset = self.find_by_id(id)
             if dataset is None:
@@ -214,7 +207,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
         except Exception as exc:
             return exc
 
-    def remove_batch(self, ids: List[int]) -> Optional[List[Exception]]:
+    def remove_batch(self, ids: list[int]) -> list[Exception] | None:
         if not ids:
             return None
         try:
@@ -230,19 +223,13 @@ class DatasetRepositoryAdapter(DatasetRepository):
         except Exception as exc:
             return [exc]
 
-    def count_by_owner_and_date(
-        self, owner_id: int, date: datetime, field: str
-    ) -> int:
+    def count_by_owner_and_date(self, owner_id: int, date: datetime, field: str) -> int:
         if field not in ("created_at", "updated_at"):
             return 0
         try:
             with self._session() as session:
                 row = session.execute(
-                    text(
-                        "SELECT COUNT(*) FROM datasets "
-                        "WHERE owner_id = :owner_id "
-                        f"AND DATE({field}) = DATE(:date)"
-                    ),
+                    text(f"SELECT COUNT(*) FROM datasets WHERE owner_id = :owner_id AND DATE({field}) = DATE(:date)"),
                     {"owner_id": owner_id, "date": date},
                 ).fetchone()
                 return row[0] if row else 0
@@ -272,10 +259,7 @@ class DatasetRepositoryAdapter(DatasetRepository):
     @staticmethod
     def _row_to_dataset(row) -> Dataset:
         meta_raw = row.meta
-        if isinstance(meta_raw, str):
-            meta = DatasetMeta.from_json(meta_raw)
-        else:
-            meta = DatasetMeta.from_dict(meta_raw)
+        meta = DatasetMeta.from_json(meta_raw) if isinstance(meta_raw, str) else DatasetMeta.from_dict(meta_raw)
 
         tag_ids_raw = row.tag_ids
         if isinstance(tag_ids_raw, str):

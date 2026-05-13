@@ -1,7 +1,8 @@
+# ruff: noqa: RUF003
 """简单的内存级速率限制器。TODO 生产环境建议替换为 Redis 方案。"""
+
 import time
 from collections import defaultdict
-from typing import Dict
 
 
 class RateLimiter:
@@ -17,7 +18,7 @@ class RateLimiter:
     def __init__(self, max_requests: int = 5, window_seconds: int = 60):
         self._max = max_requests
         self._window = window_seconds
-        self._store: Dict[str, list] = defaultdict(list)
+        self._store: dict[str, list] = defaultdict(list)
 
     def is_allowed(self, key: str) -> bool:
         now = time.time()

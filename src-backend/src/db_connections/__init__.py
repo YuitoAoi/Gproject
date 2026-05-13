@@ -1,3 +1,4 @@
+# ruff: noqa: N999
 """
 db_connections - SQLAlchemy 数据库连接基础设施
 """

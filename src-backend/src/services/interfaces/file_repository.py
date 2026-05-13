@@ -1,6 +1,5 @@
-
+# ruff: noqa: RUF002
 import abc
-from typing import Optional
 
 
 class FileRepository(abc.ABC):
@@ -77,9 +76,10 @@ class FileRepository(abc.ABC):
     @abc.abstractmethod
     def rename(self, from_path: str, to_path: str) -> None:
         """重命名/移动，与 move 相同但语义更明确。"""
-    
+
+
 # class AsyncFileRepository(abc.ABC):
-    
+
 #     @abc.abstractmethod
 #     async def create_async(self, path: Path) -> None:
 #         pass

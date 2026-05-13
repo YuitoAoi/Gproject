@@ -1,22 +1,22 @@
+# ruff: noqa: RUF002, RUF003
 import re
-from typing import List, Optional
 
 from pydantic import BaseModel, Field, field_validator
-
 from src.services.interfaces.dataset_repository import DatasetRepository
 from src.services.interfaces.dataset_tag_repository import DatasetTagRepository
 
-
 # ── 请求 / 响应模型 ──────────────────────────────────────────
+
 
 class DatasetTagInfoGetRequest(BaseModel):
     """tag 详情获取请求，tag_id 由路由层传入。owner_id 由 token 注入。"""
+
     tag_id: int
 
 
 class DatasetTagInfoGetResponse(BaseModel):
     success: bool
-    error: Optional[str] = None
+    error: str | None = None
     tag_id: int
     tag_name: str
     tag_color: str
@@ -26,9 +26,10 @@ class DatasetTagInfoGetResponse(BaseModel):
 
 class DatasetTagsGetResponse(BaseModel):
     """获取属于用户的所有 tags。"""
+
     success: bool
-    error: Optional[str] = None
-    tags: List[DatasetTagInfoGetResponse] = []
+    error: str | None = None
+    tags: list[DatasetTagInfoGetResponse] = []
 
 
 _HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -36,6 +37,7 @@ _HEX_COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 
 class DatasetTagCreateRequest(BaseModel):
     """创建标签请求。owner_id 由路由层从 token 注入。"""
+
     name: str = Field(..., min_length=1, max_length=50)
     color: str = Field(default="#808080", min_length=7, max_length=7)
     desc: str = Field(default="", max_length=200)
@@ -57,34 +59,37 @@ class DatasetTagCreateRequest(BaseModel):
 
 class DatasetTagCreateResponse(BaseModel):
     success: bool
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class DatasetTagDeleteRequest(BaseModel):
     """删除标签请求。"""
+
     tag_id: int
     force: bool = False
 
 
 class DatasetTagDeleteResponse(BaseModel):
     success: bool
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class DatasetTagUpdateRequest(BaseModel):
     """更新标签请求。只需传要修改的字段，未传的字段保持不变。"""
+
     tag_id: int
-    tag_name: Optional[str] = None
-    tag_color: Optional[str] = None
-    tag_desc: Optional[str] = None
+    tag_name: str | None = None
+    tag_color: str | None = None
+    tag_desc: str | None = None
 
 
 class DatasetTagUpdateResponse(BaseModel):
     success: bool
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # ── 服务 ─────────────────────────────────────────────────────
+
 
 class DatasetTagService:
     """数据集标签服务。

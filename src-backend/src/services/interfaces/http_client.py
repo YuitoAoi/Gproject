@@ -1,7 +1,9 @@
+# ruff: noqa: RUF002
 import abc
 import asyncio
 import time
-from typing import Any, Mapping, Optional, Self
+from collections.abc import Mapping
+from typing import Any, Self
 
 import httpx
 import msgspec
@@ -61,14 +63,13 @@ class HTTPClient(abc.ABC):
         method: str,
         path: str = "/",
         *,
-        params: Optional[Mapping[str, Any]] = None,
+        params: Mapping[str, Any] | None = None,
         json: Any = None,
-        data: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        files: Optional[Mapping[str, Any]] = None,
+        data: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+        files: Mapping[str, Any] | None = None,
     ) -> Response:
         """带自动重试的内部请求方法。仅对 5xx 和网络错误重试，带指数退避。"""
-        last_exc: Optional[Exception] = None
         for attempt in range(self.config.retries):
             try:
                 resp = self._client.request(
@@ -82,11 +83,10 @@ class HTTPClient(abc.ABC):
                 )
                 if not resp.is_server_error or attempt == self.config.retries - 1:
                     return resp
-            except httpx.RequestError as exc:
-                last_exc = exc
+            except httpx.RequestError:
                 if attempt == self.config.retries - 1:
                     raise
-                time.sleep(2 ** attempt * 0.1)
+                time.sleep(2**attempt * 0.1)
 
     # ---- HTTP 方法 ----
 
@@ -94,8 +94,8 @@ class HTTPClient(abc.ABC):
         self,
         path: str = "/",
         *,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Response:
         return self._request("GET", path, params=params, headers=headers)
 
@@ -104,10 +104,10 @@ class HTTPClient(abc.ABC):
         path: str = "/",
         *,
         json: Any = None,
-        data: Optional[Mapping[str, Any]] = None,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        files: Optional[Mapping[str, Any]] = None,
+        data: Mapping[str, Any] | None = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+        files: Mapping[str, Any] | None = None,
     ) -> Response:
         return self._request("POST", path, params=params, json=json, data=data, headers=headers, files=files)
 
@@ -116,9 +116,9 @@ class HTTPClient(abc.ABC):
         path: str = "/",
         *,
         json: Any = None,
-        data: Optional[Mapping[str, Any]] = None,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        data: Mapping[str, Any] | None = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Response:
         return self._request("PUT", path, params=params, json=json, data=data, headers=headers)
 
@@ -127,9 +127,9 @@ class HTTPClient(abc.ABC):
         path: str = "/",
         *,
         json: Any = None,
-        data: Optional[Mapping[str, Any]] = None,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        data: Mapping[str, Any] | None = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Response:
         return self._request("PATCH", path, params=params, json=json, data=data, headers=headers)
 
@@ -137,8 +137,8 @@ class HTTPClient(abc.ABC):
         self,
         path: str = "/",
         *,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Response:
         return self._request("DELETE", path, params=params, headers=headers)
 
@@ -162,7 +162,7 @@ class AsyncHTTPClient(abc.ABC):
 
     def __init__(self, config: HTTPClientConfig) -> None:
         self.config = config
-        self._client: Optional[httpx.AsyncClient] = None
+        self._client: httpx.AsyncClient | None = None
 
     async def __aenter__(self) -> Self:
         self._client = httpx.AsyncClient(
@@ -191,14 +191,13 @@ class AsyncHTTPClient(abc.ABC):
         method: str,
         path: str = "/",
         *,
-        params: Optional[Mapping[str, Any]] = None,
+        params: Mapping[str, Any] | None = None,
         json: Any = None,
-        data: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        files: Optional[Mapping[str, Any]] = None,
+        data: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+        files: Mapping[str, Any] | None = None,
     ) -> Response:
         assert self._client is not None
-        last_exc: Optional[Exception] = None
         for attempt in range(self.config.retries):
             try:
                 resp = await self._client.request(
@@ -212,11 +211,10 @@ class AsyncHTTPClient(abc.ABC):
                 )
                 if not resp.is_server_error or attempt == self.config.retries - 1:
                     return resp
-            except httpx.RequestError as exc:
-                last_exc = exc
+            except httpx.RequestError:
                 if attempt == self.config.retries - 1:
                     raise
-                await asyncio.sleep(2 ** attempt * 0.1)
+                await asyncio.sleep(2**attempt * 0.1)
 
     # ---- HTTP 方法 ----
 
@@ -224,8 +222,8 @@ class AsyncHTTPClient(abc.ABC):
         self,
         path: str = "/",
         *,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Response:
         return await self._request("GET", path, params=params, headers=headers)
 
@@ -234,10 +232,10 @@ class AsyncHTTPClient(abc.ABC):
         path: str = "/",
         *,
         json: Any = None,
-        data: Optional[Mapping[str, Any]] = None,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
-        files: Optional[Mapping[str, Any]] = None,
+        data: Mapping[str, Any] | None = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+        files: Mapping[str, Any] | None = None,
     ) -> Response:
         return await self._request("POST", path, params=params, json=json, data=data, headers=headers, files=files)
 
@@ -246,9 +244,9 @@ class AsyncHTTPClient(abc.ABC):
         path: str = "/",
         *,
         json: Any = None,
-        data: Optional[Mapping[str, Any]] = None,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        data: Mapping[str, Any] | None = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Response:
         return await self._request("PUT", path, params=params, json=json, data=data, headers=headers)
 
@@ -257,9 +255,9 @@ class AsyncHTTPClient(abc.ABC):
         path: str = "/",
         *,
         json: Any = None,
-        data: Optional[Mapping[str, Any]] = None,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        data: Mapping[str, Any] | None = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Response:
         return await self._request("PATCH", path, params=params, json=json, data=data, headers=headers)
 
@@ -267,8 +265,8 @@ class AsyncHTTPClient(abc.ABC):
         self,
         path: str = "/",
         *,
-        params: Optional[Mapping[str, Any]] = None,
-        headers: Optional[Mapping[str, str]] = None,
+        params: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> Response:
         return await self._request("DELETE", path, params=params, headers=headers)
 

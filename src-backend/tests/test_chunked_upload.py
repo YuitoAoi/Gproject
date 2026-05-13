@@ -1,3 +1,4 @@
+# ruff: noqa: RUF002, E402
 """ChunkedUploadService 集成测试：分块→续传→校验→组装→秒传"""
 
 import hashlib
@@ -14,10 +15,9 @@ _SVC = str(_PROJECT / "src" / "services")
 if _SVC not in sys.path:
     sys.path.insert(0, _SVC)
 
-from src.core.dataset import Dataset, DatasetMeta
 from src.services.dataset_import_export_service import (
-    DatasetImportExportService,
     CompleteUploadRequest,
+    DatasetImportExportService,
     InitiateUploadRequest,
     _upload_state,
 )
@@ -36,7 +36,6 @@ def _compute_sha256(data: bytes) -> str:
 
 
 class TestChunkedUploadService:
-
     def test_initiate(self):
         svc = DatasetImportExportService(MagicMock(), MagicMock())
         req = InitiateUploadRequest(
@@ -112,8 +111,8 @@ class TestChunkedUploadService:
         data_hash = _compute_sha256(data)
 
         # 用 SQLite 真实 DB + tmp_path 作为数据集目录
-        from src.db_connections.sqlite import SqliteConnection
         from src.adapters.repositories.dataset_repo import DatasetRepositoryAdapter
+        from src.db_connections.sqlite import SqliteConnection
 
         conn = SqliteConnection("sqlite:///:memory:", echo=False)
         conn.start()

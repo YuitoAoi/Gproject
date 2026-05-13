@@ -1,7 +1,7 @@
 import json
 
-from src.core.dataset import Dataset, DatasetMeta
 from src.adapters.repositories.windows_file_repo import WindowsFileRepository
+from src.core.dataset import Dataset, DatasetMeta
 
 
 def test_sync_dataset_copies_file_and_updates_dataset_info(tmp_path):

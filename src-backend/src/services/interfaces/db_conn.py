@@ -1,3 +1,4 @@
+# ruff: noqa: RUF002
 import abc
 from typing import Any
 

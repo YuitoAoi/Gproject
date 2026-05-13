@@ -1,3 +1,4 @@
+# ruff: noqa: RUF002
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -5,7 +6,6 @@ from collections.abc import Generator
 import pytest
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
-
 from src.adapters.repositories.user_repo import UserRepositoryAdapter
 
 TRUNCATE_USERS = text("DELETE FROM users")
@@ -41,4 +41,3 @@ def repo(db_connection: _SqliteTestConnection) -> UserRepositoryAdapter:
         session.execute(TRUNCATE_USERS)
         session.commit()
     return UserRepositoryAdapter(db_connection)
-

@@ -1,4 +1,6 @@
+# ruff: noqa: RUF002
 """仓库层共享工具。"""
+
 from datetime import datetime
 
 

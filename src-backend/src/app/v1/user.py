@@ -1,19 +1,16 @@
-from typing import Optional
-
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-
 from src.app.dependencies import get_current_user, get_services
 from src.services import (
     ServiceFactory,
+    UserInfoResponse,
     UserLoginRequest,
     UserLoginResponse,
-    UserInfoResponse,
-    UserUpdateRequest,
-    UserUpdateResponse,
     UserRegisterRequest,
     UserRegisterResponse,
+    UserUpdateRequest,
+    UserUpdateResponse,
 )
 from src.services.jwt_service import TokenPayload
 
@@ -23,11 +20,11 @@ class TokenRefreshRequest(BaseModel):
 
 
 class TokenRefreshResponse(BaseModel):
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
-    expires_in: Optional[int] = None
+    access_token: str | None = None
+    refresh_token: str | None = None
+    expires_in: int | None = None
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 auth_api = APIRouter(prefix="/auth")
@@ -41,6 +38,7 @@ def login_user(
     svc: ServiceFactory = Depends(get_services),
 ):
     from src.app.middleware.rate_limiter import login_limiter
+
     client_ip = req.client.host if req.client else ""
     if not login_limiter.is_allowed(client_ip):
         return JSONResponse(
@@ -51,7 +49,7 @@ def login_user(
     if not result.success:
         err = result.error or ""
         status = 400 if ("empty" in err or "Invalid" in err) else 401
-        return JSONResponse(content=result.model_dump(mode='json'), status_code=status)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=status)
     return result
 
 
@@ -62,7 +60,7 @@ def get_current_user_info(
 ):
     result = svc.get_user_info().execute(int(current_user.user_id))
     if result.error:
-        return JSONResponse(content=result.model_dump(mode='json'), status_code=404)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=404)
     return result
 
 
@@ -76,7 +74,7 @@ def update_user_info(
     if not result.success:
         err = result.error or ""
         status = 409 if "already" in err.lower() else 400
-        return JSONResponse(content=result.model_dump(mode='json'), status_code=status)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=status)
     return result
 
 
@@ -106,6 +104,7 @@ def register_user(
     svc: ServiceFactory = Depends(get_services),
 ):
     from src.app.middleware.rate_limiter import register_limiter
+
     client_ip = req.client.host if req.client else ""
     if not register_limiter.is_allowed(client_ip):
         return JSONResponse(
@@ -116,5 +115,5 @@ def register_user(
     if not result.success:
         err = result.error or ""
         status = 409 if "already" in err.lower() else 400
-        return JSONResponse(content=result.model_dump(mode='json'), status_code=status)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=status)
     return result

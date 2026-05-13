@@ -1,11 +1,11 @@
+# ruff: noqa: RUF002
 """用户仓储实现 —— 通过 SQLAlchemy 自动适配 MySQL / SQLite。"""
-from datetime import datetime
-from typing import List, Optional, cast
+
+from typing import cast
 
 from sqlalchemy import Boolean, Column, DateTime, Integer, MetaData, String, Table, text
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
-
 from src.adapters.repositories._utils import ensure_datetime
 from src.core.user import User
 from src.services.interfaces.db_conn import DatabaseConnection
@@ -34,8 +34,7 @@ class UserRepositoryAdapter(UserRepository):
     异常策略：CRUD 操作不捕获异常，直接向上传播给 Service 层处理。
     """
 
-    _COLUMNS = ("id, name, email, password, is_admin, is_active, "
-                "created_at, last_login, last_login_ip")
+    _COLUMNS = "id, name, email, password, is_admin, is_active, created_at, last_login, last_login_ip"
 
     def __init__(self, connection: DatabaseConnection) -> None:
         self._conn = connection
@@ -63,7 +62,7 @@ class UserRepositoryAdapter(UserRepository):
 
     # ── UserRepository 实现 ────────────────────────────────────
 
-    def create(self, user: User) -> Optional[int]:
+    def create(self, user: User) -> int | None:
         with self._session() as session:
             result = session.execute(
                 text(
@@ -85,7 +84,7 @@ class UserRepositoryAdapter(UserRepository):
             session.commit()
             return cast(CursorResult, result).lastrowid
 
-    def find_by_id(self, id: int) -> Optional[User]:
+    def find_by_id(self, id: int) -> User | None:
         with self._session() as session:
             row = session.execute(
                 text(f"SELECT {self._COLUMNS} FROM users WHERE id = :id"),
@@ -95,7 +94,7 @@ class UserRepositoryAdapter(UserRepository):
                 return None
             return self._row_to_user(row)
 
-    def find_by_name(self, name: str) -> Optional[User]:
+    def find_by_name(self, name: str) -> User | None:
         with self._session() as session:
             row = session.execute(
                 text(f"SELECT {self._COLUMNS} FROM users WHERE name = :name"),
@@ -105,7 +104,7 @@ class UserRepositoryAdapter(UserRepository):
                 return None
             return self._row_to_user(row)
 
-    def find_by_email(self, email: str) -> Optional[User]:
+    def find_by_email(self, email: str) -> User | None:
         with self._session() as session:
             row = session.execute(
                 text(f"SELECT {self._COLUMNS} FROM users WHERE email = :email"),
@@ -115,7 +114,7 @@ class UserRepositoryAdapter(UserRepository):
                 return None
             return self._row_to_user(row)
 
-    def find_all(self) -> List[User]:
+    def find_all(self) -> list[User]:
         with self._session() as session:
             rows = session.execute(
                 text(f"SELECT {self._COLUMNS} FROM users"),
@@ -130,35 +129,38 @@ class UserRepositoryAdapter(UserRepository):
             ).fetchone()
             return result is not None
 
-    def update(self, id: int, user: User) -> Optional[User]:
+    def update(self, id: int, user: User) -> User | None:
         with self._session() as session:
-            result = cast(CursorResult, session.execute(
-                text(
-                    "UPDATE users SET "
-                    "name = :name, email = :email, password = :password, "
-                    "is_admin = :is_admin, is_active = :is_active, "
-                    "created_at = :created_at, last_login = :last_login, "
-                    "last_login_ip = :last_login_ip "
-                    "WHERE id = :id"
+            result = cast(
+                CursorResult,
+                session.execute(
+                    text(
+                        "UPDATE users SET "
+                        "name = :name, email = :email, password = :password, "
+                        "is_admin = :is_admin, is_active = :is_active, "
+                        "created_at = :created_at, last_login = :last_login, "
+                        "last_login_ip = :last_login_ip "
+                        "WHERE id = :id"
+                    ),
+                    {
+                        "id": id,
+                        "name": user.name,
+                        "email": user.email,
+                        "password": user.password,
+                        "is_admin": user.is_admin,
+                        "is_active": user.is_active,
+                        "created_at": user.created_at,
+                        "last_login": user.last_login,
+                        "last_login_ip": user.last_login_ip,
+                    },
                 ),
-                {
-                    "id": id,
-                    "name": user.name,
-                    "email": user.email,
-                    "password": user.password,
-                    "is_admin": user.is_admin,
-                    "is_active": user.is_active,
-                    "created_at": user.created_at,
-                    "last_login": user.last_login,
-                    "last_login_ip": user.last_login_ip,
-                },
-            ))
+            )
             session.commit()
             if result.rowcount == 0:
                 return None
             return self.find_by_id(id)
 
-    def remove(self, id: int) -> Optional[User]:
+    def remove(self, id: int) -> User | None:
         user = self.find_by_id(id)
         if user is None:
             return None

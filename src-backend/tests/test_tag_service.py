@@ -1,15 +1,13 @@
+# ruff: noqa: RUF002, RUF003
 """DatasetTagService 集成测试"""
 
 import pytest
-
-from src.db_connections.sqlite import SqliteConnection
 from src.adapters.repositories.dataset_tag_repo import DatasetTagRepositoryAdapter
+from src.db_connections.sqlite import SqliteConnection
 from src.services.dataset_tag_service import (
     DatasetTagCreateRequest,
-    DatasetTagDeleteRequest,
-    DatasetTagInfoGetRequest,
-    DatasetTagUpdateRequest,
     DatasetTagService,
+    DatasetTagUpdateRequest,
 )
 from src.services.interfaces.dataset_repository import DatasetRepository
 
@@ -76,8 +74,9 @@ def tag_svc(tag_svc_conn):
 def tag_svc_with_datasets(tag_svc_conn):
     """带预设数据集的 tag service，用于测试 force 级联删除。"""
     from datetime import datetime
-    from src.core.dataset import Dataset, DatasetMeta
+
     from sqlalchemy import text
+    from src.core.dataset import Dataset, DatasetMeta
 
     with tag_svc_conn.new_session() as s:
         s.execute(text("DELETE FROM dataset_tags"))
@@ -110,24 +109,19 @@ def tag_svc_with_datasets(tag_svc_conn):
 
 
 class TestTagService:
-
     def test_create_tag(self, tag_svc):
         req = DatasetTagCreateRequest(name="red", color="#ff0000", desc="warm")
         resp = tag_svc.create_tag(req, owner_id=1)
         assert resp.success is True
 
     def test_create_duplicate(self, tag_svc):
-        tag_svc.create_tag(
-            DatasetTagCreateRequest(name="dup", color="#111111"), owner_id=1
-        )
-        resp = tag_svc.create_tag(
-            DatasetTagCreateRequest(name="dup", color="#222222"), owner_id=1
-        )
+        tag_svc.create_tag(DatasetTagCreateRequest(name="dup", color="#111111"), owner_id=1)
+        resp = tag_svc.create_tag(DatasetTagCreateRequest(name="dup", color="#222222"), owner_id=1)
         assert resp.success is False
         assert "already exists" in resp.error
 
     def test_get_tag(self, tag_svc):
-        r = tag_svc.create_tag(DatasetTagCreateRequest(name="blue"), owner_id=1)
+        tag_svc.create_tag(DatasetTagCreateRequest(name="blue"), owner_id=1)
         tags = tag_svc.get_tags(owner_id=1)
         tag_id = tags.tags[0].tag_id
 
@@ -141,7 +135,7 @@ class TestTagService:
         assert "not found" in resp.error
 
     def test_get_tag_wrong_owner(self, tag_svc):
-        r = tag_svc.create_tag(DatasetTagCreateRequest(name="secret"), owner_id=2)
+        tag_svc.create_tag(DatasetTagCreateRequest(name="secret"), owner_id=2)
         tags = tag_svc.get_tags(owner_id=2)
         tag_id = tags.tags[0].tag_id
 
@@ -163,7 +157,7 @@ class TestTagService:
         assert resp.tags == []
 
     def test_update_tag(self, tag_svc):
-        r = tag_svc.create_tag(DatasetTagCreateRequest(name="old"), owner_id=1)
+        tag_svc.create_tag(DatasetTagCreateRequest(name="old"), owner_id=1)
         tags = tag_svc.get_tags(owner_id=1)
         tag_id = tags.tags[0].tag_id
 
@@ -181,7 +175,7 @@ class TestTagService:
         assert resp.success is False
 
     def test_update_tag_wrong_owner(self, tag_svc):
-        r = tag_svc.create_tag(DatasetTagCreateRequest(name="owned"), owner_id=2)
+        tag_svc.create_tag(DatasetTagCreateRequest(name="owned"), owner_id=2)
         tags = tag_svc.get_tags(owner_id=2)
         tag_id = tags.tags[0].tag_id
 
@@ -193,14 +187,14 @@ class TestTagService:
         tag_svc.create_tag(DatasetTagCreateRequest(name="first"), owner_id=1)
         tag_svc.create_tag(DatasetTagCreateRequest(name="second"), owner_id=1)
         tags = tag_svc.get_tags(owner_id=1)
-        second_id = [t for t in tags.tags if t.tag_name == "second"][0].tag_id
+        second_id = next(t for t in tags.tags if t.tag_name == "second").tag_id
 
         req = DatasetTagUpdateRequest(tag_id=second_id, tag_name="first")
         resp = tag_svc.update_tag(req, owner_id=1)
         assert resp.success is False
 
     def test_delete_tag_force(self, tag_svc):
-        r = tag_svc.create_tag(DatasetTagCreateRequest(name="temp"), owner_id=1)
+        tag_svc.create_tag(DatasetTagCreateRequest(name="temp"), owner_id=1)
         tags = tag_svc.get_tags(owner_id=1)
         tag_id = tags.tags[0].tag_id
 
@@ -215,7 +209,7 @@ class TestTagService:
         assert resp.success is False
 
     def test_delete_tag_wrong_owner(self, tag_svc):
-        r = tag_svc.create_tag(DatasetTagCreateRequest(name="mine"), owner_id=2)
+        tag_svc.create_tag(DatasetTagCreateRequest(name="mine"), owner_id=2)
         tags = tag_svc.get_tags(owner_id=2)
         tag_id = tags.tags[0].tag_id
 
@@ -228,9 +222,7 @@ class TestTagService:
         """force=True 时：从引用该 tag 的所有数据集中移除 tag_id，然后删除标签"""
         svc, fake_ds = tag_svc_with_datasets
         # 创建 tag_id=99 的标签
-        svc.create_tag(
-            DatasetTagCreateRequest(name="cascade_target", color="#111111"), owner_id=1
-        )
+        svc.create_tag(DatasetTagCreateRequest(name="cascade_target", color="#111111"), owner_id=1)
         tags = svc.get_tags(owner_id=1)
         tag_id = tags.tags[0].tag_id  # real tag id from DB
 
@@ -238,6 +230,7 @@ class TestTagService:
         # 但 real tag_id != 99，所以不会有级联。我们需要把 fake_ds 中的 tag_ids 换成真实的 tag_id
         # 重置 fake_ds 使用真实 tag_id
         from datetime import datetime
+
         from src.core.dataset import Dataset, DatasetMeta
 
         now = datetime.now()
@@ -281,13 +274,12 @@ class TestTagService:
     def test_delete_force_false_with_refs(self, tag_svc_with_datasets):
         """force=False 且标签被数据集引用时，返回错误不删除"""
         svc, fake_ds = tag_svc_with_datasets
-        svc.create_tag(
-            DatasetTagCreateRequest(name="referenced", color="#ff0000"), owner_id=1
-        )
+        svc.create_tag(DatasetTagCreateRequest(name="referenced", color="#ff0000"), owner_id=1)
         tags = svc.get_tags(owner_id=1)
         tag_id = tags.tags[0].tag_id
 
         from datetime import datetime
+
         from src.core.dataset import Dataset, DatasetMeta
 
         now = datetime.now()

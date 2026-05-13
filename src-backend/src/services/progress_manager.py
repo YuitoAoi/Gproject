@@ -1,13 +1,13 @@
+# ruff: noqa: RUF002
 """WebSocket 连接管理器 —— 按 job_id 订阅 Redis Pub/Sub 并转发进度消息。"""
+
 import json
 import logging
 import threading
 import time
-from typing import Optional
 
 import redis
 from fastapi import WebSocket
-
 from src.core.config import config as proj_config
 
 
@@ -29,6 +29,7 @@ class ProgressManager:
         with self._lock:
             if job_id not in self._channels:
                 import asyncio
+
                 self._channels[job_id] = {
                     "connections": set(),
                     "thread": None,
@@ -73,8 +74,8 @@ class ProgressManager:
         """
         _logger = logging.getLogger("gproject.progress")
         while not stop_event.is_set():
-            r: Optional[redis.Redis] = None
-            pubsub: Optional[redis.client.PubSub] = None
+            r: redis.Redis | None = None
+            pubsub: redis.client.PubSub | None = None
             try:
                 r = redis.Redis.from_url(self._redis_url, decode_responses=True)
                 pubsub = r.pubsub()
@@ -98,20 +99,19 @@ class ProgressManager:
             except Exception as exc:
                 _logger.error(
                     "Redis listen thread for job_id=%s failed, retry in 3s: %s",
-                    job_id, exc,
+                    job_id,
+                    exc,
                 )
                 time.sleep(3)
             finally:
+                import contextlib
+
                 if pubsub is not None:
-                    try:
+                    with contextlib.suppress(Exception):
                         pubsub.close()
-                    except Exception:
-                        pass
                 if r is not None:
-                    try:
+                    with contextlib.suppress(Exception):
                         r.close()
-                    except Exception:
-                        pass
 
     def _broadcast(self, job_id: str, data: dict) -> None:
         """向指定 job_id 的所有 WebSocket 连接广播消息。
@@ -138,7 +138,7 @@ class ProgressManager:
                 entry["connections"].discard(ws)
 
 
-_progress_manager: Optional[ProgressManager] = None
+_progress_manager: ProgressManager | None = None
 
 
 def get_progress_manager() -> ProgressManager:

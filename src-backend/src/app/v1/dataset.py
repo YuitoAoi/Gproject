@@ -1,9 +1,7 @@
-from typing import List, Optional
-
-from fastapi import APIRouter, Depends, Query, Request, UploadFile, File, Form
+# ruff: noqa: RUF002
+from fastapi import APIRouter, Depends, File, Form, Query, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
-
 from src.app.dependencies import get_current_user, get_services
 from src.services import (
     GetDatasetResponse,
@@ -34,10 +32,10 @@ from src.services.dataset_remove_service import (
     DatasetRemoveResponse,
 )
 from src.services.dataset_update_service import (
-    DatasetUpdateRequest,
-    DatasetUpdateResponse,
     DatasetAddTagsBatchRequest,
     DatasetAddTagsBatchResponse,
+    DatasetUpdateRequest,
+    DatasetUpdateResponse,
 )
 from src.services.jwt_service import TokenPayload
 
@@ -93,7 +91,7 @@ def get_dataset(
     owner_id = int(current_user.user_id)
     result = svc.get_datasets().get_by_id(request.dataset_id, owner_id)
     if result.error:
-        return JSONResponse(content=result.model_dump(mode='json'), status_code=404)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=404)
     return result
 
 
@@ -111,7 +109,7 @@ def import_dataset(
     owner_id = int(current_user.user_id)
     result = svc.dataset_import_export().import_dataset(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(mode='json'), status_code=400)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=400)
     return result
 
 
@@ -140,7 +138,7 @@ def upload_chunk(
     data = file.file.read()
     result = svc.chunked_upload().upload_chunk(upload_id, chunk_index, data)
     if result.error:
-        return JSONResponse(content=result.model_dump(mode='json'), status_code=400)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=400)
     return result
 
 
@@ -162,7 +160,7 @@ def complete_upload(
     request.owner_id = int(current_user.user_id)
     result = svc.chunked_upload().complete(request)
     if not result.success:
-        return JSONResponse(content=result.model_dump(mode='json'), status_code=400)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=400)
     return result
 
 
@@ -180,7 +178,7 @@ def update_dataset(
     owner_id = int(current_user.user_id)
     result = svc.update_dataset().execute(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(mode='json'), status_code=404)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=404)
     return result
 
 
@@ -193,7 +191,7 @@ def add_tags_batch(
     owner_id = int(current_user.user_id)
     result = svc.add_tags_batch().execute(request, owner_id)
     if not result.success:
-        return JSONResponse(content=result.model_dump(mode='json'), status_code=400)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=400)
     return result
 
 
@@ -232,8 +230,8 @@ class ProcessCallbackRequest(BaseModel):
     job_id: str
     dataset_id: int
     status: str = ""
-    output_path: Optional[str] = None
-    error: Optional[str] = None
+    output_path: str | None = None
+    error: str | None = None
 
 
 def _is_internal_ip(client_ip: str) -> bool:
@@ -289,9 +287,7 @@ def request_download_token(
 
     info = svc.dataset_import_export().download(request)
     if info.error:
-        return JSONResponse(
-            content={"success": False, "error": info.error}, status_code=404
-        )
+        return JSONResponse(content={"success": False, "error": info.error}, status_code=404)
 
     token = svc.jwt().generate_download_token(
         dataset_id=request.dataset_id,
@@ -329,16 +325,12 @@ def download_by_token(
 
     file_path = ds.meta.file_path
     if not file_path:
-        return JSONResponse(
-            {"success": False, "error": "File path not set"}, status_code=404
-        )
+        return JSONResponse({"success": False, "error": "File path not set"}, status_code=404)
 
     from pathlib import Path
 
     if not Path(file_path).exists():
-        return JSONResponse(
-            {"success": False, "error": "File not found on disk"}, status_code=404
-        )
+        return JSONResponse({"success": False, "error": "File not found on disk"}, status_code=404)
 
     return FileResponse(
         path=file_path,
@@ -361,7 +353,7 @@ def delete_dataset(
     owner_id = int(current_user.user_id)
     result = svc.remove_datasets().execute(request, owner_id)
     if not result.deleted:
-        return JSONResponse(content=result.model_dump(mode='json'), status_code=404)
+        return JSONResponse(content=result.model_dump(mode="json"), status_code=404)
     return result
 
 
@@ -369,8 +361,8 @@ logs_router = APIRouter(prefix="/dataset", tags=["dataset"])
 
 
 class DatasetLogResponse(BaseModel):
-    lines: List[str] = []
-    error: Optional[str] = None
+    lines: list[str] = []
+    error: str | None = None
 
 
 @logs_router.get("/logs")
@@ -390,6 +382,6 @@ def get_dataset_logs(
     if not os.path.isfile(record.log_path):
         return DatasetLogResponse(error="日志文件已过期")
 
-    with open(record.log_path, "r", encoding="utf-8") as f:
+    with open(record.log_path, encoding="utf-8") as f:
         lines = [line.rstrip("\n") for line in f.readlines()]
     return DatasetLogResponse(lines=lines)

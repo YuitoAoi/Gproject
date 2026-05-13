@@ -1,13 +1,10 @@
 """数据集日志仓储 —— SQLAlchemy Core Table。"""
+
 from __future__ import annotations
 
 import logging
-from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, text
-from sqlalchemy.orm import Session
-
 from src.adapters.repositories._utils import ensure_datetime
 from src.core.dataset_log import DatasetLog
 from src.services.interfaces.db_conn import DatabaseConnection
@@ -40,7 +37,7 @@ class DatasetLogRepository:
         assert self._conn.engine is not None
         _metadata.create_all(self._conn.engine)
 
-    def insert(self, log: DatasetLog) -> Optional[Exception]:
+    def insert(self, log: DatasetLog) -> Exception | None:
         try:
             with self._conn.new_session() as session:
                 session.execute(
@@ -62,7 +59,7 @@ class DatasetLogRepository:
             _logger.exception("Failed to insert dataset_log")
             return exc
 
-    def find_by_job_id(self, job_id: str) -> Optional[DatasetLog]:
+    def find_by_job_id(self, job_id: str) -> DatasetLog | None:
         try:
             with self._conn.new_session() as session:
                 row = session.execute(
@@ -82,7 +79,7 @@ class DatasetLogRepository:
             _logger.exception("Failed to find dataset_log by job_id=%s", job_id)
             return None
 
-    def update_by_job_id(self, job_id: str, dataset_id: int, log_path: str) -> Optional[Exception]:
+    def update_by_job_id(self, job_id: str, dataset_id: int, log_path: str) -> Exception | None:
         try:
             with self._conn.new_session() as session:
                 session.execute(
@@ -97,7 +94,7 @@ class DatasetLogRepository:
             _logger.exception("Failed to update dataset_log by job_id=%s", job_id)
             return exc
 
-    def remove_by_job_id(self, job_id: str) -> Optional[Exception]:
+    def remove_by_job_id(self, job_id: str) -> Exception | None:
         try:
             with self._conn.new_session() as session:
                 session.execute(

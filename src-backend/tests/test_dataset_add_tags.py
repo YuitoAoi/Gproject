@@ -1,23 +1,29 @@
+# ruff: noqa: RUF002, RUF003, E402
 """DatasetAddTagsBatchService 测试 —— 单元测试 + 集成测试"""
+
 from unittest.mock import MagicMock
 
 import pytest
-
 from src.core.dataset import Dataset, DatasetMeta
 from src.services.dataset_update_service import (
-    DatasetAddTagsBatchService,
     DatasetAddTagsBatchRequest,
+    DatasetAddTagsBatchService,
 )
 
 
 def _make_dataset(owner_id=1, id=1, name="ds1", tag_ids=None):
     from datetime import datetime
+
     now = datetime.now()
     return Dataset(
-        id=id, owner_id=owner_id, name=name,
+        id=id,
+        owner_id=owner_id,
+        name=name,
         meta=DatasetMeta(format="csv", file_path="/d.csv", file_size=100),
-        status=0, tag_ids=tag_ids or [],
-        created_at=now, updated_at=now,
+        status=0,
+        tag_ids=tag_ids or [],
+        created_at=now,
+        updated_at=now,
     )
 
 
@@ -25,8 +31,8 @@ def _make_dataset(owner_id=1, id=1, name="ds1", tag_ids=None):
 # 单元测试（mock 仓储）
 # ══════════════════════════════════════════════════════════
 
-class TestAddTagsBatchUnit:
 
+class TestAddTagsBatchUnit:
     @pytest.fixture
     def mock_repo(self):
         return MagicMock()
@@ -153,15 +159,18 @@ class TestAddTagsBatchUnit:
 
 import sys
 from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src" / "services"))
 
 
 @pytest.fixture(scope="session")
 def sqlite_conn():
     from src.db_connections.sqlite import SqliteConnection
+
     conn = SqliteConnection("sqlite:///:memory:", echo=False)
     conn.start()
     from src.adapters.repositories.dataset_repo import DatasetRepositoryAdapter
+
     DatasetRepositoryAdapter(conn).init_table()
     yield conn
     conn.dispose()
@@ -170,10 +179,12 @@ def sqlite_conn():
 @pytest.fixture
 def repo(sqlite_conn):
     from sqlalchemy import text
+
     with sqlite_conn.new_session() as s:
         s.execute(text("DELETE FROM datasets"))
         s.commit()
     from src.adapters.repositories.dataset_repo import DatasetRepositoryAdapter
+
     return DatasetRepositoryAdapter(sqlite_conn)
 
 
@@ -184,17 +195,20 @@ def add_tags_svc(repo):
 
 def _ds(owner_id=1, name="ds1", tag_ids=None) -> Dataset:
     from datetime import datetime
+
     now = datetime.now()
     return Dataset(
-        owner_id=owner_id, name=name,
+        owner_id=owner_id,
+        name=name,
         meta=DatasetMeta(format="csv", file_path="/d.csv", file_size=100),
-        status=0, tag_ids=tag_ids or [],
-        created_at=now, updated_at=now,
+        status=0,
+        tag_ids=tag_ids or [],
+        created_at=now,
+        updated_at=now,
     )
 
 
 class TestAddTagsBatchIntegration:
-
     def test_add_tags_end_to_end(self, repo, add_tags_svc):
         """E2E：创建数据集 → 批量加标签 → DB 中验证。"""
         ds1 = _ds(name="a")
@@ -202,9 +216,7 @@ class TestAddTagsBatchIntegration:
         assert repo.create(ds1) is None
         assert repo.create(ds2) is None
 
-        req = DatasetAddTagsBatchRequest(
-            dataset_ids=[ds1.id, ds2.id], tag_ids=[10, 20]
-        )
+        req = DatasetAddTagsBatchRequest(dataset_ids=[ds1.id, ds2.id], tag_ids=[10, 20])
         resp = add_tags_svc.execute(req, owner_id=1)
         assert resp.success is True
 

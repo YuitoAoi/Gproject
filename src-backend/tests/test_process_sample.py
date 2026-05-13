@@ -1,8 +1,8 @@
 """DatasetProcessService 样本读取测试"""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from src.core.dataset import DatasetMeta
 from src.services.dataset_process_service import (
     DatasetProcessService,
@@ -16,7 +16,6 @@ def svc():
 
 
 class TestSampleParsing:
-
     def test_jsonl_sample(self, svc):
         jsonl_data = b'{"text":"hello","label":"a"}\n{"text":"world","label":"b"}\n'
         ds = MagicMock()

@@ -1,7 +1,8 @@
 from src.app import app as app
 
 if __name__ == "__main__":
-    import sys, pathlib
+    import pathlib
+    import sys
 
     _src = pathlib.Path(__file__).resolve().parent
     if str(_src) not in sys.path:
@@ -9,6 +10,7 @@ if __name__ == "__main__":
 
     import uvicorn
     from src.core.config import config
+
     uvicorn.run("src.main:app", host=config.HOST, port=int(config.PORT), reload=True)
 
 # poetry run python -m src.main # 配置生效, 默认监听0.0.0.0:8088

@@ -1,10 +1,9 @@
+# ruff: noqa: RUF002
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
 
 from pydantic import BaseModel
-
 from src.core.dataset import Dataset
 from src.services.interfaces.dataset_repository import DatasetRepository
 
@@ -14,32 +13,32 @@ class DatasetItemDTO(BaseModel):
 
     id: int
     name: str
-    desc: Optional[str] = None
+    desc: str | None = None
     format: str
     file_size: int
     status: int
-    tag_ids: List[int] = []
-    output_path: Optional[str] = None
+    tag_ids: list[int] = []
+    output_path: str | None = None
     created_at: datetime
     updated_at: datetime
 
 
 class GetDatasetsResponse(BaseModel):
-    items: List[DatasetItemDTO]
+    items: list[DatasetItemDTO]
     total: int
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class GetDatasetResponse(BaseModel):
-    dataset: Optional[DatasetItemDTO] = None
-    error: Optional[str] = None
+    dataset: DatasetItemDTO | None = None
+    error: str | None = None
 
 
 class GetTimesResponse(BaseModel):
     total: int
     today_new: int
     today_modified: int
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class GetDatasetsService:
@@ -69,9 +68,7 @@ class GetDatasetsService:
     def get_all(self, owner_id: int) -> GetDatasetsResponse:
         """返回指定用户的数据集列表。"""
         try:
-            items = [
-                self._to_dto(d) for d in self._dataset_repo.find_by_owner(owner_id)
-            ]
+            items = [self._to_dto(d) for d in self._dataset_repo.find_by_owner(owner_id)]
             return GetDatasetsResponse(items=items, total=len(items))
         except Exception as e:
             return GetDatasetsResponse(items=[], total=0, error=str(e))
@@ -83,9 +80,7 @@ class GetDatasetsService:
             if ds is None:
                 return GetDatasetResponse(error=f"Dataset not found: {dataset_id}")
             if ds.owner_id != owner_id:
-                return GetDatasetResponse(
-                    error=f"Access denied to dataset: {dataset_id}"
-                )
+                return GetDatasetResponse(error=f"Access denied to dataset: {dataset_id}")
             return GetDatasetResponse(dataset=self._to_dto(ds))
         except Exception as e:
             return GetDatasetResponse(error=str(e))
@@ -93,20 +88,14 @@ class GetDatasetsService:
     def get_times(self, owner_id: int) -> GetTimesResponse:
         """返回指定用户的数据集统计：总量、今日新增、今日修改（排除今日新增）。"""
         try:
-            today = datetime.now().replace(
-                hour=0, minute=0, second=0, microsecond=0
-            )
+            today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
 
             all_datasets = self._dataset_repo.find_by_owner(owner_id)
             total = len(all_datasets)
 
-            today_new = self._dataset_repo.count_by_owner_and_date(
-                owner_id, today, "created_at"
-            )
+            today_new = self._dataset_repo.count_by_owner_and_date(owner_id, today, "created_at")
 
-            today_modified = self._dataset_repo.count_modified_today(
-                owner_id, today
-            )
+            today_modified = self._dataset_repo.count_modified_today(owner_id, today)
 
             return GetTimesResponse(
                 total=total,
@@ -114,6 +103,4 @@ class GetDatasetsService:
                 today_modified=today_modified,
             )
         except Exception as e:
-            return GetTimesResponse(
-                total=0, today_new=0, today_modified=0, error=str(e)
-            )
+            return GetTimesResponse(total=0, today_new=0, today_modified=0, error=str(e))

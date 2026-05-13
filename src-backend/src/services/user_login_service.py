@@ -1,5 +1,5 @@
+# ruff: noqa: E402
 import logging
-from typing import Optional
 from datetime import datetime
 
 from pydantic import BaseModel
@@ -14,18 +14,20 @@ from src.services.utils import is_valid_email
 
 class UserLoginRequest(BaseModel):
     """登录请求。仅接受 email + password。"""
+
     email: str
     password: str
 
 
 class UserLoginResponse(BaseModel):
     """登录响应"""
-    user_id: Optional[int] = None
-    access_token: Optional[str] = None
-    refresh_token: Optional[str] = None
-    expires_in: Optional[int] = None
+
+    user_id: int | None = None
+    access_token: str | None = None
+    refresh_token: str | None = None
+    expires_in: int | None = None
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class UserLoginService:
@@ -39,9 +41,7 @@ class UserLoginService:
         self._jwt_service = jwt_service
         self._user_repo = user_repo
 
-    def execute(
-        self, request: UserLoginRequest, login_ip: str = ""
-    ) -> UserLoginResponse:
+    def execute(self, request: UserLoginRequest, login_ip: str = "") -> UserLoginResponse:
         if not request.email:
             return UserLoginResponse(error="Email cannot be empty.")
         if not request.password:
@@ -63,9 +63,7 @@ class UserLoginService:
             _logger.warning("Failed to update last_login for user_id=%s", user.id)
 
         # 生成 JWT Token
-        token_pair = self._jwt_service.generate_token_pair(
-            user_id=str(user.id), email=user.email
-        )
+        token_pair = self._jwt_service.generate_token_pair(user_id=str(user.id), email=user.email)
 
         return UserLoginResponse(
             user_id=user.id,

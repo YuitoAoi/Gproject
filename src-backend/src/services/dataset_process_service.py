@@ -1,3 +1,4 @@
+# ruff: noqa: RUF001, RUF002, RUF003
 """数据集处理服务：样本预览、图生成任务提交/查询/取消、文件下载。"""
 
 from __future__ import annotations
@@ -10,10 +11,9 @@ import re
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel, Field
-
 from src.core.dataset import Dataset, DatasetMeta
 from src.services.interfaces.dataset_repository import DatasetRepository
 from src.services.interfaces.file_repository import FileRepository
@@ -37,10 +37,10 @@ class SampleRequest(BaseModel):
 class SampleResponse(BaseModel):
     """样本预览响应"""
 
-    columns: List[str] = Field(default_factory=list, description="表头列名列表")
-    rows: List[Dict[str, Any]] = Field(default_factory=list, description="样本数据行")
+    columns: list[str] = Field(default_factory=list, description="表头列名列表")
+    rows: list[dict[str, Any]] = Field(default_factory=list, description="样本数据行")
     total_rows: int = Field(default=0, description="文件总行数")
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # ══════════════════════════════════════════════════════════
@@ -74,9 +74,9 @@ class DatasetProcessRequest(BaseModel):
 
     # Optional with defaults
     tokenizer: str = "cl100k_base"
-    trainee_model: Optional[str] = None
-    trainee_url: Optional[str] = None
-    trainee_api_key: Optional[str] = None
+    trainee_model: str | None = None
+    trainee_url: str | None = None
+    trainee_api_key: str | None = None
     chunk_size: int = Field(default=1024, gt=0)
     chunk_overlap: int = Field(default=100, ge=0)
     quiz_samples: int = Field(default=2, ge=0)
@@ -99,12 +99,12 @@ class DatasetProcessResponse(BaseModel):
 
     job_id: str
     status: Literal["pending", "running", "done", "failed", "cancelled"]
-    created_at: Optional[str] = None
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
+    created_at: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
     progress: float = Field(default=0.0, ge=0.0, le=1.0)
-    error: Optional[str] = None
-    output_path: Optional[str] = None
+    error: str | None = None
+    output_path: str | None = None
 
 
 # ══════════════════════════════════════════════════════════
@@ -212,19 +212,22 @@ class DatasetProcessService:
 
         # 创建任务记录
         if job_id and self._task_repo is not None:
-            from src.core.task_record import TaskRecord as TR
+            from src.core.task_record import TaskRecord as TR  # noqa: N817
+
             task = TR(
                 owner_id=ds.owner_id,
                 task_name=ds.name,
                 task_type="cleaning",
                 status="pending",
-                config=TR.config_to_json({
-                    "job_id": job_id,
-                    "dataset_id": request.dataset_id,
-                    "mode": request.mode,
-                    "data_format": request.data_format,
-                    "content_field": request.content_field,
-                }),
+                config=TR.config_to_json(
+                    {
+                        "job_id": job_id,
+                        "dataset_id": request.dataset_id,
+                        "mode": request.mode,
+                        "data_format": request.data_format,
+                        "content_field": request.content_field,
+                    }
+                ),
             )
             self._task_repo.insert(task)
 
@@ -237,6 +240,7 @@ class DatasetProcessService:
                 with open(log_dst, "w", encoding="utf-8") as f:
                     f.write(f"[{datetime.now().isoformat()}] [INFO] Task submitted, job_id={job_id}\n")
                 from src.core.dataset_log import DatasetLog as DSLog
+
                 log_record = DSLog(
                     job_id=job_id,
                     dataset_id=0,  # 先设为0，完成时会更新
@@ -249,13 +253,13 @@ class DatasetProcessService:
 
         # 提交 Celery 异步监控（Celery 不可用时不影响任务提交）
         if job_id and self._celery is not None:
-            try:
+            import contextlib
+
+            with contextlib.suppress(Exception):
                 self._celery.send_task(
                     "dataset.monitor_graphgen",
                     kwargs={"job_id": job_id, "dataset_id": request.dataset_id},
                 )
-            except Exception:
-                pass
 
         return DatasetProcessResponse(
             job_id=job_id,
@@ -333,16 +337,19 @@ class DatasetProcessService:
                 if self._task_repo is not None:
                     task = self._task_repo.find_by_config_job_id(ds.owner_id, job_id)
                     if task:
-                        from src.core.task_record import TaskRecord as TR
+                        from src.core.task_record import TaskRecord as TR  # noqa: N817
+
                         task.status = "done"
                         task.progress = 1.0
                         task.phase = "处理完成"
-                        task.config = TR.config_to_json({
-                            "job_id": job_id,
-                            "dataset_id": dataset_id,
-                            "output_dataset_id": output_ds.id,
-                            "mode": result.status,
-                        })
+                        task.config = TR.config_to_json(
+                            {
+                                "job_id": job_id,
+                                "dataset_id": dataset_id,
+                                "output_dataset_id": output_ds.id,
+                                "mode": result.status,
+                            }
+                        )
                         task.updated_at = datetime.now()
                         self._task_repo.update(task.id, task)
 
@@ -407,9 +414,7 @@ class DatasetProcessService:
             if isinstance(detail, dict):
                 return detail.get("detail", resp.text)
             if isinstance(detail, list):
-                return "; ".join(
-                    d.get("msg", str(d)) for d in detail if isinstance(d, dict)
-                )
+                return "; ".join(d.get("msg", str(d)) for d in detail if isinstance(d, dict))
             return str(detail)
         except Exception:
             return resp.text or f"HTTP {resp.status_code}"
@@ -424,17 +429,12 @@ class DatasetProcessService:
         except StopIteration:
             return SampleResponse(columns=[], rows=[], total_rows=0)
 
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
         total = 0
         for row in reader:
             total += 1
             if len(rows) < limit:
-                rows.append(
-                    {
-                        col: row[i] if i < len(row) else ""
-                        for i, col in enumerate(columns)
-                    }
-                )
+                rows.append({col: row[i] if i < len(row) else "" for i, col in enumerate(columns)})
         return SampleResponse(
             columns=columns,
             rows=rows,
@@ -444,8 +444,8 @@ class DatasetProcessService:
     def _sample_jsonl(self, file_path: str, limit: int) -> SampleResponse:
         raw = self._file_repo.read(file_path)
         lines = raw.decode("utf-8").strip().splitlines()
-        rows: List[Dict[str, Any]] = []
-        columns: List[str] = []
+        rows: list[dict[str, Any]] = []
+        columns: list[str] = []
         for line in lines:
             try:
                 obj = json.loads(line)
@@ -482,8 +482,8 @@ class DatasetProcessService:
         if not isinstance(data, list):
             return SampleResponse(columns=[], rows=[], total_rows=0)
 
-        rows: List[Dict[str, Any]] = []
-        columns: List[str] = []
+        rows: list[dict[str, Any]] = []
+        columns: list[str] = []
         for item in data[:limit]:
             if isinstance(item, dict):
                 rows.append(item)
@@ -513,17 +513,12 @@ class DatasetProcessService:
             wb.close()
             return SampleResponse(columns=[], rows=[], total_rows=0)
 
-        rows: List[Dict[str, Any]] = []
+        rows: list[dict[str, Any]] = []
         total = 0
         for row in rows_iter:
             total += 1
             if len(rows) < limit:
-                rows.append(
-                    {
-                        col: (row[i] if i < len(row) else "")
-                        for i, col in enumerate(columns)
-                    }
-                )
+                rows.append({col: (row[i] if i < len(row) else "") for i, col in enumerate(columns)})
         wb.close()
         return SampleResponse(
             columns=columns,
@@ -534,7 +529,7 @@ class DatasetProcessService:
     def _sample_raw_text(self, file_path: str, limit: int) -> SampleResponse:
         raw = self._file_repo.read(file_path)
         text = raw.decode("utf-8", errors="replace")
-        lines = [l for l in text.splitlines() if l.strip()]
+        lines = [ln for ln in text.splitlines() if ln.strip()]
         columns = ["content"]
-        rows = [{"content": line} for _, line in zip(range(limit), lines)]
+        rows = [{"content": ln} for _, ln in zip(range(limit), lines, strict=False)]
         return SampleResponse(columns=columns, rows=rows, total_rows=len(lines))

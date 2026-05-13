@@ -1,3 +1,4 @@
+# ruff: noqa: RUF002
 """数据集更新服务：name / desc / tag_ids 可编辑，meta 不可编辑。"""
 
 from __future__ import annotations
@@ -5,7 +6,6 @@ from __future__ import annotations
 from datetime import datetime
 
 from pydantic import BaseModel, Field
-
 from src.services.interfaces.dataset_repository import DatasetRepository
 
 
@@ -39,18 +39,12 @@ class DatasetUpdateService:
     def __init__(self, dataset_repo: DatasetRepository) -> None:
         self._repo = dataset_repo
 
-    def execute(
-        self, request: DatasetUpdateRequest, owner_id: int
-    ) -> DatasetUpdateResponse:
+    def execute(self, request: DatasetUpdateRequest, owner_id: int) -> DatasetUpdateResponse:
         ds = self._repo.find_by_id(request.dataset_id)
         if ds is None:
-            return DatasetUpdateResponse(
-                error=f"Dataset not found: {request.dataset_id}"
-            )
+            return DatasetUpdateResponse(error=f"Dataset not found: {request.dataset_id}")
         if ds.owner_id != owner_id:
-            return DatasetUpdateResponse(
-                error=f"Dataset not found: {request.dataset_id}"
-            )
+            return DatasetUpdateResponse(error=f"Dataset not found: {request.dataset_id}")
 
         changed = False
 
@@ -85,9 +79,7 @@ class DatasetAddTagsBatchService:
     def __init__(self, dataset_repo: DatasetRepository) -> None:
         self._repo = dataset_repo
 
-    def execute(
-        self, request: DatasetAddTagsBatchRequest, owner_id: int
-    ) -> DatasetAddTagsBatchResponse:
+    def execute(self, request: DatasetAddTagsBatchRequest, owner_id: int) -> DatasetAddTagsBatchResponse:
         if not request.dataset_ids:
             return DatasetAddTagsBatchResponse(error="No dataset IDs provided")
         if not request.tag_ids:

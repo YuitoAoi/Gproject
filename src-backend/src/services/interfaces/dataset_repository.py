@@ -5,7 +5,6 @@ from src.core.dataset import Dataset
 
 
 class DatasetRepository(abc.ABC):
-
     @abc.abstractmethod
     def create(self, dataset: Dataset) -> Exception | None:
         pass
@@ -39,9 +38,7 @@ class DatasetRepository(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def count_by_owner_and_date(
-        self, owner_id: int, date: "datetime", field: str
-    ) -> int:
+    def count_by_owner_and_date(self, owner_id: int, date: "datetime", field: str) -> int:
         pass
 
     @abc.abstractmethod

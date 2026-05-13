@@ -6,7 +6,6 @@ from src.services.interfaces.file_repository import FileRepository
 
 
 class WindowsFileRepository(FileRepository):
-
     def __init__(self, working_dir: str = "."):
         self._working_dir = Path(working_dir).resolve()
 
