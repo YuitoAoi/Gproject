@@ -36,6 +36,14 @@ class Config(BaseSettings):
     JWT_SECRET_KEY: str = "your-secret-key"
     ACCESS_TOKEN_EXPIRE_SECONDS: int = 21600
 
+    LLAMAFACTORY_API_PREFIX: str = "/v1"
+    LLAMAFACTORY_TIMEOUT_MS: int = 30000
+    LLAMAFACTORY_RETRIES: int = 2
+    LLAMAFACTORY_DATA_DIR: str = "data/llamafactory/data"
+    LLAMAFACTORY_DATASET_INFO_PATH: str = "data/llamafactory/data/dataset_info.json"
+    LLAMAFACTORY_JOB_DIR: str = "data/llamafactory/jobs"
+    LLAMAFACTORY_TRAIN_COMMAND: str = "llamafactory-cli"
+    LLAMAFACTORY_POLL_INTERVAL_SECONDS: int = 5
     GRAPHGEN_API_URL: str = "http://localhost:8001/api/v1"
     SYNTHESIZER_MODEL: str = "Qwen/Qwen2.5-7B-Instruct"
     SYNTHESIZER_BASE_URL: str = "https://api.siliconflow.cn/v1"

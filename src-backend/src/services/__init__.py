@@ -54,6 +54,13 @@ from src.services.dataset_process_service import (
 from src.services.dataset_update_service import DatasetUpdateService, DatasetAddTagsBatchService
 from src.services.dataset_remove_service import DatasetRemoveService
 from src.services.dataset_tag_service import DatasetTagService
+from src.services.llamafactory_service import (
+    LlamaFactoryService,
+    LlamaFactoryDatasetSyncRequest,
+    LlamaFactoryDatasetSyncResponse,
+    LlamaFactoryChatRequest,
+    LlamaFactoryChatResponse,
+)
 
 __all__ = [
     "ServiceFactory",
@@ -104,6 +111,7 @@ class ServiceFactory:
         self._dataset_add_tags: Optional[DatasetAddTagsBatchService] = None
         self._datasets_remove: Optional[DatasetRemoveService] = None
         self._dataset_tag: Optional[DatasetTagService] = None
+        self._llamafactory = None
 
     # ── 仓储懒加载 ──────────────────────────────────────────
 
@@ -263,6 +271,26 @@ class ServiceFactory:
             self._dataset_tag = DatasetTagService(self.dataset_tag_repo, self.dataset_repo)
         return self._dataset_tag
 
+    def llamafactory(self) -> LlamaFactoryService:
+        if self._llamafactory is None:
+            from src.adapters.celery_client import celery_client
+            from src.adapters.llamafactory_client import LlamaFactoryClient
+            from src.adapters.llamafactory_dataset_client import LlamaFactoryDatasetClient
+            from src.adapters.llamafactory_inference_client import LlamaFactoryInferenceClient
+
+            self._llamafactory = LlamaFactoryService(
+                dataset_repo=self.dataset_repo,
+                task_repo=self.task_repo,
+                file_repo=self.file_repo,
+                llama_client=LlamaFactoryClient(
+                    datasets=LlamaFactoryDatasetClient(file_repo=self.file_repo),
+                    inference=LlamaFactoryInferenceClient(),
+                    training=None,
+                ),
+                celery_client=celery_client,
+            )
+        return self._llamafactory
+
     # ── 生命周期 ─────────────────────────────────────────────
 
     def dispose(self) -> None:
@@ -279,3 +307,4 @@ class ServiceFactory:
         self._dataset_update = None
         self._datasets_remove = None
         self._dataset_tag = None
+        self._llamafactory = None
