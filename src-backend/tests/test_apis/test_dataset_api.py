@@ -1,4 +1,5 @@
 """Dataset API 端点集成测试"""
+
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -18,13 +19,16 @@ if _SVC not in sys.path:
 
 def _make_token_payload(user_id="1"):
     from src.services.jwt_service import TokenPayload
+
     return TokenPayload(user_id=user_id, email="admin@test.com", exp=9999999999)
 
 
 def _build_test_app():
     app = FastAPI()
 
-    from src.app.v1.dataset import router as ds_router, datasets_router, download_router
+    from src.app.v1.dataset import datasets_router, download_router
+    from src.app.v1.dataset import router as ds_router
+
     app.include_router(ds_router)
     app.include_router(datasets_router)
     app.include_router(download_router)
@@ -39,6 +43,7 @@ def _build_test_app():
     app.state.services = mock_svc
 
     from src.app.dependencies import get_services
+
     app.dependency_overrides[get_services] = lambda: mock_svc
 
     return app, mock_svc
@@ -59,14 +64,13 @@ def _auth(kwargs=None):
 
 
 class TestDatasetAPI:
-
     # ═══ GET /datasets ═══════════════════════════════════════
 
     def test_list_empty(self, client):
         tc, mock_svc = client
         from src.services.dataset_get_service import GetDatasetsResponse
-        mock_svc.get_datasets.return_value.get_all.return_value = \
-            GetDatasetsResponse(items=[], total=0)
+
+        mock_svc.get_datasets.return_value.get_all.return_value = GetDatasetsResponse(items=[], total=0)
         resp = tc.get("/datasets", **_auth())
         assert resp.status_code == 200
         assert resp.json()["items"] == []
@@ -74,15 +78,20 @@ class TestDatasetAPI:
     def test_list_with_data(self, client):
         tc, mock_svc = client
         from src.services.dataset_get_service import GetDatasetsResponse
+
         now = datetime.now()
         ds = {
-            "id": 1, "name": "test", "desc": None,
-            "format": "json", "file_size": 1024,
-            "status": 0, "tag_ids": [], "created_at": now.isoformat(),
+            "id": 1,
+            "name": "test",
+            "desc": None,
+            "format": "json",
+            "file_size": 1024,
+            "status": 0,
+            "tag_ids": [],
+            "created_at": now.isoformat(),
             "updated_at": now.isoformat(),
         }
-        mock_svc.get_datasets.return_value.get_all.return_value = \
-            GetDatasetsResponse(items=[ds], total=1)
+        mock_svc.get_datasets.return_value.get_all.return_value = GetDatasetsResponse(items=[ds], total=1)
         resp = tc.get("/datasets", **_auth())
         assert resp.status_code == 200
         assert resp.json()["total"] == 1
@@ -92,15 +101,20 @@ class TestDatasetAPI:
     def test_get_by_id_found(self, client):
         tc, mock_svc = client
         from src.services.dataset_get_service import GetDatasetResponse
+
         now = datetime.now()
         ds = {
-            "id": 1, "name": "test", "desc": None,
-            "format": "json", "file_size": 1024,
-            "status": 0, "tag_ids": [], "created_at": now.isoformat(),
+            "id": 1,
+            "name": "test",
+            "desc": None,
+            "format": "json",
+            "file_size": 1024,
+            "status": 0,
+            "tag_ids": [],
+            "created_at": now.isoformat(),
             "updated_at": now.isoformat(),
         }
-        mock_svc.get_datasets.return_value.get_by_id.return_value = \
-            GetDatasetResponse(dataset=ds)
+        mock_svc.get_datasets.return_value.get_by_id.return_value = GetDatasetResponse(dataset=ds)
         resp = tc.post("/dataset/get", json={"dataset_id": 1}, **_auth())
         assert resp.status_code == 200
         assert resp.json()["dataset"]["name"] == "test"
@@ -108,8 +122,8 @@ class TestDatasetAPI:
     def test_get_by_id_not_found(self, client):
         tc, mock_svc = client
         from src.services.dataset_get_service import GetDatasetResponse
-        mock_svc.get_datasets.return_value.get_by_id.return_value = \
-            GetDatasetResponse(error="Dataset not found: 999")
+
+        mock_svc.get_datasets.return_value.get_by_id.return_value = GetDatasetResponse(error="Dataset not found: 999")
         resp = tc.post("/dataset/get", json={"dataset_id": 999}, **_auth())
         assert resp.status_code == 404
 
@@ -118,11 +132,19 @@ class TestDatasetAPI:
     def test_upload_initiate(self, client):
         tc, mock_svc = client
         from src.services.dataset_import_export_service import InitiateUploadResponse
-        mock_svc.chunked_upload.return_value.initiate.return_value = \
-            InitiateUploadResponse(upload_id="abc123", chunk_size=5242880, total_chunks=3)
-        resp = tc.post("/dataset/upload/initiate", json={
-            "filename": "test.json", "file_size": 15000000, "file_hash": "sha256hex",
-        }, **_auth())
+
+        mock_svc.chunked_upload.return_value.initiate.return_value = InitiateUploadResponse(
+            upload_id="abc123", chunk_size=5242880, total_chunks=3
+        )
+        resp = tc.post(
+            "/dataset/upload/initiate",
+            json={
+                "filename": "test.json",
+                "file_size": 15000000,
+                "file_hash": "sha256hex",
+            },
+            **_auth(),
+        )
         assert resp.status_code == 200
         assert resp.json()["upload_id"] == "abc123"
 
@@ -131,9 +153,11 @@ class TestDatasetAPI:
     def test_get_sample(self, client):
         tc, mock_svc = client
         from src.services.dataset_process_service import SampleResponse
+
         mock_svc.dataset_repo.find.return_value = MagicMock(owner_id=1)
-        mock_svc.process_dataset.return_value.get_sample.return_value = \
-            SampleResponse(columns=["Q", "A"], rows=[{"Q": "x", "A": "y"}], total_rows=100)
+        mock_svc.process_dataset.return_value.get_sample.return_value = SampleResponse(
+            columns=["Q", "A"], rows=[{"Q": "x", "A": "y"}], total_rows=100
+        )
         resp = tc.post("/dataset/sample", json={"dataset_id": 1, "limit": 50}, **_auth())
         assert resp.status_code == 200
         assert resp.json()["columns"] == ["Q", "A"]
@@ -143,17 +167,23 @@ class TestDatasetAPI:
     def test_process_clean(self, client):
         tc, mock_svc = client
         from src.services.dataset_process_service import DatasetProcessResponse
+
         mock_svc.dataset_repo.find.return_value = MagicMock(owner_id=1)
-        mock_svc.process_dataset.return_value.process.return_value = \
-            DatasetProcessResponse(job_id="task-123", status="pending")
-        resp = tc.post("/dataset/process", json={
-            "dataset_id": 1,
-            "api_key": "sk-xxx",
-            "synthesizer_url": "https://api.example.com/v1",
-            "synthesizer_model": "Qwen/Qwen2.5-7B-Instruct",
-            "mode": "atomic",
-            "data_format": "Alpaca",
-        }, **_auth())
+        mock_svc.process_dataset.return_value.process.return_value = DatasetProcessResponse(
+            job_id="task-123", status="pending"
+        )
+        resp = tc.post(
+            "/dataset/process",
+            json={
+                "dataset_id": 1,
+                "api_key": "sk-xxx",
+                "synthesizer_url": "https://api.example.com/v1",
+                "synthesizer_model": "Qwen/Qwen2.5-7B-Instruct",
+                "mode": "atomic",
+                "data_format": "Alpaca",
+            },
+            **_auth(),
+        )
         assert resp.status_code == 200
         assert resp.json()["job_id"] == "task-123"
 
@@ -167,12 +197,16 @@ class TestDatasetAPI:
     def test_request_download_token(self, client):
         tc, mock_svc = client
         from src.services.dataset_import_export_service import DatasetImportExportResponse
+
         mock_svc.dataset_repo.find.return_value = MagicMock(owner_id=1)
-        mock_svc.dataset_import_export.return_value.download.return_value = \
-            DatasetImportExportResponse(
-                success=True, dataset_id=1, filename="test.json",
-                file_size=1024, format="json", sha256="abc",
-            )
+        mock_svc.dataset_import_export.return_value.download.return_value = DatasetImportExportResponse(
+            success=True,
+            dataset_id=1,
+            filename="test.json",
+            file_size=1024,
+            format="json",
+            sha256="abc",
+        )
         mock_svc.jwt.return_value.generate_download_token.return_value = "token-xyz"
         resp = tc.post("/dataset/download", json={"dataset_id": 1}, **_auth())
         assert resp.status_code == 200
@@ -194,8 +228,8 @@ class TestDatasetAPI:
     def test_delete_success(self, client):
         tc, mock_svc = client
         from src.services.dataset_remove_service import DatasetRemoveResponse
-        mock_svc.remove_datasets.return_value.execute.return_value = \
-            DatasetRemoveResponse(success=True, deleted=[1])
+
+        mock_svc.remove_datasets.return_value.execute.return_value = DatasetRemoveResponse(success=True, deleted=[1])
         resp = tc.request("DELETE", "/datasets", json={"dataset_ids": [1]}, **_auth())
         assert resp.status_code == 200
         assert resp.json()["deleted"] == [1]
@@ -203,8 +237,10 @@ class TestDatasetAPI:
     def test_delete_not_found(self, client):
         tc, mock_svc = client
         from src.services.dataset_remove_service import DatasetRemoveResponse
-        mock_svc.remove_datasets.return_value.execute.return_value = \
-            DatasetRemoveResponse(success=False, errors=["Dataset not found: 999"])
+
+        mock_svc.remove_datasets.return_value.execute.return_value = DatasetRemoveResponse(
+            success=False, errors=["Dataset not found: 999"]
+        )
         resp = tc.request("DELETE", "/datasets", json={"dataset_ids": [999]}, **_auth())
         assert resp.status_code == 404
 

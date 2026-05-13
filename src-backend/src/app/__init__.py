@@ -1,22 +1,27 @@
+# ruff: noqa: RUF002, RUF003, N999, E402
 from __future__ import annotations
+
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from src.services import ServiceFactory
 from src.core.config import config
+from src.services import ServiceFactory
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """应用生命周期：启动时组装服务，数据库不可达则退出。"""
     import logging
+
     logger = logging.getLogger("uvicorn")
 
-    from src.db_connections import create_db_connection
-    from src.adapters.repositories.user_repo import UserRepositoryAdapter
     from src.adapters.repositories.dataset_repo import DatasetRepositoryAdapter
     from src.adapters.repositories.dataset_tag_repo import DatasetTagRepositoryAdapter
+    from src.adapters.repositories.user_repo import UserRepositoryAdapter
     from src.adapters.repositories.windows_file_repo import WindowsFileRepository
+    from src.db_connections import create_db_connection
 
     db_conn = create_db_connection(config.DATABASE_URL)
 
@@ -27,8 +32,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
     # ── 超级用户初始化：id=0 表首位 ──────────────────────────
     from datetime import datetime
-    from src.core.password_encryptor import hash_password
+
     from sqlalchemy import text
+    from src.core.password_encryptor import hash_password
 
     user_repo = UserRepositoryAdapter(db_conn)
     user_repo.init_table()
@@ -47,16 +53,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         now = datetime.now()
         s = db_conn.new_session()
         try:
-            s.execute(text(
-                "INSERT INTO users (id, name, email, password, is_admin, is_active, created_at, last_login, last_login_ip) "
-                "VALUES (0, :name, :email, :password, 1, 1, :now, :now, :ip)"
-            ), {
-                "name": "super",
-                "email": config.SUPER_USER_EMAIL,
-                "password": hash_password(config.SUPER_USER_PASSWORD),
-                "now": now,
-                "ip": "",
-            })
+            s.execute(
+                text(
+                    "INSERT INTO users (id, name, email, password, is_admin, is_active, created_at, last_login, last_login_ip) "
+                    "VALUES (0, :name, :email, :password, 1, 1, :now, :now, :ip)"
+                ),
+                {
+                    "name": "super",
+                    "email": config.SUPER_USER_EMAIL,
+                    "password": hash_password(config.SUPER_USER_PASSWORD),
+                    "now": now,
+                    "ip": "",
+                },
+            )
             s.commit()
         finally:
             s.close()
@@ -144,6 +153,7 @@ from src.app.v1.ws_progress import router as ws_router
 app.include_router(ws_router)
 
 from fastapi.middleware.cors import CORSMiddleware
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.BACKEND_CORS_ORIGINS,

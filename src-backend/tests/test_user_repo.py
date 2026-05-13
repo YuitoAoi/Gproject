@@ -1,7 +1,7 @@
+# ruff: noqa: RUF002, RUF003, B017
 from datetime import datetime
 
 import pytest
-
 from src.core.user import User
 
 

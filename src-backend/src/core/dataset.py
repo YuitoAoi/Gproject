@@ -1,7 +1,8 @@
+# ruff: noqa: RUF002
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -9,15 +10,15 @@ from pydantic import BaseModel, Field
 class DatasetMeta(BaseModel):
     """数据集元信息。"""
 
-    format: Literal["txt","md","csv", "xlsx", "json", "jsonl"] = Field(..., description="数据格式")
+    format: Literal["txt", "md", "csv", "xlsx", "json", "jsonl"] = Field(..., description="数据格式")
     file_path: str
     file_size: int
-    output_path: Optional[str] = None
-    log_path: Optional[str] = None
+    output_path: str | None = None
+    log_path: str | None = None
 
     # ── 序列化 ──────────────────────────────────────────────
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转为普通 dict。"""
         return self.model_dump()
 
@@ -28,7 +29,7 @@ class DatasetMeta(BaseModel):
     # ── 反序列化 ────────────────────────────────────────────
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> DatasetMeta:
+    def from_dict(cls, data: dict[str, Any]) -> DatasetMeta:
         """从 dict 构建实例，自动校验。"""
         return cls.model_validate(data)
 
@@ -41,19 +42,19 @@ class DatasetMeta(BaseModel):
 class Dataset(BaseModel):
     """数据集实体。"""
 
-    id: Optional[int] = None
+    id: int | None = None
     owner_id: int
     name: str
-    desc: Optional[str] = None
+    desc: str | None = None
     meta: DatasetMeta
     status: int
-    tag_ids: List[int] = Field(default_factory=list)
+    tag_ids: list[int] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime
 
     # ── 序列化 ──────────────────────────────────────────────
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """转为普通 dict（含嵌套 meta）。"""
         return self.model_dump()
 
@@ -64,7 +65,7 @@ class Dataset(BaseModel):
     # ── 反序列化 ────────────────────────────────────────────
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> Dataset:
+    def from_dict(cls, data: dict[str, Any]) -> Dataset:
         """从 dict 构建实例，自动校验嵌套的 meta。"""
         return cls.model_validate(data)
 
@@ -82,9 +83,9 @@ class Dataset(BaseModel):
         owner_id: int,
         name: str,
         meta: DatasetMeta,
-        desc: Optional[str] = None,
+        desc: str | None = None,
         status: int = 0,
-        tag_ids: Optional[List[int]] = None,
+        tag_ids: list[int] | None = None,
     ) -> Dataset:
         """创建新数据集，自动填充 id 与时间戳。"""
         now = datetime.now()

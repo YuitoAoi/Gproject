@@ -1,6 +1,7 @@
+# ruff: noqa: RUF002
 """WebSocket 进度路由 —— /ws/progress?job_id=xxx"""
-from fastapi import APIRouter, Query, WebSocket
 
+from fastapi import APIRouter, Query, WebSocket
 from src.services.progress_manager import get_progress_manager
 
 router = APIRouter()

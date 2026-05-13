@@ -1,9 +1,9 @@
+# ruff: noqa: RUF002
 """HTTPClient 单元测试"""
+
 from unittest.mock import MagicMock, patch
 
-import httpx
 import pytest
-
 from src.services.interfaces.http_client import HTTPClient, HTTPClientConfig
 
 
@@ -12,7 +12,6 @@ class _TestClient(HTTPClient):
 
 
 class TestHTTPClient:
-
     @pytest.fixture
     def config(self):
         return HTTPClientConfig(name="test", url="http://localhost:9999", retries=2, timeout=1000)
@@ -49,7 +48,7 @@ class TestHTTPClient:
         mock_client.get.return_value = mock_resp
         mock_client_cls.return_value = mock_client
 
-        with _TestClient(config) as client:
+        with _TestClient(config) as _client:
             pass
         mock_client.close.assert_called_once()
 
@@ -63,10 +62,15 @@ class TestHTTPClient:
         mock_client_cls.return_value = mock_client
 
         client = _TestClient(config)
-        resp = client.get("/api/test", params={"key": "val"})
+        _resp = client.get("/api/test", params={"key": "val"})
         mock_client.request.assert_called_with(
-            method="GET", url="/api/test", params={"key": "val"},
-            json=None, data=None, headers=None, files=None,
+            method="GET",
+            url="/api/test",
+            params={"key": "val"},
+            json=None,
+            data=None,
+            headers=None,
+            files=None,
         )
 
     @patch("src.services.interfaces.http_client.httpx.Client")
@@ -79,10 +83,15 @@ class TestHTTPClient:
         mock_client_cls.return_value = mock_client
 
         client = _TestClient(config)
-        resp = client.post("/api/data", json={"key": "val"})
+        _resp = client.post("/api/data", json={"key": "val"})
         mock_client.request.assert_called_with(
-            method="POST", url="/api/data", params=None,
-            json={"key": "val"}, data=None, headers=None, files=None,
+            method="POST",
+            url="/api/data",
+            params=None,
+            json={"key": "val"},
+            data=None,
+            headers=None,
+            files=None,
         )
 
     @patch("src.services.interfaces.http_client.httpx.Client")
@@ -112,7 +121,7 @@ class TestHTTPClient:
         mock_client_cls.return_value = mock_client
 
         client = _TestClient(config)
-        resp = client.get("/test")
+        _resp = client.get("/test")
         assert mock_client.request.call_count == 2
 
     @patch("src.services.interfaces.http_client.httpx.Client")

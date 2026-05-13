@@ -5,7 +5,7 @@
 :root {
   /* Base Colors */
   --lfp-color: #ffffff;
-  --theme-color: var(--main-color);
+  --theme-color: var(--lfp-primary);
 
   /* Theme Colors - OKLCH Format */
   --lfp-primary: oklch(0.7 0.23 260);

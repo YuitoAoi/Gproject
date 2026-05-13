@@ -1,16 +1,16 @@
+# ruff: noqa: RUF003
 from datetime import datetime
-from typing import Optional
 
 from pydantic import BaseModel
-
-from src.core.user import User
 from src.core.password_encryptor import hash_password
+from src.core.user import User
 from src.services.interfaces.user_repository import UserRepository
-from src.services.utils import is_safe_name, is_safe_password, is_valid_email, is_strong_password
+from src.services.utils import is_safe_name, is_safe_password, is_strong_password, is_valid_email
 
 
 class UserRegisterRequest(BaseModel):
     """注册请求"""
+
     name: str
     email: str
     password: str
@@ -18,11 +18,12 @@ class UserRegisterRequest(BaseModel):
 
 class UserRegisterResponse(BaseModel):
     """注册响应"""
-    user_id: Optional[int] = None
-    name: Optional[str] = None
-    email: Optional[str] = None
+
+    user_id: int | None = None
+    name: str | None = None
+    email: str | None = None
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class UserRegisterService:
@@ -46,8 +47,7 @@ class UserRegisterService:
             return UserRegisterResponse(error="Password contains invalid characters.")
         if not is_strong_password(request.password):
             return UserRegisterResponse(
-                error="Password must be at least 8 characters "
-                      "with 2 of: uppercase, lowercase, digit, special char."
+                error="Password must be at least 8 characters with 2 of: uppercase, lowercase, digit, special char."
             )
 
         # 检查邮箱是否已被注册（大小写不敏感）
@@ -70,9 +70,7 @@ class UserRegisterService:
 
         new_id = self._user_repo.create(user)
         if new_id is None:
-            return UserRegisterResponse(
-                error="Failed to create user."
-            )
+            return UserRegisterResponse(error="Failed to create user.")
 
         return UserRegisterResponse(
             user_id=new_id,

@@ -4,7 +4,7 @@ from src.core.dataset import Dataset, DatasetMeta
 
 
 def test_sync_dataset_returns_not_found_when_dataset_missing():
-    from src.services.llamafactory_service import LlamaFactoryService, LlamaFactoryDatasetSyncRequest
+    from src.services.llamafactory_service import LlamaFactoryDatasetSyncRequest, LlamaFactoryService
 
     dataset_repo = MagicMock()
     dataset_repo.find_by_id.return_value = None
@@ -21,7 +21,7 @@ def test_sync_dataset_returns_not_found_when_dataset_missing():
 
 
 def test_sync_dataset_success_returns_alias():
-    from src.services.llamafactory_service import LlamaFactoryService, LlamaFactoryDatasetSyncRequest
+    from src.services.llamafactory_service import LlamaFactoryDatasetSyncRequest, LlamaFactoryService
 
     dataset = Dataset.new(
         owner_id=7,
@@ -53,7 +53,7 @@ def test_sync_dataset_success_returns_alias():
 
 
 def test_chat_success_returns_content():
-    from src.services.llamafactory_service import LlamaFactoryService, LlamaFactoryChatRequest
+    from src.services.llamafactory_service import LlamaFactoryChatRequest, LlamaFactoryService
 
     llama_client = MagicMock()
     llama_client.inference.chat.return_value.json.return_value = {
@@ -87,7 +87,7 @@ def test_chat_success_returns_content():
 
 
 def test_chat_invalid_response_returns_error():
-    from src.services.llamafactory_service import LlamaFactoryService, LlamaFactoryChatRequest
+    from src.services.llamafactory_service import LlamaFactoryChatRequest, LlamaFactoryService
 
     llama_client = MagicMock()
     llama_client.inference.chat.return_value.json.return_value = {"choices": [{}]}

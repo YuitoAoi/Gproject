@@ -1,6 +1,6 @@
 """共享 Celery 实例 —— backend 和 celery worker 共用。"""
-from celery import Celery
 
+from celery import Celery
 from src.core.config import config
 
 celery_client = Celery(

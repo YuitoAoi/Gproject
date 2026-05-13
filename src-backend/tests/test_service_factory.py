@@ -1,8 +1,9 @@
+# ruff: noqa: RUF002
 """ServiceFactory 单元测试"""
+
 from unittest.mock import MagicMock
 
 import pytest
-
 from src.services import ServiceFactory
 from src.services.interfaces.dataset_repository import DatasetRepository
 from src.services.interfaces.file_repository import FileRepository
@@ -20,7 +21,6 @@ def factory():
 
 
 class TestServiceFactory:
-
     def test_dataset_import_export(self, factory):
         svc = factory.dataset_import_export()
         assert svc is not None

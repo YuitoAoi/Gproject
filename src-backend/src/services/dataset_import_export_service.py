@@ -1,3 +1,4 @@
+# ruff: noqa: RUF002, RUF003, E402
 """数据集导入导出服务：分块上传、本地导入、下载。"""
 
 from __future__ import annotations
@@ -10,12 +11,10 @@ import threading
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 _logger = logging.getLogger(__name__)
 
 from pydantic import BaseModel, Field
-
 from src.core.config import config
 from src.core.dataset import Dataset, DatasetMeta
 from src.services.interfaces.dataset_repository import DatasetRepository
@@ -30,8 +29,8 @@ class DatasetImportRequest(BaseModel):
     """数据集导入/创建请求。"""
 
     name: str = Field(..., min_length=1, max_length=100)
-    desc: Optional[str] = Field(None, max_length=500)
-    tag_ids: List[int] = Field(default_factory=list)
+    desc: str | None = Field(None, max_length=500)
+    tag_ids: list[int] = Field(default_factory=list)
     file_path: str
 
 
@@ -45,13 +44,13 @@ class DatasetImportExportResponse(BaseModel):
     """数据集导入/导出/下载统一响应。"""
 
     success: bool = False
-    dataset_id: Optional[int] = None
-    filename: Optional[str] = None
-    file_path: Optional[str] = None
-    file_size: Optional[int] = None
-    format: Optional[str] = None
-    sha256: Optional[str] = None
-    error: Optional[str] = None
+    dataset_id: int | None = None
+    filename: str | None = None
+    file_path: str | None = None
+    file_size: int | None = None
+    format: str | None = None
+    sha256: str | None = None
+    error: str | None = None
 
 
 # ══════════════════════════════════════════════════════════
@@ -63,9 +62,7 @@ class InitiateUploadRequest(BaseModel):
     filename: str
     file_size: int
     file_hash: str = Field(..., description="客户端 SHA-256")
-    chunk_size: int = Field(
-        default=5 * 1024 * 1024, ge=1 * 1024 * 1024, le=10 * 1024 * 1024
-    )
+    chunk_size: int = Field(default=5 * 1024 * 1024, ge=1 * 1024 * 1024, le=10 * 1024 * 1024)
 
 
 class InitiateUploadResponse(BaseModel):
@@ -80,22 +77,22 @@ class UploadChunkResponse(BaseModel):
     upload_id: str
     chunk_index: int
     received: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class CompleteUploadRequest(BaseModel):
     upload_id: str
     owner_id: int
     name: str
-    desc: Optional[str] = None
+    desc: str | None = None
     tag_ids: list[int] = Field(default_factory=list)
 
 
 class CompleteUploadResponse(BaseModel):
-    dataset_id: Optional[int] = None
+    dataset_id: int | None = None
     file_path: str = ""
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class UploadStatusResponse(BaseModel):
@@ -111,7 +108,7 @@ class DatasetDownloadTokenResponse(BaseModel):
     file_size: int
     format: str
     sha256: str
-    error: Optional[str] = None
+    error: str | None = None
 
 
 # ══════════════════════════════════════════════════════════
@@ -143,20 +140,16 @@ class _UploadState:
     """线程安全的上传会话管理器。"""
 
     def __init__(self):
-        self._sessions: Dict[str, _UploadSession] = {}
+        self._sessions: dict[str, _UploadSession] = {}
         self._lock = threading.Lock()
 
-    def create(
-        self, filename: str, file_size: int, file_hash: str, chunk_size: int
-    ) -> str:
+    def create(self, filename: str, file_size: int, file_hash: str, chunk_size: int) -> str:
         upload_id = uuid.uuid4().hex
         with self._lock:
-            self._sessions[upload_id] = _UploadSession(
-                filename, file_size, file_hash, chunk_size
-            )
+            self._sessions[upload_id] = _UploadSession(filename, file_size, file_hash, chunk_size)
         return upload_id
 
-    def get(self, upload_id: str) -> Optional[_UploadSession]:
+    def get(self, upload_id: str) -> _UploadSession | None:
         with self._lock:
             return self._sessions.get(upload_id)
 
@@ -297,9 +290,7 @@ class DatasetImportExportService:
             total_chunks=session.total_chunks,
         )
 
-    def upload_chunk(
-        self, upload_id: str, chunk_index: int, data: bytes
-    ) -> UploadChunkResponse:
+    def upload_chunk(self, upload_id: str, chunk_index: int, data: bytes) -> UploadChunkResponse:
         session = _upload_state.get(upload_id)
         if session is None:
             return UploadChunkResponse(
@@ -310,9 +301,7 @@ class DatasetImportExportService:
         chunk_path = _chunks_dir(upload_id) / str(chunk_index)
         chunk_path.write_bytes(data)
         _upload_state.mark_received(upload_id, chunk_index)
-        return UploadChunkResponse(
-            upload_id=upload_id, chunk_index=chunk_index, received=True
-        )
+        return UploadChunkResponse(upload_id=upload_id, chunk_index=chunk_index, received=True)
 
     def get_status(self, upload_id: str) -> dict:
         chunks = _upload_state.get_uploaded_chunks(upload_id)
@@ -326,9 +315,7 @@ class DatasetImportExportService:
 
     def complete(self, request: CompleteUploadRequest) -> CompleteUploadResponse:
         if not _upload_state.mark_finalizing(request.upload_id):
-            return CompleteUploadResponse(
-                error=f"Upload already being processed or unknown: {request.upload_id}"
-            )
+            return CompleteUploadResponse(error=f"Upload already being processed or unknown: {request.upload_id}")
         _logger.info(
             "Upload completing: upload_id=%s owner_id=%d",
             request.upload_id,
@@ -342,16 +329,14 @@ class DatasetImportExportService:
             )
 
         chunk_dir = _chunks_dir(request.upload_id)
-        dataset_id: Optional[int] = None
-        final_path: Optional[Path] = None
+        dataset_id: int | None = None
+        final_path: Path | None = None
         indexes_created = False
 
         try:
             ext = os.path.splitext(session.filename)[1].lstrip(".").lower()
-            if ext not in ("txt","md","csv", "xlsx", "json"):
-                return CompleteUploadResponse(
-                    error = ValueError("File type not supported.")
-                )
+            if ext not in ("txt", "md", "csv", "xlsx", "json"):
+                return CompleteUploadResponse(error=ValueError("File type not supported."))
 
             meta = DatasetMeta(format=ext, file_path="", file_size=session.file_size)
             entity = Dataset.new(
@@ -409,10 +394,8 @@ class DatasetImportExportService:
 
     # ── 本地导入 ──────────────────────────────────────────────
 
-    def import_dataset(
-        self, request: DatasetImportRequest, owner_id: int = 0
-    ) -> DatasetImportExportResponse:
-        dataset_id: Optional[int] = None
+    def import_dataset(self, request: DatasetImportRequest, owner_id: int = 0) -> DatasetImportExportResponse:
+        dataset_id: int | None = None
         indexes_created = False
 
         try:
@@ -420,13 +403,9 @@ class DatasetImportExportService:
             file_format = self._file_repo.get_file_ext(file_path).lstrip(".")
 
             if not self._file_repo.exists(file_path):
-                return DatasetImportExportResponse(
-                    success=False, error=f"File not found: {file_path}"
-                )
+                return DatasetImportExportResponse(success=False, error=f"File not found: {file_path}")
             if file_format not in ("csv", "xlsx", "json"):
-                return DatasetImportExportResponse(
-                    success=False, error=f"Unsupported file type: {file_format}"
-                )
+                return DatasetImportExportResponse(success=False, error=f"Unsupported file type: {file_format}")
 
             sha256 = _compute_sha256(file_path)
             meta = DatasetMeta(
@@ -444,9 +423,7 @@ class DatasetImportExportService:
 
             err = self._dataset_repo.create(entity)
             if err is not None:
-                return DatasetImportExportResponse(
-                    success=False, error=f"Failed to create dataset: {err}"
-                )
+                return DatasetImportExportResponse(success=False, error=f"Failed to create dataset: {err}")
 
             dataset_id = entity.id
             _ensure_indexes(self._dataset_repo)
@@ -468,32 +445,24 @@ class DatasetImportExportService:
                 _drop_indexes(self._dataset_repo)
             if dataset_id is not None:
                 self._dataset_repo.remove(dataset_id)
-            return DatasetImportExportResponse(
-                success=False, error="Import failed. Please try again."
-            )
+            return DatasetImportExportResponse(success=False, error="Import failed. Please try again.")
 
     # ── 下载 ──────────────────────────────────────────────────
 
     def download(self, request: DatasetDownloadRequest) -> DatasetImportExportResponse:
         ds = self._dataset_repo.find_by_id(request.dataset_id)
         if ds is None:
-            return DatasetImportExportResponse(
-                success=False, error=f"Dataset not found: {request.dataset_id}"
-            )
+            return DatasetImportExportResponse(success=False, error=f"Dataset not found: {request.dataset_id}")
 
         file_path = ds.meta.file_path
         if not self._file_repo.exists(file_path):
-            return DatasetImportExportResponse(
-                success=False, error=f"File not found: {file_path}"
-            )
+            return DatasetImportExportResponse(success=False, error=f"File not found: {file_path}")
 
         try:
             sha256 = _compute_sha256(file_path)
         except Exception:
             _logger.exception("Hash computation failed for file_path=%s", file_path)
-            return DatasetImportExportResponse(
-                success=False, error="Failed to compute file hash."
-            )
+            return DatasetImportExportResponse(success=False, error="Failed to compute file hash.")
 
         return DatasetImportExportResponse(
             success=True,

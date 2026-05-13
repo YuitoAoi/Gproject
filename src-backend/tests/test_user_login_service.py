@@ -1,25 +1,22 @@
+# ruff: noqa: E402
 import sys
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 _SERVICES_DIR = Path(__file__).resolve().parent.parent / "src" / "services"
 if str(_SERVICES_DIR) not in sys.path:
     sys.path.insert(0, str(_SERVICES_DIR))
 
+from src.core.user import User
+from src.services.jwt_service import TokenPair
 from src.services.user_login_service import (
     UserLoginRequest,
     UserLoginService,
 )
-from src.core.user import User
-from src.services.jwt_service import TokenPair
 
 
-def _make_user(
-    name="testuser", email="test@example.com", password="hashed_password"
-) -> User:
+def _make_user(name="testuser", email="test@example.com", password="hashed_password") -> User:
     now = datetime.now()
     return User(
         id=1,
@@ -56,16 +53,12 @@ class TestUserLoginService:
         mock_jwt = MagicMock()
         mock_jwt.generate_token_pair.return_value = token_pair
 
-        with patch(
-            "src.services.user_login_service.verify_password", return_value=True
-        ):
+        with patch("src.services.user_login_service.verify_password", return_value=True):
             service = UserLoginService(
                 jwt_service=mock_jwt,
                 user_repo=mock_repo,
             )
-            result = service.execute(
-                UserLoginRequest(email=user.email, password="correct")
-            )
+            result = service.execute(UserLoginRequest(email=user.email, password="correct"))
 
         assert result.success is True
         assert result.user_id == user.id
@@ -114,9 +107,7 @@ class TestUserLoginService:
             jwt_service=mock_jwt,
             user_repo=mock_repo,
         )
-        result = service.execute(
-            UserLoginRequest(email="ghost@x.com", password="any")
-        )
+        result = service.execute(UserLoginRequest(email="ghost@x.com", password="any"))
 
         assert result.success is False
         assert "User not found" in result.error
@@ -128,16 +119,12 @@ class TestUserLoginService:
         mock_repo.find_by_email.return_value = user
         mock_jwt = MagicMock()
 
-        with patch(
-            "src.services.user_login_service.verify_password", return_value=False
-        ):
+        with patch("src.services.user_login_service.verify_password", return_value=False):
             service = UserLoginService(
                 jwt_service=mock_jwt,
                 user_repo=mock_repo,
             )
-            result = service.execute(
-                UserLoginRequest(email=user.email, password="wrong")
-            )
+            result = service.execute(UserLoginRequest(email=user.email, password="wrong"))
 
         assert result.success is False
         assert "Wrong password" in result.error
@@ -153,9 +140,7 @@ class TestUserLoginService:
         mock_jwt = MagicMock()
         mock_jwt.generate_token_pair.return_value = token_pair
 
-        with patch(
-            "src.services.user_login_service.verify_password", return_value=True
-        ):
+        with patch("src.services.user_login_service.verify_password", return_value=True):
             service = UserLoginService(
                 jwt_service=mock_jwt,
                 user_repo=mock_repo,

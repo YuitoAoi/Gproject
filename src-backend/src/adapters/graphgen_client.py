@@ -1,8 +1,7 @@
-from typing import Optional
+# ruff: noqa: RUF002
 from urllib.parse import urlparse
 
 from httpx import Response
-
 from src.core.config import config as proj_config
 from src.services.interfaces.http_client import HTTPClient, HTTPClientConfig
 
@@ -16,7 +15,7 @@ class GraphGenClient(HTTPClient):
 
     _API_PREFIX = "/api/v1"
 
-    def __init__(self, config: Optional[HTTPClientConfig] = None) -> None:
+    def __init__(self, config: HTTPClientConfig | None = None) -> None:
         url = proj_config.GRAPHGEN_API_URL  # http://localhost:8001/api/v1
         parsed = urlparse(url)
         base = f"{parsed.scheme}://{parsed.netloc}"

@@ -1,15 +1,14 @@
 """任务路由 —— GET /tasks, POST /tasks, GET /tasks/{id}, PATCH /tasks/{id}, DELETE /tasks/{id}, POST /tasks/{id}/dispatch"""
-import os
-import logging
-from datetime import datetime
-from typing import List, Literal, Optional
+
 import json
+import logging
+import os
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
-
 from src.app.dependencies import get_current_user, get_services
-from src.core.task_record import TASK_TYPE, TASK_STATUS
+from src.core.task_record import TASK_STATUS, TASK_TYPE
 from src.services import ServiceFactory
 from src.services.jwt_service import TokenPayload
 
@@ -37,27 +36,27 @@ class TaskCreateRequest(BaseModel):
 
 
 class TaskListResponse(BaseModel):
-    items: List[TaskItem]
+    items: list[TaskItem]
     total: int
     page: int = 1
     page_size: int = 20
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class TaskDetailResponse(BaseModel):
-    task: Optional[TaskItem] = None
-    error: Optional[str] = None
+    task: TaskItem | None = None
+    error: str | None = None
 
 
 class TaskUpdateRequest(BaseModel):
-    status: Optional[TASK_STATUS] = None
-    progress: Optional[float] = Field(None, ge=0.0, le=1.0)
-    phase: Optional[str] = None
+    status: TASK_STATUS | None = None
+    progress: float | None = Field(None, ge=0.0, le=1.0)
+    phase: str | None = None
 
 
 class TaskUpdateResponse(BaseModel):
-    task: Optional[TaskItem] = None
-    error: Optional[str] = None
+    task: TaskItem | None = None
+    error: str | None = None
 
 
 def _task_to_item(t) -> TaskItem:
@@ -76,7 +75,7 @@ def _task_to_item(t) -> TaskItem:
 
 @router.get("", response_model=TaskListResponse)
 def list_tasks(
-    status: Optional[str] = None,
+    status: str | None = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     svc: ServiceFactory = Depends(get_services),
@@ -85,12 +84,7 @@ def list_tasks(
     owner_id = int(current_user.user_id)
     try:
         items, total = svc.task_repo.find_by_owner_paged(owner_id, page, page_size, status)
-        return TaskListResponse(
-            items=[_task_to_item(t) for t in items],
-            total=total,
-            page=page,
-            page_size=page_size
-        )
+        return TaskListResponse(items=[_task_to_item(t) for t in items], total=total, page=page, page_size=page_size)
     except Exception as e:
         return TaskListResponse(items=[], total=0, error=str(e))
 
@@ -162,18 +156,15 @@ def dispatch_task(
 
     try:
         config = json.loads(t.config)
-        job_id = config.get('job_id')
-        dataset_id = config.get('dataset_id')
-    except:
-        raise HTTPException(status_code=400, detail="Invalid task config")
+        job_id = config.get("job_id")
+        dataset_id = config.get("dataset_id")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid task config") from e
 
     if not job_id or not dataset_id:
         raise HTTPException(status_code=400, detail="Task config missing job_id or dataset_id")
 
-    celery_client.send_task("dataset.monitor_graphgen", kwargs={
-        "job_id": job_id,
-        "dataset_id": dataset_id
-    })
+    celery_client.send_task("dataset.monitor_graphgen", kwargs={"job_id": job_id, "dataset_id": dataset_id})
     return {"success": True, "message": "Task dispatched"}
 
 
@@ -190,7 +181,12 @@ def get_task(
     return TaskDetailResponse(task=_task_to_item(t))
 
 
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))), "data", "logs", "dataset_logs")
+LOG_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))),
+    "data",
+    "logs",
+    "dataset_logs",
+)
 LOG_DIR = os.path.normpath(LOG_DIR)
 
 
@@ -208,7 +204,7 @@ def delete_task(
     job_id = None
     try:
         config = json.loads(t.config)
-        job_id = config.get('job_id')
+        job_id = config.get("job_id")
     except Exception:
         pass
 
@@ -216,10 +212,10 @@ def delete_task(
         svc.dataset_log_repo.remove_by_job_id(job_id)
         log_file = os.path.join(LOG_DIR, f"{job_id}.log")
         if os.path.exists(log_file):
-            try:
+            import contextlib
+
+            with contextlib.suppress(Exception):
                 os.remove(log_file)
-            except Exception:
-                pass
 
     svc.task_repo.remove(task_id)
     return {"success": True}
@@ -230,7 +226,7 @@ class CleaningSummaryResponse(BaseModel):
     final_count: int = 0
     status: str = "pending"
     current_stage: str = ""
-    error: Optional[str] = None
+    error: str | None = None
 
 
 @router.get("/{task_id}/cleaning-summary", response_model=CleaningSummaryResponse)
@@ -249,12 +245,12 @@ def get_cleaning_summary(
     except Exception:
         config = {}
 
-    raw_count = config.get('raw_count', 0)
-    final_count = config.get('final_count', 0)
+    raw_count = config.get("raw_count", 0)
+    final_count = config.get("final_count", 0)
 
     return CleaningSummaryResponse(
         raw_count=raw_count,
         final_count=final_count,
-        status=t.status.value if hasattr(t.status, 'value') else str(t.status),
-        current_stage=t.phase or "read"
+        status=t.status.value if hasattr(t.status, "value") else str(t.status),
+        current_stage=t.phase or "read",
     )

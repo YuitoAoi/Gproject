@@ -1,10 +1,10 @@
 """DatasetTagRepositoryAdapter 集成测试"""
+
 from datetime import datetime
 
 import pytest
-
-from src.db_connections.sqlite import SqliteConnection
 from src.adapters.repositories.dataset_tag_repo import DatasetTagRepositoryAdapter
+from src.db_connections.sqlite import SqliteConnection
 
 
 @pytest.fixture(scope="session")
@@ -22,6 +22,7 @@ def tag_conn():
 @pytest.fixture
 def tag_repo(tag_conn):
     from sqlalchemy import text
+
     with tag_conn.new_session() as s:
         s.execute(text("DELETE FROM dataset_tags"))
         s.commit()
@@ -29,7 +30,6 @@ def tag_repo(tag_conn):
 
 
 class TestTagRepository:
-
     def test_create_success(self, tag_repo):
         err = tag_repo.create(name="red", color="#ff0000", desc="warm", owner=1)
         assert err is None
@@ -98,9 +98,14 @@ class TestTagRepository:
 
     def test_update_tag_not_found(self, tag_repo):
         from src.core.dataset_tag import DatasetTag
+
         ghost = DatasetTag(
-            id=999, owner_id=1, name="ghost", color="#000",
-            description="", created_at=datetime.now(),
+            id=999,
+            owner_id=1,
+            name="ghost",
+            color="#000",
+            description="",
+            created_at=datetime.now(),
         )
         err = tag_repo.update_tag(999, ghost)
         assert isinstance(err, ValueError)

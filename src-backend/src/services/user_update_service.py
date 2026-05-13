@@ -1,23 +1,23 @@
+# ruff: noqa: RUF002, RUF003
 """更新用户信息服务。"""
-from typing import Optional
 
 from pydantic import BaseModel
-
 from src.services.interfaces.user_repository import UserRepository
 from src.services.utils import is_safe_name, is_safe_password
 
 
 class UserUpdateRequest(BaseModel):
     """更新用户请求 —— user_id 由路由层从 token 注入，不由客户端传入。"""
-    name: Optional[str] = None
-    email: Optional[str] = None
-    old_password: Optional[str] = None   # 原密码，修改密码时必填
-    password: Optional[str] = None       # 新密码
+
+    name: str | None = None
+    email: str | None = None
+    old_password: str | None = None  # 原密码，修改密码时必填
+    password: str | None = None  # 新密码
 
 
 class UserUpdateResponse(BaseModel):
     success: bool = False
-    error: Optional[str] = None
+    error: str | None = None
 
 
 class UserUpdateService:
@@ -43,7 +43,8 @@ class UserUpdateService:
         if request.old_password and request.password:
             if not is_safe_password(request.password):
                 return UserUpdateResponse(error="Password contains invalid characters.")
-            from src.core.password_encryptor import verify_password, hash_password
+            from src.core.password_encryptor import hash_password, verify_password
+
             if not verify_password(request.old_password, user.password):
                 return UserUpdateResponse(error="Old password is incorrect.")
             user.password = hash_password(request.password)

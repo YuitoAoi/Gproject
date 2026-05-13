@@ -1,7 +1,7 @@
-from typing import Any, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from httpx import RequestError, Response
-
 from src.core.config import config as proj_config
 from src.services.interfaces.http_client import HTTPClient, HTTPClientConfig
 

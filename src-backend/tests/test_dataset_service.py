@@ -1,10 +1,10 @@
+# ruff: noqa: RUF002, E402
 """Dataset 用例层单元测试（mock 仓储）"""
+
 import sys
 from datetime import datetime
 from pathlib import Path
 from unittest.mock import MagicMock
-
-import pytest
 
 _PROJECT = Path(__file__).resolve().parent.parent
 if str(_PROJECT) not in sys.path:
@@ -14,12 +14,11 @@ if _SVC not in sys.path:
     sys.path.insert(0, _SVC)
 
 from src.core.dataset import Dataset, DatasetMeta
+from src.services.dataset_get_service import GetDatasetsService
 from src.services.dataset_import_export_service import (
     DatasetImportExportService,
     DatasetImportRequest,
-    DatasetImportExportResponse,
 )
-from src.services.dataset_get_service import GetDatasetsService
 
 
 def _make_meta(format="json", file_path="/data/test.json", file_size=1024):
@@ -104,7 +103,7 @@ class TestGetDatasetsService:
 
     def test_get_all_with_data(self):
         ds1 = _make_dataset(owner_id=1, name="my_ds", id=1)
-        ds2 = _make_dataset(owner_id=2, name="other_ds", id=2)
+        _make_dataset(owner_id=2, name="other_ds", id=2)
         mock_repo = MagicMock()
         mock_repo.find_by_owner.return_value = [ds1]
 

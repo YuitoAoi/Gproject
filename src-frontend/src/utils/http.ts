@@ -28,8 +28,9 @@ instance.interceptors.request.use((config: InternalAxiosRequestConfig) => {
   if (accessToken) {
     config.headers.set('Authorization', `Bearer ${accessToken}`)
   }
-  // POST/PUT 时自动序列化 data
-  if (config.data && !(config.data instanceof FormData) && !config.headers['Content-Type']) {
+  if (config.data instanceof FormData) {
+    config.headers.delete('Content-Type')
+  } else if (config.data && !config.headers['Content-Type']) {
     config.headers.set('Content-Type', 'application/json')
     config.data = JSON.stringify(config.data)
   }
@@ -74,7 +75,6 @@ const request = {
     return instance.request({ ...config, method: 'GET' })
   },
   post<T = any>(config: RequestConfig): Promise<T> {
-    // 自动将 params 转为 data
     if (config.params && !config.data) {
       config.data = config.params
       config.params = undefined
@@ -87,6 +87,13 @@ const request = {
       config.params = undefined
     }
     return instance.request({ ...config, method: 'PUT' })
+  },
+  patch<T = any>(config: RequestConfig): Promise<T> {
+    if (config.params && !config.data) {
+      config.data = config.params
+      config.params = undefined
+    }
+    return instance.request({ ...config, method: 'PATCH' })
   },
   del<T = any>(config: RequestConfig): Promise<T> {
     return instance.request({ ...config, method: 'DELETE' })

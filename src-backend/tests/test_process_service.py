@@ -1,19 +1,17 @@
 """DatasetProcessService 单元测试"""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from src.core.dataset import DatasetMeta
 from src.services.dataset_process_service import (
-    DatasetProcessService,
     DatasetProcessRequest,
+    DatasetProcessService,
     SampleRequest,
-    DatasetProcessResponse,
 )
 
 
 class TestProcessService:
-
     @pytest.fixture
     def mock_ds_repo(self):
         repo = MagicMock()
@@ -65,7 +63,6 @@ class TestProcessService:
 
         resp = svc.get_sample(SampleRequest(dataset_id=1, limit=10))
         assert "not found" in resp.error
-
 
     # ── process ───────────────────────────────────────────
 
@@ -133,10 +130,14 @@ class TestProcessService:
         mock_resp = MagicMock()
         mock_resp.is_error = False
         mock_resp.json.return_value = {
-            "job_id": "j1", "status": "running",
+            "job_id": "j1",
+            "status": "running",
             "created_at": "2024-01-01T00:00:00",
-            "started_at": None, "finished_at": None,
-            "progress": 0.5, "error": None, "output_path": None,
+            "started_at": None,
+            "finished_at": None,
+            "progress": 0.5,
+            "error": None,
+            "output_path": None,
         }
         mock_gg.get_job.return_value = mock_resp
 
@@ -181,6 +182,10 @@ class TestProcessService:
 
 def _make_process_req():
     return DatasetProcessRequest(
-        dataset_id=1, api_key="k", synthesizer_url="u",
-        synthesizer_model="m", mode="atomic", data_format="Alpaca",
+        dataset_id=1,
+        api_key="k",
+        synthesizer_url="u",
+        synthesizer_model="m",
+        mode="atomic",
+        data_format="Alpaca",
     )
