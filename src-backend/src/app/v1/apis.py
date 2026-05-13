@@ -19,6 +19,9 @@ api_v1.include_router(auth_api)
 from src.app.v1.task import router as task_router
 api_v1.include_router(task_router)
 
+from src.app.v1.llamafactory import router as llamafactory_router
+api_v1.include_router(llamafactory_router)
+
 
 @api_v1.get("/")
 def ask_v1_router():

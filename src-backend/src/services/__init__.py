@@ -59,6 +59,7 @@ from src.services.llamafactory_service import (
     LlamaFactoryDatasetSyncRequest,
     LlamaFactoryDatasetSyncResponse,
     LlamaFactoryChatRequest,
+    LlamaFactoryModelsResponse,
     LlamaFactoryChatResponse,
 )
 
