@@ -181,7 +181,7 @@
 </template>
 
 <script setup lang="ts">
-  import { computed, ref } from 'vue'
+  import { computed, ref, watch } from 'vue'
   import type { FormInstance, FormRules } from 'element-plus'
   import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
 
@@ -208,11 +208,13 @@
     modelValue: TrainingParams
     configMode: 'beginner' | 'expert'
     finetuneMethod: 'lora' | 'qlora' | 'full'
+    modelSize: number
   }>()
 
   const emit = defineEmits<{
     'update:modelValue': [value: TrainingParams]
   }>()
+  void props.modelSize // suppress unused warning
 
   const formRef = ref<FormInstance>()
 
@@ -223,6 +225,55 @@
 
   const showLoraParams = computed(() =>
     props.finetuneMethod === 'lora' || props.finetuneMethod === 'qlora'
+  )
+
+  interface RecommendedParams {
+    epochs: number
+    batchSize: number
+    learningRate: number
+    maxSeqLength: number
+    loraRank: number
+    loraAlpha: number
+    gradientCheckpointing: boolean
+  }
+
+  function getRecommendedParams(modelSize: number, method: string): RecommendedParams {
+    // 根据模型参数量推荐 batch_size 和学习率
+    const batchSize = modelSize <= 3 ? 8 : modelSize <= 7 ? 4 : modelSize <= 14 ? 2 : 1
+    const learningRate = modelSize <= 3 ? 5e-5 : modelSize <= 7 ? 3e-5 : modelSize <= 14 ? 2e-5 : 1e-5
+    const maxSeqLength = modelSize >= 14 ? 512 : modelSize >= 7 ? 1024 : 2048
+    return {
+      epochs: 3,
+      batchSize,
+      learningRate,
+      maxSeqLength,
+      loraRank: 8,
+      loraAlpha: 16,
+      gradientCheckpointing: true
+    }
+  }
+
+  function applyRecommendedParams() {
+    const params = getRecommendedParams(props.modelSize, props.finetuneMethod)
+    emit('update:modelValue', { ...props.modelValue, ...params })
+  }
+
+  watch(
+    () => props.modelSize,
+    () => {
+      if (props.configMode === 'beginner') {
+        applyRecommendedParams()
+      }
+    }
+  )
+
+  watch(
+    () => props.configMode,
+    (mode) => {
+      if (mode === 'beginner') {
+        applyRecommendedParams()
+      }
+    }
   )
 
   /** FP16 和 BF16 互斥 */

@@ -49,6 +49,43 @@ export async function llamaFactoryChat(data: LlamaFactoryChatRequest): Promise<L
   }
 }
 
+/** ═══ 微调产物列表 ═══ */
+
+export interface FinetunedModelsResponse {
+  success: boolean
+  fine_tuned: string[]
+  online: string[]
+  error?: string
+}
+
+export async function getFinetunedModels(): Promise<FinetunedModelsResponse> {
+  try {
+    return await request.get<FinetunedModelsResponse>({
+      url: '/llamafactory/finetuned-models'
+    })
+  } catch {
+    return { success: false, fine_tuned: [], online: [], error: '请求失败' }
+  }
+}
+
+/** ═══ 启动在线推理 ═══ */
+
+export interface InferenceStartResponse {
+  success: boolean
+  error?: string
+}
+
+export async function startInference(modelId: string): Promise<InferenceStartResponse> {
+  try {
+    return await request.post<InferenceStartResponse>({
+      url: '/llamafactory/inference/start',
+      params: { model_id: modelId }
+    })
+  } catch {
+    return { success: false, error: '请求失败' }
+  }
+}
+
 /** ═══ 训练任务提交 ═══ */
 
 export interface TrainingSubmitRequest {

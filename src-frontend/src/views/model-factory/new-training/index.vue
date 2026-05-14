@@ -42,6 +42,7 @@
               v-model="trainingParams"
               :config-mode="basicConfig.configMode"
               :finetune-method="basicConfig.finetuneMethod"
+              :model-size="modelSize"
             />
           </div>
 
@@ -82,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref } from 'vue'
+  import { ref, watch } from 'vue'
   import { useRouter } from 'vue-router'
   import { ElMessage } from 'element-plus'
   import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
@@ -102,6 +103,18 @@
   const step1Ref = ref<InstanceType<typeof Step1Basic> | null>(null)
   const step2Ref = ref<InstanceType<typeof Step2Dataset> | null>(null)
   const step3Ref = ref<InstanceType<typeof Step3Params> | null>(null)
+  const modelSize = ref(7)
+
+  // 从 step1 获取所选模型的参数量，驱动新手模式参数推荐
+  watch(
+    () => basicConfig.value.baseModel,
+    async () => {
+      await step1Ref.value?.$nextTick()
+      if (step1Ref.value?.selectedModelSize !== undefined) {
+        modelSize.value = step1Ref.value.selectedModelSize as number
+      }
+    }
+  )
 
   const basicConfig = ref({
     taskName: '',
@@ -182,10 +195,24 @@
         }
       })
       if (resp.success) {
-        ElMessage.success('训练任务已提交，正在跳转到任务调度中心...')
+        const taskId = resp.task_id
+        const jobId = resp.job_id
+        ElMessage({
+          type: 'success',
+          dangerouslyUseHTMLString: true,
+          message: `<div>
+            <div style="font-weight:600;margin-bottom:6px">训练任务已提交</div>
+            <div style="font-size:12px;color:#606266">任务ID: <strong>${taskId ?? '-'}</strong></div>
+            <div style="font-size:12px;color:#606266">JobID: <strong>${jobId ?? '-'}</strong></div>
+            <div style="margin-top:8px">
+              <a href="/task-monitoring/${taskId}?type=training" style="color:#409EFF;text-decoration:none">查看训练进度 →</a>
+            </div>
+          </div>`,
+          duration: 6000
+        })
         setTimeout(() => {
-          router.push('/workbench/task-dispatch')
-        }, 1500)
+          router.push('/task-monitoring/' + taskId + '?type=training')
+        }, 2000)
       } else {
         ElMessage.error('提交失败: ' + (resp.error || '未知错误'))
       }

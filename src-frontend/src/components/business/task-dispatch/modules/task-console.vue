@@ -81,7 +81,7 @@
   import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import { ElMessageBox, ElMessage } from 'element-plus'
   import { TASK_STATUS_CONFIG, TASK_TYPE_CONFIG, type TaskItem } from '@/mock/modules/task-dispatch'
-  import { getTasks, deleteTask, type TaskItem as ApiTask } from '@/api/task'
+  import { getTasks, deleteTask, terminateTask, type TaskItem as ApiTask } from '@/api/task'
   import { mapTaskStatusForDisplay } from '@/utils/task'
 
   defineOptions({ name: 'TaskConsole' })
@@ -360,8 +360,13 @@
     if (!currentTask.value) return
     const id = Number(currentTask.value.id)
     try {
-      await deleteTask(id)
-      ElMessage.success(`任务「${currentTask.value?.name}」已强制终止`)
+      const resp = await terminateTask(id)
+      if (resp.success) {
+        ElMessage.success(resp.message || `任务「${currentTask.value?.name}」已强制终止`)
+      } else {
+        ElMessage.error(resp.message || '终止失败')
+        return
+      }
       terminateDialogVisible.value = false
       currentTask.value = null
       await fetchTasks()

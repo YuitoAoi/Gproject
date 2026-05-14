@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from src.app.dependencies import get_current_user, get_services
 from src.services import (
     LlamaFactoryChatRequest,
     LlamaFactoryChatResponse,
+    LlamaFactoryFinetunedModelsResponse,
     LlamaFactoryModelsResponse,
     LlamaFactoryTrainingRequest,
     LlamaFactoryTrainingResponse,
@@ -37,6 +38,54 @@ def chat(
     if not result.success:
         return JSONResponse(content=result.model_dump(mode="json"), status_code=502)
     return result
+
+
+@router.post("/chat/stream")
+async def chat_stream(
+    request: LlamaFactoryChatRequest,
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """SSE 流式对话接口。"""
+    _ = current_user
+    generator = svc.llamafactory().stream_chat(request)
+    if generator is None:
+        return JSONResponse(
+            content={"error": "LlamaFactory 推理服务未启动，请先启动 LlamaFactory API 服务"},
+            status_code=503,
+        )
+    return StreamingResponse(
+        generator,
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@router.get("/finetuned-models", response_model=LlamaFactoryFinetunedModelsResponse)
+def list_finetuned_models(
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """返回微调产物列表与在线服务列表。"""
+    _ = current_user
+    return svc.llamafactory().list_finetuned_models()
+
+
+@router.post("/inference/start")
+def start_inference(
+    model_id: str,
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """启动指定模型的在线推理服务（通过 LlamaFactory API 预加载模型）。"""
+    _ = current_user
+    result = svc.llamafactory().chat(
+        LlamaFactoryChatRequest(model=model_id, messages=[{"role": "user", "content": "ping"}])
+    )
+    return {"success": result.success, "error": result.error}
 
 
 @router.post("/train", response_model=LlamaFactoryTrainingResponse)

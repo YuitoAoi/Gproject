@@ -219,6 +219,44 @@ class TaskRepository:
             _logger.exception("Failed to delete task id=%s", id)
             return exc
 
+    def update_status(self, id: int, status: str) -> Exception | None:
+        """快速更新任务状态，供监控任务调用。"""
+        try:
+            with self._conn.new_session() as session:
+                from datetime import datetime
+
+                session.execute(
+                    text("UPDATE tasks SET status = :status, updated_at = :updated_at WHERE id = :id"),
+                    {"id": id, "status": status, "updated_at": datetime.now()},
+                )
+                session.commit()
+                return None
+        except Exception as exc:
+            _logger.exception("Failed to update task status id=%s", id)
+            return exc
+
+    def update_progress(self, id: int, progress: float, phase: str, status: str | None = None) -> Exception | None:
+        """更新任务进度、阶段和可选状态，供监控任务高频调用。"""
+        try:
+            with self._conn.new_session() as session:
+                from datetime import datetime
+
+                if status is not None:
+                    session.execute(
+                        text("UPDATE tasks SET progress = :progress, phase = :phase, status = :status, updated_at = :updated_at WHERE id = :id"),
+                        {"id": id, "progress": progress, "phase": phase, "status": status, "updated_at": datetime.now()},
+                    )
+                else:
+                    session.execute(
+                        text("UPDATE tasks SET progress = :progress, phase = :phase, updated_at = :updated_at WHERE id = :id"),
+                        {"id": id, "progress": progress, "phase": phase, "updated_at": datetime.now()},
+                    )
+                session.commit()
+                return None
+        except Exception as exc:
+            _logger.exception("Failed to update task progress id=%s", id)
+            return exc
+
     def remove_by_config_dataset_id(self, owner_id: int, dataset_id: int) -> Exception | None:
         """删除 config 中包含指定 dataset_id 的所有任务记录。"""
         try:

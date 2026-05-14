@@ -14,36 +14,42 @@
       </div>
     </div>
 
-    <!-- ========== 统计面板 ========== -->
+    <!-- ========== 统计面板（可点击滚动） ========== -->
     <div class="stats-panel grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-      <div class="lfp-card p-5 relative">
-        <p class="text-sm text-g-500">已注册模型</p>
-        <div class="text-2xl font-medium mt-2">{{ models.length }}</div>
-        <div class="size-10 rounded-lg flex-cc bg-theme/10 absolute top-4 right-4">
-          <LfpSvgIcon icon="ri:brain-line" class="text-lg text-theme" />
+      <button class="stat-card-btn" @click="scrollToSection('registry')">
+        <div class="lfp-card p-5 relative">
+          <p class="text-sm text-g-500">已注册模型</p>
+          <div class="text-2xl font-medium mt-2">{{ models.length }}</div>
+          <div class="size-10 rounded-lg flex-cc bg-theme/10 absolute top-4 right-4">
+            <LfpSvgIcon icon="ri:brain-line" class="text-lg text-theme" />
+          </div>
         </div>
-      </div>
-      <div class="lfp-card p-5 relative">
-        <p class="text-sm text-g-500">微调产物</p>
-        <div class="text-2xl font-medium mt-2">{{ fineTunedCount }}</div>
-        <div class="size-10 rounded-lg flex-cc bg-success/10 absolute top-4 right-4">
-          <LfpSvgIcon icon="ri:flashlight-line" class="text-lg text-success" />
+      </button>
+      <button class="stat-card-btn" @click="scrollToSection('finetuned')">
+        <div class="lfp-card p-5 relative">
+          <p class="text-sm text-g-500">微调产物</p>
+          <div class="text-2xl font-medium mt-2">{{ fineTunedCount }}</div>
+          <div class="size-10 rounded-lg flex-cc bg-success/10 absolute top-4 right-4">
+            <LfpSvgIcon icon="ri:flashlight-line" class="text-lg text-success" />
+          </div>
         </div>
-      </div>
-      <div class="lfp-card p-5 relative">
-        <p class="text-sm text-g-500">在线服务</p>
-        <div class="text-2xl font-medium mt-2">
-          <span class="text-success">{{ onlineCount }}</span>
-          <span class="text-g-400 text-base"> / {{ models.length }}</span>
+      </button>
+      <button class="stat-card-btn" @click="scrollToSection('online')">
+        <div class="lfp-card p-5 relative">
+          <p class="text-sm text-g-500">在线服务</p>
+          <div class="text-2xl font-medium mt-2">
+            <span class="text-success">{{ onlineCount }}</span>
+            <span class="text-g-400 text-base"> / {{ models.length }}</span>
+          </div>
+          <div class="size-10 rounded-lg flex-cc bg-primary/10 absolute top-4 right-4">
+            <LfpSvgIcon icon="ri:server-line" class="text-lg text-primary" />
+          </div>
         </div>
-        <div class="size-10 rounded-lg flex-cc bg-primary/10 absolute top-4 right-4">
-          <LfpSvgIcon icon="ri:server-line" class="text-lg text-primary" />
-        </div>
-      </div>
+      </button>
     </div>
 
     <!-- ========== 工具栏 ========== -->
-    <div class="lfp-card p-4 mb-5">
+    <div id="registry" class="lfp-card p-4 mb-5">
       <div class="flex items-center gap-3 flex-wrap">
         <ElInput
           v-model="searchKeyword"
@@ -125,7 +131,13 @@
 
         <!-- 底部操作 -->
         <div class="model-card__actions">
-          <ElButton size="small" text type="primary" @click.stop="handleChat(model)">
+          <ElButton v-if="model.online" size="small" type="primary" @click.stop="enterChat(model)">
+            <LfpSvgIcon icon="ri:chat-3-line" class="mr-1" />进入对话
+          </ElButton>
+          <ElButton v-else-if="model.isFineTuned" size="small" type="success" @click.stop="startInference(model)">
+            <LfpSvgIcon icon="ri:play-line" class="mr-1" />开启推理测试
+          </ElButton>
+          <ElButton v-else size="small" text type="primary" @click.stop="handleChat(model)">
             <LfpSvgIcon icon="ri:chat-3-line" class="mr-1" />对话测试
           </ElButton>
           <ElButton size="small" text @click.stop="handleOpenDetail(model)">
@@ -256,6 +268,26 @@
     router.push({ path: '/model-inference', query: { model: model.id } })
   }
 
+  function scrollToSection(section: 'registry' | 'finetuned' | 'online') {
+    if (section === 'finetuned') {
+      filterType.value = 'finetuned'
+    } else if (section === 'online') {
+      filterType.value = ''
+    }
+    const el = document.getElementById('registry')
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
+  function enterChat(model: ModelItem) {
+    router.push({ path: '/model-inference', query: { model: model.id } })
+  }
+
+  function startInference(model: ModelItem) {
+    router.push({ path: '/model-inference', query: { model: model.id } })
+  }
+
   onMounted(() => {
     fetchModels()
   })
@@ -317,6 +349,29 @@
 
       &:hover {
         background: rgba(255, 255, 255, 0.3) !important;
+      }
+    }
+  }
+
+  .stats-panel {
+    .stat-card-btn {
+      display: block;
+      width: 100%;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      text-align: left;
+
+      .lfp-card {
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        border: 1px solid transparent;
+      }
+
+      &:hover .lfp-card {
+        border-color: var(--el-color-primary-light-5);
+        box-shadow: 0 4px 14px rgba(64, 158, 255, 0.12);
+        transform: translateY(-2px);
       }
     }
   }

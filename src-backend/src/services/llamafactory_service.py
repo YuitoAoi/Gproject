@@ -45,6 +45,13 @@ class LlamaFactoryChatResponse(BaseModel):
     error: str | None = None
 
 
+class LlamaFactoryFinetunedModelsResponse(BaseModel):
+    success: bool = False
+    fine_tuned: list[str] = Field(default_factory=list)
+    online: list[str] = Field(default_factory=list)
+    error: str | None = None
+
+
 class LlamaFactoryTrainingRequest(BaseModel):
     task_name: str = Field(min_length=2, max_length=60)
     base_model: str
@@ -83,6 +90,8 @@ class LlamaFactoryService:
         )
 
     def list_models(self) -> LlamaFactoryModelsResponse:
+        if self._llama.inference is None:
+            return LlamaFactoryModelsResponse(error="LlamaFactory 推理服务未启动，请先启动 LlamaFactory API 服务")
         try:
             response = self._llama.inference.list_models()
             data = response.json()
@@ -103,6 +112,8 @@ class LlamaFactoryService:
         return LlamaFactoryModelsResponse(success=True, models=models, raw_response=data)
 
     def chat(self, request: LlamaFactoryChatRequest) -> LlamaFactoryChatResponse:
+        if self._llama.inference is None:
+            return LlamaFactoryChatResponse(error="LlamaFactory 推理服务未启动，请先启动 LlamaFactory API 服务")
         try:
             response = self._llama.inference.chat(
                 model=request.model,
@@ -120,6 +131,54 @@ class LlamaFactoryService:
             return LlamaFactoryChatResponse(error=f"Invalid LlamaFactory chat response: {exc}")
 
         return LlamaFactoryChatResponse(success=True, content=content, raw_response=data)
+
+    async def stream_chat(self, request: LlamaFactoryChatRequest):
+        """流式对话，返回 async generator 用于 SSE StreamingResponse。"""
+        if self._llama.inference is None:
+            return
+
+        from src.adapters.llamafactory_async_inference_client import (
+            LlamaFactoryAsyncInferenceClient,
+        )
+        from src.services.interfaces.http_client import HTTPClientConfig
+
+        cfg = HTTPClientConfig(
+            name="LlamaFactory Async Inference",
+            url=self._llama.inference.config.url,
+            retries=self._llama.inference.config.retries,
+            timeout=self._llama.inference.config.timeout,
+        )
+        async_client = LlamaFactoryAsyncInferenceClient(cfg)
+        async with async_client:
+            async for chunk in async_client.stream_chat(
+                model=request.model,
+                messages=request.messages,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens,
+            ):
+                yield chunk
+
+    def list_finetuned_models(self) -> LlamaFactoryFinetunedModelsResponse:
+        """返回微调产物列表与在线服务列表。"""
+        all_models_resp = self.list_models()
+        if not all_models_resp.success:
+            return LlamaFactoryFinetunedModelsResponse(error=all_models_resp.error)
+
+        fine_tuned_patterns = ("lora", "adapter", "merged", "finetuned", "ft-", "sft")
+        fine_tuned: list[str] = []
+        online: list[str] = []
+
+        for model_id in all_models_resp.models:
+            lower = model_id.lower()
+            if any(p in lower for p in fine_tuned_patterns):
+                fine_tuned.append(model_id)
+                online.append(model_id)
+
+        return LlamaFactoryFinetunedModelsResponse(
+            success=True,
+            fine_tuned=fine_tuned,
+            online=online,
+        )
 
     def submit_training(self, request: LlamaFactoryTrainingRequest, owner_id: int) -> LlamaFactoryTrainingResponse:
         """提交微调训练任务：验证数据集 → 同步到 LlamaFactory → 创建任务记录 → 启动子进程。"""
@@ -194,13 +253,17 @@ class LlamaFactoryService:
             return LlamaFactoryTrainingResponse(error="任务记录创建异常：未获取到任务ID")
 
         if self._celery is not None:
-            import contextlib
-
-            with contextlib.suppress(Exception):
+            try:
                 self._celery.send_task(
                     "training.monitor",
                     kwargs={"job_id": result.job_id, "task_id": task.id},
                 )
+                _logger.info("[Training] 监控任务已下发: job_id=%s, task_id=%s", result.job_id, task.id)
+            except Exception as exc:
+                _logger.error("[Training] 监控任务下发失败: %s — 训练进度将无法实时推送", exc)
+                # 不影响训练主流程，仅监控不可用
+        else:
+            _logger.warning("[Training] Celery 未就绪，监控任务不会下发 — job_id=%s", result.job_id)
 
         _logger.info("[Training] 训练任务已提交: task_id=%s, job_id=%s", task.id, result.job_id)
 

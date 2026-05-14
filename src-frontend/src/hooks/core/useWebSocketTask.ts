@@ -13,6 +13,25 @@ import { useTaskStore } from '@/store/modules/task'
 import { mapTaskStatusForDisplay } from '@/utils/task'
 import { store } from '@/store'
 
+export interface TrainingProgress {
+  status: 'running' | 'done' | 'failed' | 'pending'
+  progress: number
+  stage: string
+  message: string
+  current_step?: number
+  total_steps?: number
+  loss?: number | null
+  eval_loss?: number | null
+  learning_rate?: number | null
+  epoch?: number | null
+  gpu?: Array<{
+    used_memory_mb?: number
+    total_memory_mb?: number
+    temperature?: number
+  }>
+  type?: string
+}
+
 function resolveWsBase(): string {
   const env = import.meta.env.VITE_WS_URL
   if (env) return env
@@ -35,8 +54,11 @@ export function useWebSocketTask(initialJobId: string = '') {
   const retryDelay = 3000
   const jobId = ref(initialJobId)
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
-
   let currentJobId = initialJobId
+
+  // 训练进度实时数据，供监控页直接消费
+  const trainingProgress = ref<TrainingProgress | null>(null)
+  const lossHistory = ref<Array<{ step: number; trainLoss: number; evalLoss: number }>>([])
 
   watch(jobId, (newVal) => {
     currentJobId = newVal
@@ -44,7 +66,7 @@ export function useWebSocketTask(initialJobId: string = '') {
 
   const handleMessage = (event: MessageEvent) => {
     try {
-      const data = JSON.parse(event.data)
+      const data: TrainingProgress = JSON.parse(event.data)
 
       if (data.type === 'heartbeat') return
       if (data.type === 'pong') return
@@ -54,28 +76,45 @@ export function useWebSocketTask(initialJobId: string = '') {
       }
 
       const status = data.status
-      const progress = (data.progress ?? 0) * 100
+      const progress = data.progress ?? 0
       const stage = data.stage || status
       const message = data.message || ''
 
-      taskStore.updateTask(jobId, {
-        current: Math.round(progress),
+      // 更新 Pinia store
+      taskStore.updateTask(currentJobId, {
+        current: Math.round(progress * 100),
         total: 100,
-        percentage: progress,
+        percentage: progress * 100,
         phase: stage,
         status: mapTaskStatusForDisplay(status),
         message
       })
 
+      // 累积训练进度数据
+      trainingProgress.value = data
+
+      // 累积 loss 历史
+      if (status === 'running' && data.current_step !== undefined) {
+        const entry = {
+          step: data.current_step,
+          trainLoss: data.loss ?? 0,
+          evalLoss: data.eval_loss ?? 0
+        }
+        // 避免重复 step
+        if (!lossHistory.value.find(l => l.step === entry.step)) {
+          lossHistory.value = [...lossHistory.value, entry].sort((a, b) => a.step - b.step)
+        }
+      }
+
       if (status === 'done') {
         ElNotification.success({
-          title: '任务完成',
-          message: message || `任务 ${currentJobId} 已完成`
+          title: '训练完成',
+          message: message || `训练任务已完成`
         })
       } else if (status === 'failed') {
         ElNotification.error({
-          title: '任务失败',
-          message: message || `任务 ${currentJobId} 执行失败`
+          title: '训练失败',
+          message: message || `训练任务执行失败`
         })
       }
     } catch (e) {
@@ -132,9 +171,10 @@ export function useWebSocketTask(initialJobId: string = '') {
       ws.value = null
     }
     connected.value = false
+    trainingProgress.value = null
   }
 
-  const send = (data: any) => {
+  const send = (data: unknown) => {
     if (ws.value && ws.value.readyState === WebSocket.OPEN) {
       ws.value.send(typeof data === 'string' ? data : JSON.stringify(data))
     }
@@ -146,6 +186,8 @@ export function useWebSocketTask(initialJobId: string = '') {
     connect,
     disconnect,
     send,
-    jobId
+    jobId,
+    trainingProgress,
+    lossHistory,
   }
 }

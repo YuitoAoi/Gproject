@@ -102,6 +102,21 @@ export async function updateTask(id: number, data: TaskUpdateRequest): Promise<T
   }
 }
 
+export interface TerminateResponse {
+  success: boolean
+  message?: string
+}
+
+export async function terminateTask(id: number): Promise<TerminateResponse> {
+  try {
+    return await request.post<TerminateResponse>({
+      url: `/tasks/${id}/terminate`
+    })
+  } catch {
+    return { success: false, message: '请求失败' }
+  }
+}
+
 export async function deleteTask(id: number): Promise<{ success: boolean }> {
   try {
     return await request.del<{ success: boolean }>({

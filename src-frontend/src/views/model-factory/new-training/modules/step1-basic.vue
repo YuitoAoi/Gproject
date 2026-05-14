@@ -12,7 +12,7 @@
         </div>
         <div class="form-section__body">
           <ElFormItem prop="taskName" label="任务名称" class="form-item-full">
-            <ElInput :model-value="modelValue.taskName" placeholder="例如：Qwen2.5-7B 客服场景 LoRA 微调" maxlength="60" show-word-limit clearable @update:model-value="handleTaskName">
+            <ElInput :model-value="modelValue.taskName" placeholder="例如：客服场景 LoRA 微调" maxlength="60" show-word-limit clearable @update:model-value="handleTaskName">
               <template #prefix><LfpSvgIcon icon="ri:price-tag-3-line" class="text-g-400" /></template>
             </ElInput>
           </ElFormItem>
@@ -26,20 +26,45 @@
             <h3 class="form-section__title">基础模型</h3>
             <p class="form-section__desc">选择用于微调的预训练基础模型</p>
           </div>
+          <div class="ml-auto flex items-center gap-2">
+            <div v-if="modelsLoading" class="flex items-center gap-1.5 text-sm text-g-400">
+              <span class="loading-spinner"></span>加载中
+            </div>
+            <ElButton text size="small" @click="refreshModels">
+              <LfpSvgIcon icon="ri:refresh-line" class="mr-1" />刷新
+            </ElButton>
+          </div>
         </div>
         <div class="form-section__body">
           <ElFormItem prop="baseModel" label="基础模型" class="form-item-full">
-            <ElSelect :model-value="modelValue.baseModel" placeholder="请选择基础模型" class="!w-full" @update:model-value="handleBaseModel">
-              <ElOptionGroup label="Qwen 系列">
-                <ElOption v-for="m in qwenModels" :key="m.value" :label="m.label" :value="m.value">
-                  <div class="model-option"><span class="model-option__name">{{ m.label }}</span><span class="model-option__tag">{{ m.tag }}</span></div>
-                </ElOption>
-              </ElOptionGroup>
-              <ElOptionGroup label="LLaMA 系列">
-                <ElOption v-for="m in llamaModels" :key="m.value" :label="m.label" :value="m.value">
-                  <div class="model-option"><span class="model-option__name">{{ m.label }}</span><span class="model-option__tag">{{ m.tag }}</span></div>
-                </ElOption>
-              </ElOptionGroup>
+            <ElSelect
+              :model-value="modelValue.baseModel"
+              placeholder="请选择基础模型"
+              class="!w-full"
+              filterable
+              :loading="modelsLoading"
+              @update:model-value="handleBaseModel"
+            >
+              <template v-if="modelOptions.length === 0 && !modelsLoading">
+                <el-empty description="暂无可用模型，请确保 LlamaFactory 推理服务已启动" :image-size="60" />
+              </template>
+              <template v-else>
+  
+                <template v-if="llamaModels.length">
+                  <ElOptionGroup label="LLaMA 系列">
+                    <ElOption v-for="m in llamaModels" :key="m.value" :label="m.label" :value="m.value">
+                      <div class="model-option"><span class="model-option__name">{{ m.label }}</span><span class="model-option__tag">{{ m.tag }}</span></div>
+                    </ElOption>
+                  </ElOptionGroup>
+                </template>
+                <template v-if="otherModels.length">
+                  <ElOptionGroup label="其他模型">
+                    <ElOption v-for="m in otherModels" :key="m.value" :label="m.label" :value="m.value">
+                      <div class="model-option"><span class="model-option__name">{{ m.label }}</span><span class="model-option__tag">{{ m.tag }}</span></div>
+                    </ElOption>
+                  </ElOptionGroup>
+                </template>
+              </template>
             </ElSelect>
           </ElFormItem>
           <Transition name="fade">
@@ -132,10 +157,19 @@
 </template>
 
 <script setup lang="ts">
+  import { ref, computed, onMounted } from 'vue'
   import type { FormInstance, FormRules } from 'element-plus'
   import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
+  import { getLlamaFactoryModels } from '@/api/llamafactory'
 
   defineOptions({ name: 'Step1Basic' })
+
+  interface ModelOption {
+    value: string
+    label: string
+    tag: string
+    org: string
+  }
 
   interface BasicConfig {
     taskName: string
@@ -153,19 +187,50 @@
   }>()
 
   const formRef = ref<FormInstance>()
+  const modelsLoading = ref(false)
+  const modelOptions = ref<ModelOption[]>([])
 
-  const qwenModels = [
-    { value: 'Qwen/Qwen2.5-7B-Instruct',  label: 'Qwen2.5-7B-Instruct',  tag: '7B'  },
-    { value: 'Qwen/Qwen2.5-14B-Instruct', label: 'Qwen2.5-14B-Instruct', tag: '14B' },
-    { value: 'Qwen/Qwen2.5-3B-Instruct',  label: 'Qwen2.5-3B-Instruct',  tag: '3B'  }
-  ]
+  onMounted(async () => {
+    await fetchModels()
+  })
 
-  const llamaModels = [
-    { value: 'meta-llama/Llama-3.1-8B-Instruct', label: 'Llama-3.1-8B-Instruct', tag: '8B' },
-    { value: 'meta-llama/Llama-3.2-3B-Instruct', label: 'Llama-3.2-3B-Instruct', tag: '3B' }
-  ]
+  async function fetchModels() {
+    modelsLoading.value = true
+    try {
+      const resp = await getLlamaFactoryModels()
+      if (resp.success && resp.models) {
+        modelOptions.value = resp.models.map((id: string) => parseModelOption(id))
+      }
+    } catch {
+      modelOptions.value = []
+    } finally {
+      modelsLoading.value = false
+    }
+  }
 
-  const allModels = [...qwenModels, ...llamaModels]
+  function refreshModels() {
+    fetchModels()
+  }
+
+  function parseModelOption(id: string): ModelOption {
+    const parts = id.split('/')
+    const org = parts.length > 1 ? parts[0] : ''
+    const name = parts.length > 1 ? parts.slice(1).join('/') : id
+    const sizeMatch = name.match(/(\d+\.?\d*)[Bb]/)
+    const tag = sizeMatch ? sizeMatch[0].toUpperCase() : ''
+    return { value: id, label: name, tag, org }
+  }
+
+    const llamaModels = computed(() => modelOptions.value.filter(m =>
+    m.org.toLowerCase().includes('llama') || m.org.toLowerCase().includes('meta')
+  ))
+
+  const otherModels = computed(() => {
+    const excluded = new Set(llamaModels.value)
+    return modelOptions.value.filter(m => !excluded.has(m))
+  })
+
+  const allModels = computed(() => modelOptions.value)
 
   interface MethodOption {
     value: 'lora' | 'qlora' | 'full'
@@ -205,10 +270,21 @@
       '8B':  '参数量 8B，显存需求约 16GB，推理能力强',
       '14B': '参数量 14B，显存需求约 28GB，效果显著优于 7B'
     }
-    const matched = allModels.find((m) => m.value === props.modelValue.baseModel)
+    const matched = allModels.value.find((m) => m.value === props.modelValue.baseModel)
     if (!matched) return ''
     return sizeMap[matched.tag] ?? ''
   })
+
+  /** 当前选中模型的参数量（数字部分），用于新手模式参数推荐 */
+  const selectedModelSize = computed((): number => {
+    const matched = allModels.value.find((m) => m.value === props.modelValue.baseModel)
+    if (!matched || !matched.tag) return 7
+    const num = parseFloat(matched.tag.replace(/[Bb]/g, ''))
+    return isNaN(num) ? 7 : num
+  })
+
+  /** 暴露给父组件的表单验证方法及模型信息 */
+  defineExpose({ validate, selectedModelSize, refreshModels })
 
   const rules = computed<FormRules<BasicConfig>>(() => ({
     taskName: [
@@ -224,19 +300,17 @@
     emit('update:modelValue', { ...props.modelValue, [key]: value })
   }
 
-  function handleTaskName(v: string)                              { handleUpdate('taskName', v) }
-  function handleBaseModel(v: string)                            { handleUpdate('baseModel', v) }
-  function handleFinetuneMethod(v: 'lora' | 'qlora' | 'full') { handleUpdate('finetuneMethod', v) }
-  function handleConfigMode(v: 'beginner' | 'expert')          { handleUpdate('configMode', v) }
+  function handleTaskName(v: string)                                 { handleUpdate('taskName', v) }
+  function handleBaseModel(v: string)                               { handleUpdate('baseModel', v) }
+  function handleFinetuneMethod(v: 'lora' | 'qlora' | 'full')      { handleUpdate('finetuneMethod', v) }
+  function handleConfigMode(v: 'beginner' | 'expert')               { handleUpdate('configMode', v) }
 
-  /** 暴露给父组件的表单验证方法 */
   async function validate() {
     if (!formRef.value) return Promise.reject(new Error('表单实例未就绪'))
     return formRef.value.validate()
   }
-
-  defineExpose({ validate })
 </script>
+
 <style lang="scss" scoped>
   .step1-basic { padding: 0; }
 
@@ -342,4 +416,17 @@
   }
   .fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease, transform 0.2s ease; }
   .fade-enter-from, .fade-leave-to { opacity: 0; transform: translateY(-4px); }
+
+  .loading-spinner {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--lfp-gray-300);
+    border-top-color: var(--el-color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
 </style>

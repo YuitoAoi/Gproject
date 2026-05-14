@@ -38,6 +38,7 @@ from src.services.llamafactory_service import (
     LlamaFactoryChatResponse,
     LlamaFactoryDatasetSyncRequest,
     LlamaFactoryDatasetSyncResponse,
+    LlamaFactoryFinetunedModelsResponse,
     LlamaFactoryModelsResponse,
     LlamaFactoryService,
     LlamaFactoryTrainingRequest,
@@ -74,6 +75,7 @@ __all__ = [
     "GetTimesResponse",
     "LlamaFactoryChatRequest",
     "LlamaFactoryChatResponse",
+    "LlamaFactoryFinetunedModelsResponse",
     "LlamaFactoryModelsResponse",
     "LlamaFactoryTrainingRequest",
     "LlamaFactoryTrainingResponse",
@@ -291,11 +293,20 @@ class ServiceFactory:
 
     def llamafactory(self) -> LlamaFactoryService:
         if self._llamafactory is None:
+            import logging
+
             from src.adapters.celery_client import celery_client
             from src.adapters.llamafactory_client import LlamaFactoryClient
             from src.adapters.llamafactory_dataset_client import LlamaFactoryDatasetClient
             from src.adapters.llamafactory_inference_client import LlamaFactoryInferenceClient
             from src.adapters.llamafactory_training_client import LlamaFactoryTrainingClient
+
+            _logger = logging.getLogger(__name__)
+            inference_client = None
+            try:
+                inference_client = LlamaFactoryInferenceClient()
+            except ConnectionError:
+                _logger.warning("[LlamaFactory] 推理服务未就绪，模型列表与对话功能不可用")
 
             self._llamafactory = LlamaFactoryService(
                 dataset_repo=self.dataset_repo,
@@ -303,7 +314,7 @@ class ServiceFactory:
                 file_repo=self.file_repo,
                 llama_client=LlamaFactoryClient(
                     datasets=LlamaFactoryDatasetClient(file_repo=self.file_repo),
-                    inference=LlamaFactoryInferenceClient(),
+                    inference=inference_client,
                     training=LlamaFactoryTrainingClient(),
                 ),
                 celery_client=celery_client,
