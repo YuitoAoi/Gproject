@@ -44,6 +44,11 @@ class Config(BaseSettings):
     LLAMAFACTORY_JOB_DIR: str = "data/llamafactory/jobs"
     LLAMAFACTORY_TRAIN_COMMAND: str = "llamafactory-cli"
     LLAMAFACTORY_POLL_INTERVAL_SECONDS: int = 5
+    LLAMAFACTORY_HOST_DATA_ROOT: str = "C:/Projects/Gproject/src-backend/data"
+    LLAMAFACTORY_CONTAINER_DATA_ROOT: str = "/apps/data"
+    LLAMAFACTORY_IMAGE: str = "hiyouga/llamafactory:latest"
+    LLAMAFACTORY_TRAINING_TIMEOUT_SECONDS: int = 14400
+    LLAMAFACTORY_INFERENCE_STARTUP_TIMEOUT_SECONDS: int = 1800
     GRAPHGEN_API_URL: str = "http://localhost:8001/api/v1"
     SYNTHESIZER_MODEL: str = "Qwen/Qwen2.5-7B-Instruct"
     SYNTHESIZER_BASE_URL: str = "https://api.siliconflow.cn/v1"
