@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import shutil
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -164,7 +165,13 @@ def dispatch_task(
     if not job_id or not dataset_id:
         raise HTTPException(status_code=400, detail="Task config missing job_id or dataset_id")
 
-    celery_client.send_task("dataset.monitor_graphgen", kwargs={"job_id": job_id, "dataset_id": dataset_id})
+    if t.task_type == "training":
+        celery_client.send_task("training.monitor", kwargs={"job_id": job_id, "task_id": task_id})
+    elif t.task_type == "cleaning":
+        celery_client.send_task("dataset.monitor_graphgen", kwargs={"job_id": job_id, "dataset_id": dataset_id})
+    else:
+        raise HTTPException(status_code=400, detail=f"Task type {t.task_type} does not support dispatch")
+
     return {"success": True, "message": "Task dispatched"}
 
 
@@ -189,6 +196,12 @@ LOG_DIR = os.path.join(
 )
 LOG_DIR = os.path.normpath(LOG_DIR)
 
+# 训练日志目录：与 LlamaFactory 任务目录复用，resolve 为绝对路径
+from src.core.config import config as _cfg
+from pathlib import Path
+
+TRAINING_JOB_DIR = str((Path(__file__).parent / ".." / ".." / ".." / _cfg.LLAMAFACTORY_JOB_DIR).resolve())
+
 
 @router.delete("/{task_id}")
 def delete_task(
@@ -210,15 +223,80 @@ def delete_task(
 
     if job_id:
         svc.dataset_log_repo.remove_by_job_id(job_id)
-        log_file = os.path.join(LOG_DIR, f"{job_id}.log")
-        if os.path.exists(log_file):
+        dataset_log_file = os.path.join(LOG_DIR, f"{job_id}.log")
+        if os.path.exists(dataset_log_file):
             import contextlib
 
             with contextlib.suppress(Exception):
-                os.remove(log_file)
+                os.remove(dataset_log_file)
+
+        # 清理训练任务目录（含 train.log、config.json、pid、output/）
+        training_job_dir = os.path.join(TRAINING_JOB_DIR, job_id)
+        if os.path.isdir(training_job_dir):
+            with contextlib.suppress(Exception):
+                shutil.rmtree(training_job_dir)
 
     svc.task_repo.remove(task_id)
     return {"success": True}
+
+
+class TrainingTerminateResponse(BaseModel):
+    success: bool = False
+    message: str = ""
+
+
+@router.post("/{task_id}/terminate", response_model=TrainingTerminateResponse)
+def terminate_training_task(
+    task_id: int,
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """强制终止训练任务：kill 子进程并更新状态。"""
+    owner_id = int(current_user.user_id)
+    t = svc.task_repo.find_by_id(task_id)
+    if t is None or t.owner_id != owner_id:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    if t.task_type != "training":
+        raise HTTPException(status_code=400, detail="Only training tasks can be terminated via this endpoint")
+
+    try:
+        config = json.loads(t.config)
+        job_id = config.get("job_id")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail="Invalid task config") from e
+
+    if not job_id:
+        raise HTTPException(status_code=400, detail="Task config missing job_id")
+
+    # 终止子进程
+    terminated = False
+    try:
+        from src.core.task.training_monitor_task import JOB_DIR, _terminate_process, _cleanup_training_logs
+
+        terminated = _terminate_process(job_id)
+        _cleanup_training_logs(job_id)
+    except Exception as exc:
+        _logger.warning("[terminate_training] 无法终止进程 %s: %s", job_id, exc)
+
+    # 如果任务处于导出阶段，同时终止导出子进程
+    export_job_id = config.get("export_job_id") if isinstance(config, dict) else None
+    if export_job_id:
+        try:
+            from src.core.task.training_monitor_task import _terminate_process as _terminate_export
+
+            _terminate_export(export_job_id)
+        except Exception as exc:
+            _logger.warning("[terminate_training] 无法终止导出进程 %s: %s", export_job_id, exc)
+
+    # 更新任务状态
+    svc.task_repo.update_status(task_id, "cancelled")
+
+    _logger.info("[terminate_training] task_id=%s, job_id=%s, terminated=%s", task_id, job_id, terminated)
+    return TrainingTerminateResponse(
+        success=True,
+        message="训练任务已终止" if terminated else "进程已标记终止（可能已自行退出）",
+    )
 
 
 class CleaningSummaryResponse(BaseModel):
@@ -227,6 +305,83 @@ class CleaningSummaryResponse(BaseModel):
     status: str = "pending"
     current_stage: str = ""
     error: str | None = None
+
+
+class TrainingLogResponse(BaseModel):
+    lines: list[str] = []
+    error: str | None = None
+
+
+@router.get("/{task_id}/training-log", response_model=TrainingLogResponse)
+def get_training_log(
+    task_id: int,
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """读取训练任务的日志文件（train.log）。"""
+    owner_id = int(current_user.user_id)
+    t = svc.task_repo.find_by_id(task_id)
+    if t is None or t.owner_id != owner_id:
+        return TrainingLogResponse(error="任务未找到")
+
+    if t.task_type != "training":
+        return TrainingLogResponse(error="仅训练任务有日志")
+
+    job_id = None
+    try:
+        config = json.loads(t.config)
+        job_id = config.get("job_id")
+    except Exception:
+        return TrainingLogResponse(error="任务配置无效")
+
+    if not job_id:
+        return TrainingLogResponse(error="缺少 job_id")
+
+    # 训练日志位于 job_dir/train.log
+    log_file = Path(TRAINING_JOB_DIR) / job_id / "train.log"
+    if not log_file.exists():
+        return TrainingLogResponse(error="日志文件尚未生成")
+
+    try:
+        with open(log_file, encoding="utf-8") as f:
+            lines = [line.rstrip("\n") for line in f.readlines()]
+        return TrainingLogResponse(lines=lines)
+    except Exception as exc:
+        return TrainingLogResponse(error=str(exc))
+
+
+@router.get("/{task_id}/export-log", response_model=TrainingLogResponse)
+def get_training_export_log(
+    task_id: int,
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """读取训练任务的自动导出日志（GGUF export.log）。"""
+    owner_id = int(current_user.user_id)
+    t = svc.task_repo.find_by_id(task_id)
+    if t is None or t.owner_id != owner_id:
+        return TrainingLogResponse(error="任务未找到")
+
+    export_job_id = None
+    try:
+        config = json.loads(t.config)
+        export_job_id = config.get("export_job_id")
+    except Exception:
+        return TrainingLogResponse(error="任务配置无效")
+
+    if not export_job_id:
+        return TrainingLogResponse(error="该任务暂无导出日志")
+
+    log_path = Path(TRAINING_JOB_DIR) / export_job_id / "export.log"
+    if not log_path.exists():
+        return TrainingLogResponse(error="导出日志文件尚未生成")
+
+    try:
+        with open(log_path, encoding="utf-8") as f:
+            lines = [line.rstrip("\n") for line in f.readlines()]
+        return TrainingLogResponse(lines=lines)
+    except Exception as exc:
+        return TrainingLogResponse(error=str(exc))
 
 
 @router.get("/{task_id}/cleaning-summary", response_model=CleaningSummaryResponse)

@@ -18,6 +18,12 @@ celery_app.conf.update(
     task_soft_time_limit=25 * 60,
     task_time_limit=30 * 60,
     task_track_started=True,
+    # 注册训练监控任务，使 Worker 能发现 training.monitor
+    include=[
+        "tasks",
+        "src.core.task.training_monitor_task",
+        "src.core.task.export_monitor_task",
+    ],
 )
 
 import tasks  # noqa: E402, F401

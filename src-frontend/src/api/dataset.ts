@@ -335,9 +335,8 @@ export async function updateDataset(data: {
   tag_ids?: number[]
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await request.request<{ success: boolean; error?: string }>({
+    const response = await request.patch<{ success: boolean; error?: string }>({
       url: '/dataset',
-      method: 'PATCH',
       data
     })
     return response

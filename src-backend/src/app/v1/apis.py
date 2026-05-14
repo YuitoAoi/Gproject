@@ -21,6 +21,10 @@ from src.app.v1.user import auth_api, user_api
 api_v1.include_router(user_api)
 api_v1.include_router(auth_api)
 
+from src.app.v1.admin import admin_api
+
+api_v1.include_router(admin_api)
+
 from src.app.v1.task import router as task_router
 
 api_v1.include_router(task_router)
@@ -28,6 +32,10 @@ api_v1.include_router(task_router)
 from src.app.v1.llamafactory import router as llamafactory_router
 
 api_v1.include_router(llamafactory_router)
+
+from src.app.v1.dashboard import router as dashboard_router
+
+api_v1.include_router(dashboard_router)
 
 
 @api_v1.get("/")

@@ -4,7 +4,7 @@
     class="absolute w-full flex-cb top-4.5 z-10 flex-c !justify-end max-[1180px]:!justify-between"
   >
     <div class="flex-cc !hidden max-[1180px]:!flex ml-2 max-sm:ml-6">
-      <ArtLogo class="icon" size="46" />
+      <LfpLogo class="icon" size="46" />
       <h1 class="text-xl ont-mediumf ml-2">{{ AppConfig.systemInfo.name }}</h1>
     </div>
 
@@ -21,11 +21,11 @@
             :style="{ background: color, '--index': index }"
             @click="changeThemeColor(color)"
           >
-            <ArtSvgIcon v-if="color === systemThemeColor" icon="ri:check-fill" class="text-white" />
+            <LfpSvgIcon v-if="color === systemThemeColor" icon="ri:check-fill" class="text-white" />
           </div>
         </div>
         <div class="btn palette-btn relative z-[2] h-8 w-8 c-p flex-cc tad-300">
-          <ArtSvgIcon
+          <LfpSvgIcon
             icon="ri:palette-line"
             class="text-xl text-g-800 transition-colors duration-300"
           />
@@ -35,7 +35,7 @@
         class="btn theme-btn h-8 w-8 c-p flex-cc tad-300"
         @click="themeAnimation"
       >
-        <ArtSvgIcon
+        <LfpSvgIcon
           :icon="isDark ? 'ri:sun-fill' : 'ri:moon-line'"
           class="text-xl text-g-800 transition-colors duration-300"
         />
@@ -67,7 +67,7 @@
   .color-dots {
     pointer-events: none;
     backdrop-filter: blur(10px);
-    box-shadow: 0 2px 12px var(--art-gray-300);
+    box-shadow: 0 2px 12px var(--lfp-gray-300);
     transition:
       opacity 0.3s ease,
       transform 0.3s ease;
@@ -98,11 +98,11 @@
   }
 
   .dark .color-dots {
-    background-color: var(--art-gray-200);
+    background-color: var(--lfp-gray-200);
     box-shadow: none;
   }
 
-  .color-picker-expandable:hover .palette-btn :deep(.art-svg-icon) {
+  .color-picker-expandable:hover .palette-btn :deep(.lfp-svg-icon) {
     color: v-bind(color);
   }
 </style>

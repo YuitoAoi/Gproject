@@ -1,6 +1,6 @@
 <!-- 403页面 -->
 <template>
-  <ArtException
+  <LfpException
     :data="{
       title: '403',
       desc: '没有访问权限',

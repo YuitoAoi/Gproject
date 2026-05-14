@@ -18,4 +18,9 @@ celery_client.conf.update(
     task_soft_time_limit=25 * 60,
     task_time_limit=30 * 60,
     task_track_started=True,
+    # 显式注册所有 Celery 任务模块，避免 Worker 启动时无法发现任务
+    include=[
+        "src.core.task.training_monitor_task",
+        "src.core.task.export_monitor_task",
+    ],
 )

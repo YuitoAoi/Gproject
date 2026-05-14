@@ -10,7 +10,9 @@ class LlamaFactoryClient:
         training: Any,
         datasets: Any,
         inference: Any,
+        export: Any = None,
     ) -> None:
         self.training = training
         self.datasets = datasets
         self.inference = inference
+        self.export = export

@@ -45,7 +45,7 @@
     </div>
 
     <!-- 表格 -->
-    <ArtTable
+    <LfpTable
       :loading="loading"
       :data="filteredData"
       :columns="columns"
@@ -77,11 +77,11 @@
 </template>
 
 <script setup lang="ts">
-  import ArtTable from '@/components/core/tables/art-table/index.vue'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpTable from '@/components/core/tables/lfp-table/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import { ElMessageBox, ElMessage } from 'element-plus'
   import { TASK_STATUS_CONFIG, TASK_TYPE_CONFIG, type TaskItem } from '@/mock/modules/task-dispatch'
-  import { getTasks, deleteTask, type TaskItem as ApiTask } from '@/api/task'
+  import { getTasks, deleteTask, terminateTask, type TaskItem as ApiTask } from '@/api/task'
   import { mapTaskStatusForDisplay } from '@/utils/task'
 
   defineOptions({ name: 'TaskConsole' })
@@ -213,7 +213,7 @@
             class: 'flex items-center gap-1.5'
           },
           [
-            h(ArtSvgIcon, {
+            h(LfpSvgIcon, {
               icon: config.icon,
               class: 'text-base',
               style: { color: config.color }
@@ -360,8 +360,13 @@
     if (!currentTask.value) return
     const id = Number(currentTask.value.id)
     try {
-      await deleteTask(id)
-      ElMessage.success(`任务「${currentTask.value?.name}」已强制终止`)
+      const resp = await terminateTask(id)
+      if (resp.success) {
+        ElMessage.success(resp.message || `任务「${currentTask.value?.name}」已强制终止`)
+      } else {
+        ElMessage.error(resp.message || '终止失败')
+        return
+      }
       terminateDialogVisible.value = false
       currentTask.value = null
       await fetchTasks()
@@ -412,7 +417,7 @@
   .task-console {
     background: var(--el-bg-color);
     border-radius: var(--custom-radius, 8px);
-    border: 1px solid var(--art-gray-200);
+    border: 1px solid var(--lfp-gray-200);
   }
 
   .toolbar {
@@ -426,11 +431,11 @@
     gap: 4px;
 
     .task-id {
-      color: var(--art-gray-500);
+      color: var(--lfp-gray-500);
     }
 
     .task-name {
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
 
       &:hover {
         color: var(--el-color-primary);

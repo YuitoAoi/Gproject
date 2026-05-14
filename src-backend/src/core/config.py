@@ -11,6 +11,8 @@ class Config(BaseSettings):
     CACHE_DIR: str = "./cache"
     LOG_DIR: str = "./logs"
     DATASETS_DIR: str = "data/datasets"
+    DATASET_LOG_DIR: str = "data/logs/dataset_logs"
+    TRAINING_LOG_DIR: str = "data/logs/training_logs"
 
     HOST: str = "0.0.0.0"
     PORT: int = 8088
@@ -42,8 +44,11 @@ class Config(BaseSettings):
     LLAMAFACTORY_DATA_DIR: str = "data/llamafactory/data"
     LLAMAFACTORY_DATASET_INFO_PATH: str = "data/llamafactory/data/dataset_info.json"
     LLAMAFACTORY_JOB_DIR: str = "data/llamafactory/jobs"
+    LLAMAFACTORY_TRAINING_LOG_DIR: str = "data/llamafactory/jobs"
     LLAMAFACTORY_TRAIN_COMMAND: str = "llamafactory-cli"
+    LLAMAFACTORY_EXPORT_COMMAND: str = "llamafactory-cli"
     LLAMAFACTORY_POLL_INTERVAL_SECONDS: int = 5
+    LLAMAFACTORY_EXPORT_TIMEOUT_SECONDS: int = 7200
     LLAMAFACTORY_HOST_DATA_ROOT: str = "C:/Projects/Gproject/src-backend/data"
     LLAMAFACTORY_CONTAINER_DATA_ROOT: str = "/apps/data"
     LLAMAFACTORY_IMAGE: str = "hiyouga/llamafactory:latest"

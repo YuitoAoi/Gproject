@@ -6,6 +6,9 @@
  */
 import type { RouteRecordRaw } from 'vue-router'
 
+/** 默认首页路径（被根路由 redirect、路由守卫、侧边栏共用） */
+export const HOME_PATH = '/workbench/dashboard'
+
 /** 主布局组件 */
 const Layout = () => import('@/views/index/index.vue')
 
@@ -14,7 +17,7 @@ export const publicRoutes: RouteRecordRaw[] = [
   // 根路径重定向到首页
   {
     path: '/',
-    redirect: '/workbench/dashboard'
+    redirect: HOME_PATH
   },
   {
     path: '/auth/login',
@@ -79,6 +82,25 @@ export const businessRoutes: RouteRecordRaw[] = [
         name: 'TaskDispatch',
         component: () => import('@/views/workbench/task-dispatch/index.vue'),
         meta: { title: '任务调度中心', icon: 'ri:timer-flash-line' }
+      },
+      // 隐藏子路由：通过编程导航访问，不出现在侧边栏
+      {
+        path: 'task-monitoring/:id',
+        name: 'TaskMonitoringDetail',
+        component: () => import('@/views/task-monitoring/index.vue'),
+        meta: { title: '任务监控详情', hidden: true }
+      },
+      {
+        path: 'cleaning-monitor/:id',
+        name: 'CleaningMonitoringDetail',
+        component: () => import('@/views/cleaning-monitor/index.vue'),
+        meta: { title: '清洗监控详情', hidden: true }
+      },
+      {
+        path: 'export-monitoring/:id',
+        name: 'ExportMonitoringDetail',
+        component: () => import('@/views/cleaning-monitor/export.vue'),
+        meta: { title: '导出任务监控', hidden: true }
       }
     ]
   },
@@ -152,33 +174,6 @@ export const businessRoutes: RouteRecordRaw[] = [
         name: 'AdvancedSettings',
         component: () => import('@/views/system-management/advanced-settings/index.vue'),
         meta: { title: '高级设置', icon: 'ri:settings-3-line', roles: ['R_ADMIN'] }
-      }
-    ]
-  },
-  // 隐藏路由（不在菜单中显示，但可通过编程导航访问）
-  {
-    path: '/workbench/task-monitoring',
-    component: Layout,
-    meta: { title: '任务监控', hidden: true },
-    children: [
-      {
-        path: ':id',
-        name: 'TaskMonitoringDetail',
-        component: () => import('@/views/task-monitoring/index.vue'),
-        meta: { title: '任务监控详情', hidden: true }
-      }
-    ]
-  },
-  {
-    path: '/workbench/cleaning-monitor',
-    component: Layout,
-    meta: { title: '清洗监控', hidden: true },
-    children: [
-      {
-        path: ':id',
-        name: 'CleaningMonitoringDetail',
-        component: () => import('@/views/cleaning-monitor/index.vue'),
-        meta: { title: '清洗监控详情', hidden: true }
       }
     ]
   }

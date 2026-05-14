@@ -2,7 +2,7 @@
 <template>
   <div class="login-left-view">
     <div class="logo">
-      <ArtLogo class="icon" size="46" />
+      <LfpLogo class="icon" size="46" />
       <h1 class="title">{{ AppConfig.systemInfo.name }}</h1>
     </div>
 
@@ -11,8 +11,8 @@
     </div>
 
     <div class="text-wrap">
-      <h1> 开箱即用的中后台管理系统 </h1>
-      <p> 基于 Vue3 + TypeScript + Element Plus </p>
+      <h1> LLaMA 模型微调工作站 </h1>
+      <p> 高效管理您的模型训练与数据处理任务 </p>
     </div>
 
     <!-- 几何装饰元素 -->
@@ -135,13 +135,13 @@
       h1 {
         font-size: 24px;
         font-weight: 400;
-        color: var(--art-gray-900) !important;
+        color: var(--lfp-gray-900) !important;
       }
 
       p {
         margin-top: 10px;
         font-size: 14px;
-        color: var(--art-gray-600) !important;
+        color: var(--lfp-gray-600) !important;
       }
     }
 

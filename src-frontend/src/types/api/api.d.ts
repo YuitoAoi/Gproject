@@ -101,6 +101,7 @@ declare namespace Api {
       email: string
       is_admin: boolean
       is_active: boolean
+      roles: string[]
       created_at: string
       last_login: string
       error?: string
@@ -113,7 +114,6 @@ declare namespace Api {
       email: string
       roles: string[]
       buttons: string[]
-      avatar: string
     }
   }
 
@@ -300,25 +300,42 @@ declare namespace Api {
     /** 用户列表项 */
     interface UserListItem {
       id: number
-      avatar: string
-      status: string
-      userName: string
-      userGender: string
-      nickName: string
-      userPhone: string
-      userEmail: string
-      userRoles: string[]
-      createBy: string
-      createTime: string
-      updateBy: string
-      updateTime: string
+      name: string
+      email: string
+      is_admin: boolean
+      is_active: boolean
+      roles: string[]
+      created_at: string
+      last_login: string
     }
 
     /** 用户搜索参数 */
-    type UserSearchParams = Partial<
-      Pick<UserListItem, 'id' | 'userName' | 'userGender' | 'userPhone' | 'userEmail' | 'status'> &
-        Api.Common.CommonSearchParams
-    >
+    type UserSearchParams = {
+      page?: number
+      size?: number
+      keyword?: string
+    }
+
+    /** 管理员操作响应 */
+    interface AdminOperationResponse {
+      success: boolean
+      error?: string
+    }
+
+    /** 切换用户激活状态请求 */
+    interface ToggleActiveRequest {
+      is_active: boolean
+    }
+
+    /** 设置管理员请求 */
+    interface SetAdminRequest {
+      is_admin: boolean
+    }
+
+    /** 重置密码请求 */
+    interface ResetPasswordRequest {
+      new_password: string
+    }
 
     /** 角色列表 */
     type RoleList = Api.Common.PaginatedResponse<RoleListItem>

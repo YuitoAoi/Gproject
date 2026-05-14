@@ -84,7 +84,9 @@ class TestUserRoutes:
 
         now = datetime.now()
         mock_svc.get_user_info.return_value.execute.return_value = UserInfoResponse(
-            id=1, name="Alice", email="a@b.com", is_admin=False, is_active=True, created_at=now, last_login=now
+            id=1, name="Alice", email="a@b.com", is_admin=False, is_active=True,
+            roles=["R_USER"],
+            created_at=now, last_login=now
         )
         resp = tc.get("/user", **_auth())
         assert resp.status_code == 200
@@ -98,7 +100,9 @@ class TestUserRoutes:
 
         d = datetime(2000, 1, 1)
         mock_svc.get_user_info.return_value.execute.return_value = UserInfoResponse(
-            id=0, name="", email="", is_admin=False, is_active=False, created_at=d, last_login=d, error="User not found"
+            id=0, name="", email="", is_admin=False, is_active=False,
+            roles=[],
+            created_at=d, last_login=d, error="User not found"
         )
         resp = tc.get("/user", **_auth())
         assert resp.status_code == 404

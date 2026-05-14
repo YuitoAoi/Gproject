@@ -51,7 +51,7 @@ export type RolesDirective = Directive<HTMLElement, string | string[]>
 
 function checkRolePermission(el: HTMLElement, binding: DirectiveBinding<string | string[]>): void {
   const userStore = useUserStore()
-  const userRoles = userStore.getUserInfo.roles
+  const userRoles = userStore.roles
 
   // 如果用户角色为空或未定义，移除元素
   if (!userRoles?.length) {

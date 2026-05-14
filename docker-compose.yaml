@@ -85,8 +85,8 @@ services:
 
   celery-worker:
     build:
-      context: ./src-celery
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src-celery/Dockerfile
     container_name: gproject-celery
     restart: unless-stopped
     command: celery -A main worker --loglevel=info --pool=solo

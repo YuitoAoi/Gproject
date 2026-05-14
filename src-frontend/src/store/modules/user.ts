@@ -12,7 +12,6 @@ export interface UserInfo {
   userName: string
   email: string
   roles: string[]
-  avatar: string
 }
 
 export const useUserStore = defineStore(

@@ -219,6 +219,73 @@ class TaskRepository:
             _logger.exception("Failed to delete task id=%s", id)
             return exc
 
+    def update_status(self, id: int, status: str) -> Exception | None:
+        """快速更新任务状态，供监控任务调用。"""
+        try:
+            with self._conn.new_session() as session:
+                from datetime import datetime
+
+                session.execute(
+                    text("UPDATE tasks SET status = :status, updated_at = :updated_at WHERE id = :id"),
+                    {"id": id, "status": status, "updated_at": datetime.now()},
+                )
+                session.commit()
+                return None
+        except Exception as exc:
+            _logger.exception("Failed to update task status id=%s", id)
+            return exc
+
+    def update_progress(self, id: int, progress: float, phase: str, status: str | None = None) -> Exception | None:
+        """更新任务进度、阶段和可选状态，供监控任务高频调用。"""
+        try:
+            with self._conn.new_session() as session:
+                from datetime import datetime
+
+                if status is not None:
+                    session.execute(
+                        text("UPDATE tasks SET progress = :progress, phase = :phase, status = :status, updated_at = :updated_at WHERE id = :id"),
+                        {"id": id, "progress": progress, "phase": phase, "status": status, "updated_at": datetime.now()},
+                    )
+                else:
+                    session.execute(
+                        text("UPDATE tasks SET progress = :progress, phase = :phase, updated_at = :updated_at WHERE id = :id"),
+                        {"id": id, "progress": progress, "phase": phase, "updated_at": datetime.now()},
+                    )
+                session.commit()
+                return None
+        except Exception as exc:
+            _logger.exception("Failed to update task progress id=%s", id)
+            return exc
+
+    def update_config(self, id: int, extra: dict) -> Exception | None:
+        """将 extra 中的键合并到 task 的 config JSON 中。"""
+        import json
+        from datetime import datetime
+
+        try:
+            with self._conn.new_session() as session:
+                row = session.execute(
+                    text("SELECT config FROM tasks WHERE id = :id"),
+                    {"id": id},
+                ).fetchone()
+                if row is None:
+                    return ValueError(f"Task {id} not found")
+                cfg = json.loads(row.config or "{}")
+                cfg.update(extra)
+                session.execute(
+                    text("UPDATE tasks SET config = :config, updated_at = :updated_at WHERE id = :id"),
+                    {
+                        "id": id,
+                        "config": json.dumps(cfg, ensure_ascii=False),
+                        "updated_at": datetime.now(),
+                    },
+                )
+                session.commit()
+                return None
+        except Exception as exc:
+            _logger.exception("Failed to update config for id=%s", id)
+            return exc
+
     def remove_by_config_dataset_id(self, owner_id: int, dataset_id: int) -> Exception | None:
         """删除 config 中包含指定 dataset_id 的所有任务记录。"""
         try:
@@ -237,6 +304,82 @@ class TaskRepository:
                 owner_id,
             )
             return exc
+
+    def count_by_status(self, owner_id: int, statuses: list[str]) -> int:
+        """统计指定用户在给定状态集合中的任务数量。"""
+        if not statuses:
+            return 0
+        placeholders = ", ".join(f":s{i}" for i in range(len(statuses)))
+        params = {"owner_id": owner_id, **{f"s{i}": s for i, s in enumerate(statuses)}}
+        try:
+            with self._conn.new_session() as session:
+                row = session.execute(
+                    text(
+                        f"SELECT COUNT(*) FROM tasks "
+                        f"WHERE owner_id = :owner_id AND status IN ({placeholders})"
+                    ),
+                    params,
+                ).fetchone()
+                return row[0] if row else 0
+        except Exception:
+            _logger.exception("Failed to count tasks by status for owner_id=%s", owner_id)
+            return 0
+
+    def count_by_type(self, owner_id: int, task_type: str) -> int:
+        """统计指定用户某类型的任务数量。"""
+        try:
+            with self._conn.new_session() as session:
+                row = session.execute(
+                    text("SELECT COUNT(*) FROM tasks WHERE owner_id = :owner_id AND task_type = :task_type"),
+                    {"owner_id": owner_id, "task_type": task_type},
+                ).fetchone()
+                return row[0] if row else 0
+        except Exception:
+            _logger.exception("Failed to count tasks by type for owner_id=%s", owner_id)
+            return 0
+
+    def recent_tasks(self, owner_id: int, limit: int = 10) -> list[TaskRecord]:
+        """获取指定用户最近 N 条任务（按 updated_at DESC 排序）。"""
+        try:
+            with self._conn.new_session() as session:
+                rows = session.execute(
+                    text(
+                        f"SELECT {self._COLUMNS} FROM tasks "
+                        "WHERE owner_id = :owner_id ORDER BY updated_at DESC LIMIT :limit"
+                    ),
+                    {"owner_id": owner_id, "limit": limit},
+                ).fetchall()
+                return [self._row_to_task(r) for r in rows]
+        except Exception:
+            _logger.exception("Failed to get recent tasks for owner_id=%s", owner_id)
+            return []
+
+    def daily_done_counts(self, owner_id: int, days: int = 7) -> list[tuple[str, int]]:
+        """统计最近 N 天每天完成的任务数量，缺天补零。
+
+        返回列表按日期升序排列，每个元素为 (date_str, count)，
+        date_str 格式为 "MM-DD"。
+        """
+        from datetime import timedelta
+
+        today = datetime.now().date()
+        date_range = [(today - timedelta(days=i)) for i in range(days - 1, -1, -1)]
+        try:
+            with self._conn.new_session() as session:
+                rows = session.execute(
+                    text(
+                        "SELECT DATE(updated_at) AS d, COUNT(*) AS c FROM tasks "
+                        "WHERE owner_id = :owner_id AND status = 'done' "
+                        "AND updated_at >= :start_date "
+                        "GROUP BY DATE(updated_at)"
+                    ),
+                    {"owner_id": owner_id, "start_date": date_range[0]},
+                ).fetchall()
+                counts_map = {row.d: row.c for row in rows}
+                return [(d.strftime("%m-%d"), counts_map.get(d, 0)) for d in date_range]
+        except Exception:
+            _logger.exception("Failed to get daily done counts for owner_id=%s", owner_id)
+            return [(d.strftime("%m-%d"), 0) for d in date_range]
 
     @staticmethod
     def _row_to_task(row) -> TaskRecord:

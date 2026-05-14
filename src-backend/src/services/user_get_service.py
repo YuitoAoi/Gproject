@@ -15,9 +15,15 @@ class UserInfoResponse(BaseModel):
     email: str
     is_admin: bool
     is_active: bool
+    roles: list[str]
     created_at: datetime
     last_login: datetime
     error: str | None = None
+
+
+def _roles_from_admin_flag(is_admin: bool) -> list[str]:
+    """根据 is_admin 字段映射前端角色列表。"""
+    return ["R_ADMIN"] if is_admin else ["R_USER"]
 
 
 class UserGetService:
@@ -35,6 +41,7 @@ class UserGetService:
                 email="",
                 is_admin=False,
                 is_active=False,
+                roles=[],
                 created_at=datetime.min,
                 last_login=datetime.min,
                 error="User not found",
@@ -45,6 +52,7 @@ class UserGetService:
             email=user.email,
             is_admin=user.is_admin,
             is_active=user.is_active,
+            roles=_roles_from_admin_flag(user.is_admin),
             created_at=user.created_at,
             last_login=user.last_login,
         )

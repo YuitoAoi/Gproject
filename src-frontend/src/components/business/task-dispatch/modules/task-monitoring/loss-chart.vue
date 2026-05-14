@@ -16,7 +16,7 @@
   }
 
   const props = withDefaults(defineProps<Props>(), {
-    data: () => lossChartMockData
+    data: () => []
   })
 
   const chartRef = ref<HTMLElement>()

@@ -117,8 +117,7 @@
           userId: userInfo.id,
           userName: userInfo.name,
           email: userInfo.email,
-          roles: userInfo.is_admin ? ['R_ADMIN', 'R_USER'] : ['R_USER'],
-          avatar: ''
+          roles: userInfo.roles
         })
       } catch (e) {
         console.warn('[Login] 获取用户信息失败，使用基本信息', e)

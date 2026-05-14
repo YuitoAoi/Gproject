@@ -20,7 +20,7 @@
       <!-- 左侧 40%：动态指标卡片 -->
       <div class="lg:col-span-2 grid grid-cols-2 gap-4">
         <!-- 总数据集卡片 -->
-        <div class="art-card p-5 relative">
+        <div class="lfp-card p-5 relative">
           <div class="flex flex-col justify-between h-full">
             <div>
               <p class="text-sm text-g-500">数据集总量</p>
@@ -32,11 +32,11 @@
             </div>
           </div>
           <div class="size-12 rounded-lg flex-cc bg-theme/10 absolute bottom-4 right-4">
-            <ArtSvgIcon icon="ri:archive-line" class="text-xl text-theme" />
+            <LfpSvgIcon icon="ri:archive-line" class="text-xl text-theme" />
           </div>
         </div>
         <!-- 存储水位卡片 -->
-        <div class="art-card p-5 relative">
+        <div class="lfp-card p-5 relative">
           <div class="flex flex-col justify-between h-full">
             <div>
               <p class="text-sm text-g-500">存储水位</p>
@@ -49,18 +49,18 @@
             </div>
           </div>
           <div class="size-12 rounded-lg flex-cc bg-warning/10 absolute bottom-4 right-4">
-            <ArtSvgIcon icon="ri:hard-drive-3-line" class="text-xl text-warning" />
+            <LfpSvgIcon icon="ri:hard-drive-3-line" class="text-xl text-warning" />
           </div>
         </div>
       </div>
 
       <!-- 右侧 60%：任务队列 -->
       <div class="lg:col-span-3">
-        <div class="art-card p-0" style="height: 240px">
+        <div class="lfp-card p-0" style="height: 240px">
           <!-- 任务队列头部 -->
           <div class="task-queue-header">
             <div class="flex items-center gap-2">
-              <ArtSvgIcon icon="ri:file-list-3-line" class="text-lg text-g-600" />
+              <LfpSvgIcon icon="ri:file-list-3-line" class="text-lg text-g-600" />
               <span class="text-sm font-medium text-g-700">
                 任务队列
                 <template v-if="uploadTasks.length > 0">
@@ -91,7 +91,7 @@
 
           <!-- 场景A：无上传任务 -->
           <div v-if="uploadTasks.length === 0" class="task-empty">
-            <ArtSvgIcon icon="ri:file-list-3-line" class="text-4xl text-g-400 mb-2" />
+            <LfpSvgIcon icon="ri:file-list-3-line" class="text-4xl text-g-400 mb-2" />
             <p class="text-sm text-g-600">暂无上传任务</p>
             <p class="text-xs text-g-500 mt-1"
               >点击上方「导入新数据集」开始扩充您的预训练资产池。</p
@@ -113,7 +113,7 @@
               >
                 <!-- 文件图标 -->
                 <div class="task-icon" :class="getTaskIconClass(task)">
-                  <ArtSvgIcon :icon="getTaskIcon(task)" class="text-lg" />
+                  <LfpSvgIcon :icon="getTaskIcon(task)" class="text-lg" />
                 </div>
 
                 <!-- 任务信息 -->
@@ -146,15 +146,15 @@
                     </div>
                     <div class="task-meta">
                       <span v-if="task.status === 'uploading'" class="flex items-center gap-1">
-                        <ArtSvgIcon icon="ri:arrow-up-line" class="text-xs" />
+                        <LfpSvgIcon icon="ri:arrow-up-line" class="text-xs" />
                         {{ task.speed }}
                       </span>
                       <span v-if="task.status === 'completed'">
-                        <ArtSvgIcon icon="ri:check-line" class="text-success text-xs mr-0.5" />
+                        <LfpSvgIcon icon="ri:check-line" class="text-success text-xs mr-0.5" />
                         已完成
                       </span>
                       <span v-if="task.status === 'paused'">
-                        <ArtSvgIcon icon="ri:pause-line" class="text-warning text-xs mr-0.5" />
+                        <LfpSvgIcon icon="ri:pause-line" class="text-warning text-xs mr-0.5" />
                         已暂停
                       </span>
                       <span class="text-g-400">|</span>
@@ -168,7 +168,7 @@
                   </template>
                   <template v-else>
                     <div class="task-error-msg">
-                      <ArtSvgIcon icon="ri:error-warning-line" class="text-danger text-xs mr-0.5" />
+                      <LfpSvgIcon icon="ri:error-warning-line" class="text-danger text-xs mr-0.5" />
                       上传失败 — {{ task.remaining || '网络连接中断，请检查网络后重试' }}
                     </div>
                   </template>
@@ -184,7 +184,7 @@
                       @click="retryTask(task)"
                       title="重试"
                     >
-                      <ArtSvgIcon icon="ri:refresh-line" class="text-lg text-blue-500" />
+                      <LfpSvgIcon icon="ri:refresh-line" class="text-lg text-blue-500" />
                     </ElButton>
                   </template>
                   <ElButton
@@ -194,7 +194,7 @@
                     @click="removeTask(task)"
                     title="移除"
                   >
-                    <ArtSvgIcon
+                    <LfpSvgIcon
                       icon="ri:close-line"
                       class="text-lg text-g-500 hover:!text-danger"
                     />
@@ -208,7 +208,7 @@
     </div>
 
     <!-- ========== 模块三：数据集列表看板 ========== -->
-    <ElCard class="art-card !p-0" shadow="never">
+    <ElCard class="lfp-card !p-0" shadow="never">
       <!-- 工具栏：搜索筛选（左） + 批量操作（右） -->
       <div
         class="toolbar flex items-center justify-between flex-wrap gap-3 px-5 py-3 border-b border-g-100"
@@ -272,7 +272,7 @@
       </div>
 
       <!-- 数据表格 -->
-      <ArtTable
+      <LfpTable
         :loading="loading"
         :data="data"
         :columns="columns"
@@ -282,7 +282,7 @@
         @pagination:size-change="handleSizeChange"
         @pagination:current-change="handleCurrentChange"
       >
-      </ArtTable>
+      </LfpTable>
     </ElCard>
 
     <!-- 上传弹窗 -->
@@ -299,8 +299,8 @@
 </template>
 
 <script setup lang="ts">
-  import ArtButtonTable from '@/components/core/forms/art-button-table/index.vue'
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpButtonTable from '@/components/core/forms/lfp-button-table/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import { useTable } from '@/hooks/core/useTable'
   import { useTagStore, type TagInfo } from '@/store/modules/tag'
   import { useUserStore } from '@/store/modules/user'
@@ -561,11 +561,11 @@
           fixed: 'right',
           formatter: (row: DatasetItemDTO) =>
             h('div', { class: 'flex gap-1' }, [
-              h(ArtButtonTable, {
+              h(LfpButtonTable, {
                 type: 'edit',
                 onClick: () => openDatasetDrawer(row, 'edit')
               }),
-              h(ArtButtonTable, {
+              h(LfpButtonTable, {
                 type: 'delete',
                 onClick: () => handleDelete(row)
               })
@@ -1121,7 +1121,7 @@
     justify-content: space-between;
     height: 50px;
     padding: 0 20px;
-    border-bottom: 1px solid var(--art-gray-200);
+    border-bottom: 1px solid var(--lfp-gray-200);
 
     .task-count-badge {
       display: inline-flex;
@@ -1158,14 +1158,14 @@
     gap: 12px;
     padding: 10px 14px;
     margin-top: 8px;
-    background-color: var(--art-gray-100);
-    border: 1px solid var(--art-gray-200);
+    background-color: var(--lfp-gray-100);
+    border: 1px solid var(--lfp-gray-200);
     border-radius: calc(var(--custom-radius, 8px) + 2px);
     transition: all 0.2s ease;
 
     &:hover {
-      background-color: var(--art-gray-200);
-      border-color: var(--art-gray-300);
+      background-color: var(--lfp-gray-200);
+      border-color: var(--lfp-gray-300);
     }
 
     &.task-item-error {
@@ -1231,13 +1231,13 @@
     .task-name {
       font-size: 13px;
       font-weight: 500;
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
     }
 
     .task-percent {
       font-size: 12px;
       font-weight: 500;
-      color: var(--art-gray-600);
+      color: var(--lfp-gray-600);
     }
 
     .task-progress {
@@ -1246,7 +1246,7 @@
 
       .el-progress {
         .el-progress-bar__outer {
-          background-color: var(--art-gray-200) !important;
+          background-color: var(--lfp-gray-200) !important;
         }
       }
     }
@@ -1257,7 +1257,7 @@
       gap: 6px;
       margin-top: 6px;
       font-size: 12px;
-      color: var(--art-gray-600);
+      color: var(--lfp-gray-600);
 
       .text-success {
         color: #67c23a;

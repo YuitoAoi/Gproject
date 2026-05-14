@@ -4,7 +4,7 @@
     <div class="dashboard-left">
       <div class="stat-card">
         <div class="stat-header">
-          <ArtSvgIcon icon="ri:target-line" class="text-lg text-primary" />
+          <LfpSvgIcon icon="ri:target-line" class="text-lg text-primary" />
           <span class="stat-title">任务状态分布</span>
         </div>
         <div class="stat-content">
@@ -33,7 +33,7 @@
 
       <div class="stat-card">
         <div class="stat-header">
-          <ArtSvgIcon icon="ri:time-line" class="text-lg text-warning" />
+          <LfpSvgIcon icon="ri:time-line" class="text-lg text-warning" />
           <span class="stat-title">平均等待时长</span>
         </div>
         <div class="stat-value-large">{{ data.avgWaitTime }}</div>
@@ -41,7 +41,7 @@
 
       <div class="stat-card">
         <div class="stat-header">
-          <ArtSvgIcon icon="ri:line-chart-line" class="text-lg text-success" />
+          <LfpSvgIcon icon="ri:line-chart-line" class="text-lg text-success" />
           <span class="stat-title">任务成功率</span>
         </div>
         <div class="stat-value-large">{{ data.successRate }}</div>
@@ -52,7 +52,7 @@
     <div class="dashboard-right">
       <div class="gpu-quota-card">
         <div class="gpu-quota-header">
-          <ArtSvgIcon icon="ri:flashlight-line" class="text-lg text-primary" />
+          <LfpSvgIcon icon="ri:flashlight-line" class="text-lg text-primary" />
           <span class="gpu-quota-title">平台可用逻辑 GPU 总量</span>
           <span class="gpu-quota-total">{{ data.totalGpu }} 卡</span>
         </div>
@@ -78,7 +78,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import { getTasks, type TaskItem } from '@/api/task'
 
   defineOptions({ name: 'TaskDashboard' })
@@ -159,7 +159,7 @@
     padding: 16px 20px;
     background: var(--el-fill-color-lighter);
     border-radius: var(--custom-radius, 8px);
-    border: 1px solid var(--art-gray-200);
+    border: 1px solid var(--lfp-gray-200);
 
     .stat-header {
       display: flex;
@@ -170,7 +170,7 @@
       .stat-title {
         font-size: 14px;
         font-weight: 500;
-        color: var(--art-gray-700);
+        color: var(--lfp-gray-700);
       }
     }
 
@@ -209,21 +209,21 @@
 
       .stat-label {
         font-size: 13px;
-        color: var(--art-gray-600);
+        color: var(--lfp-gray-600);
       }
 
       .stat-value {
         margin-left: auto;
         font-size: 14px;
         font-weight: 600;
-        color: var(--art-gray-800);
+        color: var(--lfp-gray-800);
       }
     }
 
     .stat-value-large {
       font-size: 24px;
       font-weight: 600;
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
     }
   }
 
@@ -234,7 +234,7 @@
     padding: 16px 20px;
     background: var(--el-fill-color-lighter);
     border-radius: var(--custom-radius, 8px);
-    border: 1px solid var(--art-gray-200);
+    border: 1px solid var(--lfp-gray-200);
 
     .gpu-quota-header {
       display: flex;
@@ -245,14 +245,14 @@
       .gpu-quota-title {
         font-size: 14px;
         font-weight: 500;
-        color: var(--art-gray-700);
+        color: var(--lfp-gray-700);
       }
 
       .gpu-quota-total {
         margin-left: auto;
         font-size: 16px;
         font-weight: 600;
-        color: var(--art-gray-800);
+        color: var(--lfp-gray-800);
       }
     }
 
@@ -268,13 +268,13 @@
 
         .gpu-label {
           font-size: 13px;
-          color: var(--art-gray-600);
+          color: var(--lfp-gray-600);
         }
 
         .gpu-value {
           font-size: 14px;
           font-weight: 600;
-          color: var(--art-gray-800);
+          color: var(--lfp-gray-800);
         }
       }
 

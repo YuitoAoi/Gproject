@@ -36,10 +36,16 @@ from src.services.jwt_service import JWTService
 from src.services.llamafactory_service import (
     LlamaFactoryChatRequest,
     LlamaFactoryChatResponse,
+    LlamaFactoryCheckpointsResponse,
     LlamaFactoryDatasetSyncRequest,
     LlamaFactoryDatasetSyncResponse,
+    LlamaFactoryExportRequest,
+    LlamaFactoryExportResponse,
+    LlamaFactoryFinetunedModelsResponse,
     LlamaFactoryModelsResponse,
     LlamaFactoryService,
+    LlamaFactoryTrainingRequest,
+    LlamaFactoryTrainingResponse,
 )
 from src.services.user_get_service import (
     UserGetService,
@@ -55,12 +61,32 @@ from src.services.user_register_service import (
     UserRegisterResponse,
     UserRegisterService,
 )
+from src.services.user_manage_service import (
+    AdminOperationResponse,
+    AdminResetPasswordRequest,
+    AdminSetAdminRequest,
+    AdminToggleActiveRequest,
+    AdminUserListItem,
+    AdminUserListResponse,
+    UserManageService,
+)
 from src.services.user_update_service import UserUpdateRequest, UserUpdateResponse, UserUpdateService
 
 __all__ = [
     "GetDatasetResponse",
     "GetDatasetsResponse",
     "GetTimesResponse",
+    "LlamaFactoryChatRequest",
+    "LlamaFactoryChatResponse",
+    "LlamaFactoryCheckpointsResponse",
+    "LlamaFactoryDatasetSyncRequest",
+    "LlamaFactoryDatasetSyncResponse",
+    "LlamaFactoryExportRequest",
+    "LlamaFactoryExportResponse",
+    "LlamaFactoryFinetunedModelsResponse",
+    "LlamaFactoryModelsResponse",
+    "LlamaFactoryTrainingRequest",
+    "LlamaFactoryTrainingResponse",
     "ServiceFactory",
     "UserLoginRequest",
     "UserLoginResponse",
@@ -101,6 +127,7 @@ class ServiceFactory:
         self._user_get: UserGetService | None = None
         self._user_update: UserUpdateService | None = None
         self._user_register: UserRegisterService | None = None
+        self._user_manage: UserManageService | None = None
         self._dataset_update: DatasetUpdateService | None = None
         self._dataset_add_tags: DatasetAddTagsBatchService | None = None
         self._datasets_remove: DatasetRemoveService | None = None
@@ -245,6 +272,12 @@ class ServiceFactory:
             self._user_register = UserRegisterService(self.user_repo)
         return self._user_register
 
+    def manage_users(self) -> UserManageService:
+        """管理员用户管理服务"""
+        if self._user_manage is None:
+            self._user_manage = UserManageService(self.user_repo)
+        return self._user_manage
+
     def update_dataset(self) -> DatasetUpdateService:
         if self._dataset_update is None:
             self._dataset_update = DatasetUpdateService(self.dataset_repo)
@@ -268,10 +301,21 @@ class ServiceFactory:
 
     def llamafactory(self) -> LlamaFactoryService:
         if self._llamafactory is None:
+            import logging
+
             from src.adapters.celery_client import celery_client
             from src.adapters.llamafactory_client import LlamaFactoryClient
             from src.adapters.llamafactory_dataset_client import LlamaFactoryDatasetClient
             from src.adapters.llamafactory_inference_client import LlamaFactoryInferenceClient
+            from src.adapters.llamafactory_export_client import LlamaFactoryExportClient  # noqa: F401
+            from src.adapters.llamafactory_training_client import LlamaFactoryTrainingClient
+
+            _logger = logging.getLogger(__name__)
+            inference_client = None
+            try:
+                inference_client = LlamaFactoryInferenceClient()
+            except ConnectionError:
+                _logger.warning("[LlamaFactory] 推理服务未就绪，模型列表与对话功能不可用")
 
             self._llamafactory = LlamaFactoryService(
                 dataset_repo=self.dataset_repo,
@@ -279,8 +323,9 @@ class ServiceFactory:
                 file_repo=self.file_repo,
                 llama_client=LlamaFactoryClient(
                     datasets=LlamaFactoryDatasetClient(file_repo=self.file_repo),
-                    inference=LlamaFactoryInferenceClient(),
-                    training=None,
+                    inference=inference_client,
+                    training=LlamaFactoryTrainingClient(),
+                    export=LlamaFactoryExportClient(),
                 ),
                 celery_client=celery_client,
             )
@@ -299,6 +344,7 @@ class ServiceFactory:
         self._user_get = None
         self._user_update = None
         self._user_register = None
+        self._user_manage = None
         self._dataset_update = None
         self._datasets_remove = None
         self._dataset_tag = None

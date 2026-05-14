@@ -102,6 +102,21 @@ export async function updateTask(id: number, data: TaskUpdateRequest): Promise<T
   }
 }
 
+export interface TerminateResponse {
+  success: boolean
+  message?: string
+}
+
+export async function terminateTask(id: number): Promise<TerminateResponse> {
+  try {
+    return await request.post<TerminateResponse>({
+      url: `/tasks/${id}/terminate`
+    })
+  } catch {
+    return { success: false, message: '请求失败' }
+  }
+}
+
 export async function deleteTask(id: number): Promise<{ success: boolean }> {
   try {
     return await request.del<{ success: boolean }>({
@@ -109,5 +124,20 @@ export async function deleteTask(id: number): Promise<{ success: boolean }> {
     })
   } catch {
     return { success: false }
+  }
+}
+
+export interface TrainingLogResponse {
+  lines: string[]
+  error?: string
+}
+
+export async function getTrainingExportLog(taskId: number): Promise<TrainingLogResponse> {
+  try {
+    return await request.get<TrainingLogResponse>({
+      url: `/tasks/${taskId}/export-log`
+    })
+  } catch {
+    return { lines: [], error: '请求失败' }
   }
 }

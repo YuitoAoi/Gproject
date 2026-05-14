@@ -2,23 +2,23 @@
   <div class="terminal">
     <div class="terminal-header">
       <div class="terminal-title">
-        <ArtSvgIcon icon="ri:terminal-line" class="text-base text-g-500" />
+        <LfpSvgIcon icon="ri:terminal-line" class="text-base text-g-500" />
         <span>终端日志</span>
       </div>
       <div class="terminal-actions">
         <ElButton text size="small" @click="toggleAutoScroll">
-          <ArtSvgIcon
+          <LfpSvgIcon
             :icon="autoScroll ? 'ri:arrow-down-double-fill' : 'ri:arrow-down-double-line'"
             class="text-sm"
           />
           <span>{{ autoScroll ? '暂停滚动' : '自动滚动' }}</span>
         </ElButton>
         <ElButton text size="small" @click="handleFilterError">
-          <ArtSvgIcon icon="ri:filter-line" class="text-sm" />
+          <LfpSvgIcon icon="ri:filter-line" class="text-sm" />
           <span>过滤 Error</span>
         </ElButton>
         <ElButton text size="small" @click="handleExport">
-          <ArtSvgIcon icon="ri:download-line" class="text-sm" />
+          <LfpSvgIcon icon="ri:download-line" class="text-sm" />
           <span>导出</span>
         </ElButton>
       </div>
@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import { nextTick, onMounted, ref, watch, computed } from 'vue'
 
   defineOptions({ name: 'Terminal' })

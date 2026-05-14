@@ -1,6 +1,6 @@
 <!-- 500页面 -->
 <template>
-  <ArtException
+  <LfpException
     :data="{
       title: '500',
       desc: '服务器错误',

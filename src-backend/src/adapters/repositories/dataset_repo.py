@@ -254,6 +254,19 @@ class DatasetRepositoryAdapter(DatasetRepository):
             _logger.exception("Failed to count modified today")
             return 0
 
+    def count_by_owner(self, owner_id: int) -> int:
+        """统计指定用户的数据集总数。"""
+        try:
+            with self._session() as session:
+                row = session.execute(
+                    text("SELECT COUNT(*) FROM datasets WHERE owner_id = :owner_id"),
+                    {"owner_id": owner_id},
+                ).fetchone()
+                return row[0] if row else 0
+        except Exception:
+            _logger.exception("Failed to count datasets for owner_id=%s", owner_id)
+            return 0
+
     # ── 内部工具 ───────────────────────────────────────────────
 
     @staticmethod

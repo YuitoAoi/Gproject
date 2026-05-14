@@ -1,7 +1,7 @@
 <template>
   <div class="config-snapshot">
     <h4 class="config-title">
-      <ArtSvgIcon icon="ri:file-settings-line" class="text-base text-primary mr-2" />
+      <LfpSvgIcon icon="ri:file-settings-line" class="text-base text-primary mr-2" />
       参数快照
     </h4>
     <div class="config-list">
@@ -12,7 +12,7 @@
     </div>
     <div class="config-actions">
       <ElButton type="primary" size="small" @click="handleClone">
-        <ArtSvgIcon icon="ri:file-copy-line" class="mr-1" />
+        <LfpSvgIcon icon="ri:file-copy-line" class="mr-1" />
         复制参数并新建任务
       </ElButton>
     </div>
@@ -20,7 +20,7 @@
 </template>
 
 <script setup lang="ts">
-  import ArtSvgIcon from '@/components/core/base/art-svg-icon/index.vue'
+  import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import { ElMessage } from 'element-plus'
   import { taskDetailMockData } from '@/mock/modules/task-dispatch'
 
@@ -63,7 +63,7 @@
     padding: 16px;
     background: var(--el-fill-color-lighter);
     border-radius: var(--custom-radius, 8px);
-    border: 1px solid var(--art-gray-200);
+    border: 1px solid var(--lfp-gray-200);
 
     .config-title {
       display: flex;
@@ -71,7 +71,7 @@
       margin: 0 0 16px;
       font-size: 14px;
       font-weight: 600;
-      color: var(--art-gray-800);
+      color: var(--lfp-gray-800);
     }
 
     .config-list {
@@ -89,17 +89,17 @@
       padding: 8px 12px;
       background: var(--el-bg-color);
       border-radius: 6px;
-      border: 1px solid var(--art-gray-200);
+      border: 1px solid var(--lfp-gray-200);
 
       .config-label {
         font-size: 13px;
-        color: var(--art-gray-600);
+        color: var(--lfp-gray-600);
       }
 
       .config-value {
         font-size: 13px;
         font-weight: 500;
-        color: var(--art-gray-800);
+        color: var(--lfp-gray-800);
         font-family: 'Consolas', 'Monaco', monospace;
       }
     }
@@ -107,7 +107,7 @@
     .config-actions {
       margin-top: 16px;
       padding-top: 16px;
-      border-top: 1px solid var(--art-gray-200);
+      border-top: 1px solid var(--lfp-gray-200);
 
       .el-button {
         width: 100%;
