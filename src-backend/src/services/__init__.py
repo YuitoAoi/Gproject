@@ -40,6 +40,8 @@ from src.services.llamafactory_service import (
     LlamaFactoryDatasetSyncResponse,
     LlamaFactoryModelsResponse,
     LlamaFactoryService,
+    LlamaFactoryTrainingRequest,
+    LlamaFactoryTrainingResponse,
 )
 from src.services.user_get_service import (
     UserGetService,
@@ -55,12 +57,26 @@ from src.services.user_register_service import (
     UserRegisterResponse,
     UserRegisterService,
 )
+from src.services.user_manage_service import (
+    AdminOperationResponse,
+    AdminResetPasswordRequest,
+    AdminSetAdminRequest,
+    AdminToggleActiveRequest,
+    AdminUserListItem,
+    AdminUserListResponse,
+    UserManageService,
+)
 from src.services.user_update_service import UserUpdateRequest, UserUpdateResponse, UserUpdateService
 
 __all__ = [
     "GetDatasetResponse",
     "GetDatasetsResponse",
     "GetTimesResponse",
+    "LlamaFactoryChatRequest",
+    "LlamaFactoryChatResponse",
+    "LlamaFactoryModelsResponse",
+    "LlamaFactoryTrainingRequest",
+    "LlamaFactoryTrainingResponse",
     "ServiceFactory",
     "UserLoginRequest",
     "UserLoginResponse",
@@ -101,6 +117,7 @@ class ServiceFactory:
         self._user_get: UserGetService | None = None
         self._user_update: UserUpdateService | None = None
         self._user_register: UserRegisterService | None = None
+        self._user_manage: UserManageService | None = None
         self._dataset_update: DatasetUpdateService | None = None
         self._dataset_add_tags: DatasetAddTagsBatchService | None = None
         self._datasets_remove: DatasetRemoveService | None = None
@@ -245,6 +262,12 @@ class ServiceFactory:
             self._user_register = UserRegisterService(self.user_repo)
         return self._user_register
 
+    def manage_users(self) -> UserManageService:
+        """管理员用户管理服务"""
+        if self._user_manage is None:
+            self._user_manage = UserManageService(self.user_repo)
+        return self._user_manage
+
     def update_dataset(self) -> DatasetUpdateService:
         if self._dataset_update is None:
             self._dataset_update = DatasetUpdateService(self.dataset_repo)
@@ -272,6 +295,7 @@ class ServiceFactory:
             from src.adapters.llamafactory_client import LlamaFactoryClient
             from src.adapters.llamafactory_dataset_client import LlamaFactoryDatasetClient
             from src.adapters.llamafactory_inference_client import LlamaFactoryInferenceClient
+            from src.adapters.llamafactory_training_client import LlamaFactoryTrainingClient
 
             self._llamafactory = LlamaFactoryService(
                 dataset_repo=self.dataset_repo,
@@ -280,7 +304,7 @@ class ServiceFactory:
                 llama_client=LlamaFactoryClient(
                     datasets=LlamaFactoryDatasetClient(file_repo=self.file_repo),
                     inference=LlamaFactoryInferenceClient(),
-                    training=None,
+                    training=LlamaFactoryTrainingClient(),
                 ),
                 celery_client=celery_client,
             )
@@ -299,6 +323,7 @@ class ServiceFactory:
         self._user_get = None
         self._user_update = None
         self._user_register = None
+        self._user_manage = None
         self._dataset_update = None
         self._datasets_remove = None
         self._dataset_tag = None

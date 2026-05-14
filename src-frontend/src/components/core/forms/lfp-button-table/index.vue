@@ -13,11 +13,13 @@
 </template>
 
 <script setup lang="ts">
+  import { computed } from 'vue'
+
   defineOptions({ name: 'LfpButtonTable' })
 
   interface Props {
     /** 按钮类型 */
-    type?: 'add' | 'edit' | 'delete' | 'more' | 'view'
+    type?: 'add' | 'edit' | 'delete' | 'more' | 'view' | 'reset' | 'warning'
     /** 按钮图标 */
     icon?: string
     /** 按钮样式类 */
@@ -40,7 +42,9 @@
     edit: { icon: 'ri:pencil-line', class: 'bg-secondary/12 text-secondary' },
     delete: { icon: 'ri:delete-bin-5-line', class: 'bg-error/12 text-error' },
     view: { icon: 'ri:eye-line', class: 'bg-info/12 text-info' },
-    more: { icon: 'ri:more-2-fill', class: '' }
+    more: { icon: 'ri:more-2-fill', class: '' },
+    reset: { icon: 'ri-lock-password-line', class: 'bg-warning/12 text-warning' },
+    warning: { icon: 'ri:alert-line', class: 'bg-warning/12 text-warning' }
   } as const
 
   // 获取图标内容

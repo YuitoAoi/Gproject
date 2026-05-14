@@ -158,13 +158,12 @@
   }
 
   /** validate(): 校验是否已选择数据集，供父级步骤向导调用 */
-  function validate(): boolean {
+  function validate() {
     if (!props.modelValue.datasetId) {
       validationError.value = '请选择一个数据集后再继续'
-      return false
+      throw new Error(validationError.value)
     }
     validationError.value = ''
-    return true
   }
 
   defineExpose({ validate })

@@ -1,61 +1,58 @@
-<!-- 用户菜单 -->
+<!-- 用户中心按钮 + 下拉菜单 -->
 <template>
   <ElPopover
     ref="userMenuPopover"
     placement="bottom-end"
-    :width="240"
+    :width="180"
     :hide-after="0"
-    :offset="10"
-    trigger="hover"
+    :offset="8"
+    trigger="click"
     :show-arrow="false"
-    popper-class="user-menu-popover"
-    popper-style="padding: 5px 16px;"
+    popper-style="padding: 6px;"
   >
     <template #reference>
-      <img
-        class="size-8.5 mr-5 c-p rounded-full max-sm:w-6.5 max-sm:h-6.5 max-sm:mr-[16px]"
-        src="@imgs/user/avatar.webp"
-        alt="avatar"
-      />
+      <button class="user-center-btn">
+        <LfpSvgIcon icon="ri:user-3-line" class="mr-1.5 text-sm" />
+        用户中心
+      </button>
     </template>
     <template #default>
-      <div class="pt-3">
-        <div class="flex-c pb-1 px-0">
-          <img
-            class="w-10 h-10 mr-3 ml-0 overflow-hidden rounded-full float-left"
-            src="@imgs/user/avatar.webp"
-          />
-          <div class="w-[calc(100%-60px)] h-full">
-            <span class="block text-sm font-medium text-g-800 truncate">{{
-              userStore.info.userName || '用户'
-            }}</span>
-            <span class="block mt-0.5 text-xs text-g-500 truncate">{{ userStore.info.email }}</span>
-          </div>
+      <div class="flex flex-col gap-1">
+        <div class="menu-item" @click="openProfile">
+          <LfpSvgIcon icon="ri:settings-3-line" class="mr-2 text-base" />
+          个人设置
         </div>
-        <ul class="py-4 mt-3 border-t border-g-300/80">
-          <div class="w-full h-px my-2 bg-g-300/80"></div>
-          <div class="log-out c-p" @click="loginOut">
-            退出登录
-          </div>
-        </ul>
+        <div class="menu-item menu-item--danger" @click="loginOut">
+          <LfpSvgIcon icon="ri:logout-box-r-line" class="mr-2 text-base" />
+          退出登录
+        </div>
       </div>
     </template>
   </ElPopover>
+
+  <!-- 个人设置弹窗 -->
+  <LfpProfileDialog v-model:visible="profileVisible" />
 </template>
 
 <script setup lang="ts">
+  import { ref } from 'vue'
   import { ElMessageBox } from 'element-plus'
   import { useUserStore } from '@/store/modules/user'
+  import LfpProfileDialog from './LfpProfileDialog.vue'
 
   defineOptions({ name: 'LfpUserMenu' })
 
   const userStore = useUserStore()
   const userMenuPopover = ref()
+  const profileVisible = ref(false)
+
+  const openProfile = () => {
+    userMenuPopover.value?.hide()
+    profileVisible.value = true
+  }
 
   const loginOut = (): void => {
-    setTimeout(() => {
-      userMenuPopover.value?.hide()
-    }, 100)
+    userMenuPopover.value?.hide()
     setTimeout(() => {
       ElMessageBox.confirm('确定要退出登录吗？', '提示', {
         confirmButtonText: '确定',
@@ -64,24 +61,25 @@
       }).then(() => {
         userStore.logOut()
       })
-    }, 200)
+    }, 150)
   }
 </script>
 
 <style scoped>
   @reference '@styles/core/tailwind.css';
 
-  .log-out {
-    @apply py-1.5
-    mt-5
-    text-xs
-    text-center
-    border
-    border-g-400
-    rounded-md
-    transition-all
-    duration-200
-    hover:shadow-xl;
-    cursor: pointer;
+  .user-center-btn {
+    @apply flex items-center px-3 py-1.5 mr-4 text-sm text-g-700 bg-g-100 rounded-lg
+      border border-g-200 cursor-pointer transition-all duration-150
+      hover:bg-g-200 hover:border-g-300 active:scale-95;
+  }
+
+  .menu-item {
+    @apply flex items-center py-2 px-3 text-sm text-g-700 rounded-md cursor-pointer
+      transition-colors duration-150 hover:bg-g-100;
+  }
+
+  .menu-item--danger {
+    @apply text-red-500 hover:bg-red-50;
   }
 </style>

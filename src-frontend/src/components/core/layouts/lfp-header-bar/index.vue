@@ -17,18 +17,6 @@
 
       <!-- 右侧区域 -->
       <div class="flex-c pr-4 gap-1">
-        <!-- 全屏按钮 -->
-        <LfpIconButton
-          :icon="isFullscreen ? 'ri:fullscreen-exit-line' : 'ri:fullscreen-line'"
-          @click="toggleFullscreen"
-        />
-
-        <!-- 暗色模式切换 -->
-        <LfpIconButton
-          :icon="appStore.isDark ? 'ri:sun-line' : 'ri:moon-line'"
-          @click="appStore.toggleDark()"
-        />
-
         <!-- 用户菜单 -->
         <LfpUserMenu />
       </div>
@@ -38,12 +26,10 @@
 
 <script setup lang="ts">
   import { useAppStore } from '@/store/modules/app'
-  import { useFullscreen } from '@vueuse/core'
 
   defineOptions({ name: 'LfpHeaderBar' })
 
   const appStore = useAppStore()
-  const { isFullscreen, toggle: toggleFullscreen } = useFullscreen()
 
   const toggleSidebar = () => {
     appStore.toggleSidebar()

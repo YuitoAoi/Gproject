@@ -12,7 +12,7 @@
         </div>
         <div class="form-section__body">
           <ElFormItem prop="taskName" label="任务名称" class="form-item-full">
-            <ElInput :model-value="modelValue.taskName" placeholder="例如：Qwen2.5-7B 客服场景 LoRA 微调" maxlength="100" show-word-limit clearable @update:model-value="handleTaskName">
+            <ElInput :model-value="modelValue.taskName" placeholder="例如：Qwen2.5-7B 客服场景 LoRA 微调" maxlength="60" show-word-limit clearable @update:model-value="handleTaskName">
               <template #prefix><LfpSvgIcon icon="ri:price-tag-3-line" class="text-g-400" /></template>
             </ElInput>
           </ElFormItem>
@@ -213,7 +213,7 @@
   const rules = computed<FormRules<BasicConfig>>(() => ({
     taskName: [
       { required: true, message: '请输入任务名称', trigger: 'blur' },
-      { min: 2, max: 100, message: '任务名称长度需在 2~100 个字符之间', trigger: 'blur' }
+      { min: 2, max: 60, message: '任务名称长度需在 2~60 个字符之间', trigger: 'blur' }
     ],
     baseModel: [
       { required: true, message: '请选择基础模型', trigger: 'change' }

@@ -90,6 +90,7 @@
   import Step2Dataset from './modules/step2-dataset.vue'
   import Step3Params from './modules/step3-params.vue'
   import Step4Confirm from './modules/step4-confirm.vue'
+  import { submitTraining } from '@/api/llamafactory'
 
   defineOptions({ name: 'NewTrainingPage' })
 
@@ -130,8 +131,7 @@
     scheduler: 'cosine',
     fp16: false,
     bf16: true,
-    gradientCheckpointing: true,
-    outputDir: ''
+    gradientCheckpointing: true
   })
 
   const handleNext = async () => {
@@ -156,16 +156,39 @@
   const handleSubmit = async () => {
     submitting.value = true
     try {
-      const config = {
-        ...basicConfig.value,
-        dataset: datasetConfig.value,
-        params: trainingParams.value
+      const p = trainingParams.value
+      const resp = await submitTraining({
+        task_name: basicConfig.value.taskName,
+        base_model: basicConfig.value.baseModel,
+        finetune_method: basicConfig.value.finetuneMethod,
+        dataset_id: datasetConfig.value.datasetId!,
+        params: {
+          epochs: p.epochs,
+          batch_size: p.batchSize,
+          learning_rate: p.learningRate,
+          max_seq_length: p.maxSeqLength,
+          lora_rank: p.loraRank,
+          lora_alpha: p.loraAlpha,
+          lora_dropout: p.loraDropout,
+          lora_target: p.loraTarget,
+          gradient_accumulation_steps: p.gradientAccumulationSteps,
+          weight_decay: p.weightDecay,
+          warmup_ratio: p.warmupRatio,
+          optimizer: p.optimizer,
+          scheduler: p.scheduler,
+          fp16: p.fp16,
+          bf16: p.bf16,
+          gradient_checkpointing: p.gradientCheckpointing,
+        }
+      })
+      if (resp.success) {
+        ElMessage.success('训练任务已提交，正在跳转到任务调度中心...')
+        setTimeout(() => {
+          router.push('/workbench/task-dispatch')
+        }, 1500)
+      } else {
+        ElMessage.error('提交失败: ' + (resp.error || '未知错误'))
       }
-      // TODO: 对接后端 API — submitTraining(config)
-      ElMessage.success('训练任务已提交，正在跳转到任务调度中心...')
-      setTimeout(() => {
-        router.push('/workbench/task-dispatch')
-      }, 1500)
     } catch (err: any) {
       ElMessage.error('提交失败: ' + (err.message || '未知错误'))
     } finally {

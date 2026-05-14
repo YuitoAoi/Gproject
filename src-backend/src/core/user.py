@@ -14,6 +14,7 @@ class User(BaseModel):
     created_at: datetime
     last_login: datetime
     last_login_ip: str = ""
+    avatar: str = "/static/avatars/default.jpg"
 
     @field_serializer("password")
     def serialize_password(self, v: str) -> str:

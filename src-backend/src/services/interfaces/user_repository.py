@@ -1,6 +1,17 @@
 import abc
+from dataclasses import dataclass
 
 from src.core.user import User
+
+
+@dataclass
+class PaginatedUsers:
+    """分页查询结果。"""
+
+    records: list[User]
+    total: int
+    current: int
+    size: int
 
 
 class UserRepository(abc.ABC):
@@ -22,6 +33,12 @@ class UserRepository(abc.ABC):
 
     @abc.abstractmethod
     def find_all(self) -> list[User]:
+        pass
+
+    @abc.abstractmethod
+    def find_all_paginated(
+        self, page: int, size: int, keyword: str | None = None
+    ) -> PaginatedUsers:
         pass
 
     @abc.abstractmethod
