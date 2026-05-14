@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 
 import docker
 import docker.errors
+import requests.exceptions
 from docker.types import DeviceRequest, Mount
 
 from src.core.docker_job import (
@@ -176,10 +177,27 @@ class DockerClientAdapter(DockerClient):
         raise NotImplementedError
 
     def stop(self, job_id: str, *, timeout: int = 10) -> None:
-        raise NotImplementedError
+        try:
+            container = self._client.containers.get(job_id)
+        except docker.errors.NotFound:
+            return
+        try:
+            container.stop(timeout=timeout)
+        except docker.errors.APIError as exc:
+            raise DockerJobError(f"stop {job_id} failed: {exc}") from exc
 
     def wait(self, job_id: str, *, timeout: int | None = None) -> int:
-        raise NotImplementedError
+        try:
+            container = self._client.containers.get(job_id)
+        except docker.errors.NotFound as exc:
+            raise DockerJobError(f"{job_id} not found") from exc
+        try:
+            result = container.wait(timeout=timeout) if timeout is not None else container.wait()
+        except requests.exceptions.ReadTimeout as exc:
+            raise TimeoutError(f"wait for {job_id} timed out") from exc
+        except docker.errors.APIError as exc:
+            raise DockerJobError(f"wait for {job_id} failed: {exc}") from exc
+        return int(result.get("StatusCode", -1))
 
     def cleanup_failed(self, *, max_age_hours: int = 24) -> int:
         raise NotImplementedError

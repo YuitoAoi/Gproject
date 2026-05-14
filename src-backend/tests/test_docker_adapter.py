@@ -173,3 +173,54 @@ def test_status_extracts_host_port_from_network_settings(fake_docker):
 
     result = DockerClientAdapter().status("lf-training-1")
     assert result.host_port == 18000
+
+
+def test_wait_returns_exit_code(fake_docker):
+    from src.adapters.docker_adapter import DockerClientAdapter
+
+    container = MagicMock()
+    container.wait.return_value = {"StatusCode": 0, "Error": None}
+    fake_docker.containers.get.return_value = container
+
+    assert DockerClientAdapter().wait("lf-training-1") == 0
+
+
+def test_wait_raises_timeout_when_container_wait_times_out(fake_docker):
+    from src.adapters.docker_adapter import DockerClientAdapter
+    import requests.exceptions as rex
+
+    container = MagicMock()
+    container.wait.side_effect = rex.ReadTimeout("timed out")
+    fake_docker.containers.get.return_value = container
+
+    with pytest.raises(TimeoutError):
+        DockerClientAdapter().wait("lf-training-1", timeout=1)
+
+
+def test_wait_raises_docker_job_error_when_container_missing(fake_docker):
+    from src.adapters.docker_adapter import DockerClientAdapter
+    from src.core.docker_job import DockerJobError
+    import docker.errors as derr
+
+    fake_docker.containers.get.side_effect = derr.NotFound("nf")
+    with pytest.raises(DockerJobError):
+        DockerClientAdapter().wait("lf-training-1")
+
+
+def test_stop_calls_container_stop_with_timeout(fake_docker):
+    from src.adapters.docker_adapter import DockerClientAdapter
+
+    container = MagicMock()
+    fake_docker.containers.get.return_value = container
+
+    DockerClientAdapter().stop("lf-training-1", timeout=7)
+
+    container.stop.assert_called_once_with(timeout=7)
+
+
+def test_stop_silently_ignores_missing_container(fake_docker):
+    from src.adapters.docker_adapter import DockerClientAdapter
+    import docker.errors as derr
+
+    fake_docker.containers.get.side_effect = derr.NotFound("nf")
+    DockerClientAdapter().stop("lf-training-1")
