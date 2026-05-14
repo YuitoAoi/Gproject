@@ -9,6 +9,7 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     AuthTopBar: typeof import('./../../components/core/views/login/AuthTopBar.vue')['default']
+    ChatContainer: typeof import('./../../components/business/chat/ChatContainer.vue')['default']
     CheckpointTable: typeof import('./../../components/business/task-dispatch/modules/task-monitoring/checkpoint-table.vue')['default']
     CommentItem: typeof import('./../../components/business/comment-widget/widget/CommentItem.vue')['default']
     CommentWidget: typeof import('./../../components/business/comment-widget/index.vue')['default']
@@ -23,7 +24,6 @@ declare module 'vue' {
     ElDescriptions: typeof import('element-plus/es')['ElDescriptions']
     ElDescriptionsItem: typeof import('element-plus/es')['ElDescriptionsItem']
     ElDialog: typeof import('element-plus/es')['ElDialog']
-    ElDivider: typeof import('element-plus/es')['ElDivider']
     ElDrawer: typeof import('element-plus/es')['ElDrawer']
     ElEmpty: typeof import('element-plus/es')['ElEmpty']
     ElForm: typeof import('element-plus/es')['ElForm']
@@ -51,6 +51,7 @@ declare module 'vue' {
     ElTag: typeof import('element-plus/es')['ElTag']
     ElTimeline: typeof import('element-plus/es')['ElTimeline']
     ElTimelineItem: typeof import('element-plus/es')['ElTimelineItem']
+    ElTooltip: typeof import('element-plus/es')['ElTooltip']
     ElUpload: typeof import('element-plus/es')['ElUpload']
     ExecutionPanel: typeof import('./../../components/business/execution-panel.vue')['default']
     LfpBarChart: typeof import('./../../components/core/charts/lfp-bar-chart/index.vue')['default']
@@ -79,6 +80,7 @@ declare module 'vue' {
     LfpUserMenu: typeof import('./../../components/core/layouts/lfp-header-bar/widget/LfpUserMenu.vue')['default']
     LoginLeftView: typeof import('./../../components/core/views/login/LoginLeftView.vue')['default']
     LossChart: typeof import('./../../components/business/task-dispatch/modules/task-monitoring/loss-chart.vue')['default']
+    MessageBubble: typeof import('./../../components/business/chat/MessageBubble.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
     TaskConsole: typeof import('./../../components/business/task-dispatch/modules/task-console.vue')['default']

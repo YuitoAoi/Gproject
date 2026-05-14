@@ -126,3 +126,18 @@ export async function deleteTask(id: number): Promise<{ success: boolean }> {
     return { success: false }
   }
 }
+
+export interface TrainingLogResponse {
+  lines: string[]
+  error?: string
+}
+
+export async function getTrainingExportLog(taskId: number): Promise<TrainingLogResponse> {
+  try {
+    return await request.get<TrainingLogResponse>({
+      url: `/tasks/${taskId}/export-log`
+    })
+  } catch {
+    return { lines: [], error: '请求失败' }
+  }
+}

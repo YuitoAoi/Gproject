@@ -21,5 +21,6 @@ celery_client.conf.update(
     # 显式注册所有 Celery 任务模块，避免 Worker 启动时无法发现任务
     include=[
         "src.core.task.training_monitor_task",
+        "src.core.task.export_monitor_task",
     ],
 )

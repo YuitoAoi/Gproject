@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -64,6 +66,37 @@ class LlamaFactoryTrainingResponse(BaseModel):
     success: bool = False
     task_id: int | None = None
     job_id: str | None = None
+    error: str | None = None
+
+
+class LlamaFactoryExportRequest(BaseModel):
+    """导出任务请求。"""
+
+    task_name: str = Field(min_length=2, max_length=60)
+    base_model: str
+    adapter_path: str = ""
+    params: dict[str, Any] = Field(default_factory=dict)
+    # 可选字段（来自 params）：
+    #   export_format: str  (gguf / pytorch / gptq / awq)
+    #   quantization_method: str  (q4_k_m / q5_k_m / q8_0 / f16 / f32)
+    #   export_path: str  (指定输出路径)
+
+
+class LlamaFactoryExportResponse(BaseModel):
+    """导出任务响应。"""
+
+    success: bool = False
+    task_id: int | None = None
+    job_id: str | None = None
+    export_path: str | None = None
+    error: str | None = None
+
+
+class LlamaFactoryCheckpointsResponse(BaseModel):
+    """训练任务检查点列表响应。"""
+
+    success: bool = False
+    checkpoints: list[dict[str, Any]] = Field(default_factory=list)
     error: str | None = None
 
 
@@ -178,6 +211,111 @@ class LlamaFactoryService:
             success=True,
             fine_tuned=fine_tuned,
             online=online,
+        )
+
+    def list_checkpoints(self, training_task_id: int) -> LlamaFactoryCheckpointsResponse:
+        """列出训练任务的所有检查点（从 output_dir 扫描 checkpoint-* 目录）。"""
+        t = self._task_repo.find_by_id(training_task_id)
+        if t is None:
+            return LlamaFactoryCheckpointsResponse(error=f"Task not found: {training_task_id}")
+
+        try:
+            cfg = json.loads(t.config)
+            output_dir = cfg.get("output_dir", "")
+        except Exception:
+            return LlamaFactoryCheckpointsResponse(error="Invalid task config")
+
+        if not output_dir or not os.path.exists(output_dir):
+            return LlamaFactoryCheckpointsResponse(success=True, checkpoints=[])
+
+        checkpoints: list[dict[str, Any]] = []
+        try:
+            for entry in os.scandir(output_dir):
+                if entry.is_dir() and entry.name.startswith("checkpoint-"):
+                    adapter_file = Path(output_dir) / entry.name / "adapter_model.safetensors"
+                    checkpoints.append({
+                        "name": entry.name,
+                        "path": entry.path,
+                        "step": self._parse_step(entry.name),
+                        "has_adapter": adapter_file.exists(),
+                    })
+        except Exception as exc:
+            _logger.warning("[Export] 扫描检查点目录失败: %s", exc)
+
+        checkpoints.sort(key=lambda x: x["step"] if x["step"] else 0)
+        return LlamaFactoryCheckpointsResponse(success=True, checkpoints=checkpoints)
+
+    @staticmethod
+    def _parse_step(name: str) -> int:
+        try:
+            return int(name.split("-")[-1])
+        except (ValueError, IndexError):
+            return 0
+
+    def submit_export(self, request: LlamaFactoryExportRequest, owner_id: int) -> LlamaFactoryExportResponse:
+        """提交导出任务：查找训练产出 → 创建导出任务记录 → 启动子进程。"""
+        if self._llama.export is None:
+            return LlamaFactoryExportResponse(error="Export client not initialized")
+
+        from src.adapters.llamafactory_export_client import ExportConfig
+
+        params = request.params
+        export_config = ExportConfig(
+            base_model=request.base_model,
+            adapter_path=request.adapter_path,
+            export_format=params.get("export_format", "gguf"),
+            quantization_method=params.get("quantization_method", "q4_k_m"),
+            export_path=params.get("export_path", ""),
+        )
+
+        result = self._llama.export.submit_export(export_config)
+        if not result.success:
+            return LlamaFactoryExportResponse(error=result.error)
+
+        from src.core.task_record import TaskRecord
+
+        task = TaskRecord(
+            owner_id=owner_id,
+            task_name=request.task_name,
+            task_type="export",
+            status="running",
+            config=TaskRecord.config_to_json({
+                "job_id": result.job_id,
+                "base_model": request.base_model,
+                "adapter_path": request.adapter_path,
+                "export_format": params.get("export_format", "gguf"),
+                "quantization_method": params.get("quantization_method", "q4_k_m"),
+                "export_path": result.export_path,
+            }),
+        )
+        error = self._task_repo.insert(task)
+        if error:
+            _logger.error("[Export] 任务记录创建失败: %s", error)
+            return LlamaFactoryExportResponse(error=f"任务记录创建失败: {error}")
+
+        if task.id is None:
+            _logger.error("[Export] 任务记录插入后未获取到 ID")
+            return LlamaFactoryExportResponse(error="任务记录创建异常：未获取到任务ID")
+
+        if self._celery is not None:
+            try:
+                self._celery.send_task(
+                    "export.monitor",
+                    kwargs={"job_id": result.job_id, "task_id": task.id},
+                )
+                _logger.info("[Export] 监控任务已下发: job_id=%s, task_id=%s", result.job_id, task.id)
+            except Exception as exc:
+                _logger.warning("[Export] 监控任务下发失败: %s — 导出进度将无法实时推送", exc)
+        else:
+            _logger.warning("[Export] Celery 未就绪，监控任务不会下发 — job_id=%s", result.job_id)
+
+        _logger.info("[Export] 导出任务已提交: task_id=%s, job_id=%s", task.id, result.job_id)
+
+        return LlamaFactoryExportResponse(
+            success=True,
+            task_id=task.id,
+            job_id=result.job_id,
+            export_path=result.export_path,
         )
 
     def submit_training(self, request: LlamaFactoryTrainingRequest, owner_id: int) -> LlamaFactoryTrainingResponse:

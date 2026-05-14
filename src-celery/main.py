@@ -22,6 +22,7 @@ celery_app.conf.update(
     include=[
         "tasks",
         "src.core.task.training_monitor_task",
+        "src.core.task.export_monitor_task",
     ],
 )
 

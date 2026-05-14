@@ -36,8 +36,11 @@ from src.services.jwt_service import JWTService
 from src.services.llamafactory_service import (
     LlamaFactoryChatRequest,
     LlamaFactoryChatResponse,
+    LlamaFactoryCheckpointsResponse,
     LlamaFactoryDatasetSyncRequest,
     LlamaFactoryDatasetSyncResponse,
+    LlamaFactoryExportRequest,
+    LlamaFactoryExportResponse,
     LlamaFactoryFinetunedModelsResponse,
     LlamaFactoryModelsResponse,
     LlamaFactoryService,
@@ -75,6 +78,11 @@ __all__ = [
     "GetTimesResponse",
     "LlamaFactoryChatRequest",
     "LlamaFactoryChatResponse",
+    "LlamaFactoryCheckpointsResponse",
+    "LlamaFactoryDatasetSyncRequest",
+    "LlamaFactoryDatasetSyncResponse",
+    "LlamaFactoryExportRequest",
+    "LlamaFactoryExportResponse",
     "LlamaFactoryFinetunedModelsResponse",
     "LlamaFactoryModelsResponse",
     "LlamaFactoryTrainingRequest",
@@ -299,6 +307,7 @@ class ServiceFactory:
             from src.adapters.llamafactory_client import LlamaFactoryClient
             from src.adapters.llamafactory_dataset_client import LlamaFactoryDatasetClient
             from src.adapters.llamafactory_inference_client import LlamaFactoryInferenceClient
+            from src.adapters.llamafactory_export_client import LlamaFactoryExportClient  # noqa: F401
             from src.adapters.llamafactory_training_client import LlamaFactoryTrainingClient
 
             _logger = logging.getLogger(__name__)
@@ -316,6 +325,7 @@ class ServiceFactory:
                     datasets=LlamaFactoryDatasetClient(file_repo=self.file_repo),
                     inference=inference_client,
                     training=LlamaFactoryTrainingClient(),
+                    export=LlamaFactoryExportClient(),
                 ),
                 celery_client=celery_client,
             )

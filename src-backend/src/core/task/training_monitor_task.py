@@ -213,6 +213,178 @@ def _cleanup_training_logs(job_id: str) -> None:
         _logger.warning("[Monitor] 清理训练日志失败: %s", exc)
 
 
+def _find_best_checkpoint(output_dir: Path) -> str | None:
+    """从 trainer_state.json 查找最佳检查点，回退到最新 checkpoint 目录。"""
+    state_file = output_dir / "trainer_state.json"
+    if state_file.exists():
+        try:
+            state = json.loads(state_file.read_text(encoding="utf-8"))
+            best = state.get("best_model_checkpoint")
+            if best and os.path.exists(best):
+                return best
+        except Exception:
+            pass
+    # 回退：扫描 checkpoint-* 目录，取最大 step
+    if output_dir.exists():
+        checkpoints = sorted(
+            [d for d in output_dir.iterdir() if d.is_dir() and d.name.startswith("checkpoint-")],
+            key=lambda d: int(d.name.split("-")[-1]) if d.name.split("-")[-1].isdigit() else 0,
+        )
+        if checkpoints:
+            return str(checkpoints[-1])
+    return None
+
+
+def _update_task_config(task_id: int, extra: dict) -> None:
+    """将额外字段合并到 TaskRecord 的 config JSON 中。"""
+    from src.adapters.repositories.task_repo import TaskRepository
+
+    db_conn = _get_db_conn()
+    if db_conn is None:
+        return
+    try:
+        repo = TaskRepository(db_conn)
+        repo.update_config(task_id, extra)
+    except Exception as exc:
+        _logger.warning("[Monitor] 更新 task_id=%s 配置失败: %s", task_id, exc)
+    finally:
+        try:
+            db_conn.dispose()
+        except Exception:
+            pass
+
+
+_EXPORT_STAGE_HINTS = [
+    ("Merging", 0.10),
+    ("Loading", 0.15),
+    ("Quantizing", 0.40),
+    ("Exporting", 0.60),
+    ("Converting", 0.70),
+    ("Saving", 0.85),
+    ("Complete", 1.00),
+]
+
+
+def _run_export_phase(
+    training_job_id: str,
+    task_id: int,
+    output_dir: Path,
+    base_model: str,
+    db_conn,
+) -> str:
+    """训练成功后自动导出最佳检查点的 GGUF 模型，内联监控循环。
+
+    Returns:
+        最终状态 "done" 或 "failed"。
+    """
+    from src.adapters.llamafactory_export_client import LlamaFactoryExportClient, ExportConfig
+
+    # 查找最佳检查点
+    adapter_path = _find_best_checkpoint(output_dir)
+    if not adapter_path:
+        _publish(training_job_id, {
+            "status": "failed", "progress": 0.0,
+            "phase": "exporting", "stage": "导出失败",
+            "message": "训练完成但未找到可导出的检查点",
+        })
+        _update_task_status(task_id, "failed", db_conn)
+        return "failed"
+
+    # 发布阶段过渡消息
+    _publish(training_job_id, {
+        "status": "running", "progress": 0.0,
+        "phase": "exporting", "stage": "准备导出",
+        "message": "训练完成，正在准备GGUF导出...",
+    })
+    _update_task_progress(task_id, 0.0, "exporting", db_conn)
+
+    # 提交导出
+    export_client = LlamaFactoryExportClient()
+    export_config = ExportConfig(
+        base_model=base_model,
+        adapter_path=adapter_path,
+        export_format="gguf",
+        quantization_method="q4_k_m",
+    )
+    result = export_client.submit_export(export_config)
+    if not result.success:
+        _publish(training_job_id, {
+            "status": "failed", "progress": 0.0,
+            "phase": "exporting", "stage": "导出失败",
+            "message": f"导出启动失败: {result.error}",
+        })
+        _update_task_status(task_id, "failed", db_conn)
+        return "failed"
+
+    # 将导出信息写入 task config
+    _update_task_config(task_id, {
+        "export_job_id": result.job_id,
+        "export_adapter_path": adapter_path,
+        "export_path": result.export_path,
+    })
+
+    # 导出监控循环
+    export_log_file = JOB_DIR / result.job_id / "export.log"
+    last_log_size = 0
+    last_stage = "准备导出"
+    last_progress = 0.0
+
+    while _is_process_alive(result.job_id):
+        if export_log_file.exists():
+            current_size = export_log_file.stat().st_size
+            if current_size > last_log_size:
+                try:
+                    lines = export_log_file.read_text(encoding="utf-8").splitlines()
+                except Exception:
+                    lines = []
+                # 从最新行开始检测阶段
+                for line in reversed(lines):
+                    lower = line.lower()
+                    for hint, progress in _EXPORT_STAGE_HINTS:
+                        if hint.lower() in lower:
+                            if hint != last_stage or progress != last_progress:
+                                last_stage = hint
+                                last_progress = progress
+                                last_msg = lines[-1].strip()[:200] if lines else ""
+                                _publish(training_job_id, {
+                                    "status": "running",
+                                    "progress": progress,
+                                    "phase": "exporting",
+                                    "stage": hint,
+                                    "message": last_msg,
+                                })
+                                _update_task_progress(task_id, progress, "exporting", db_conn)
+                            break
+                    else:
+                        continue
+                    break
+                last_log_size = current_size
+        time.sleep(POLL_INTERVAL)
+
+    # 检查导出产物
+    export_path = result.export_path
+    if export_path and os.path.exists(export_path):
+        file_size = os.path.getsize(export_path)
+        _publish(training_job_id, {
+            "status": "done", "progress": 1.0,
+            "phase": "exporting", "stage": "导出完成",
+            "message": f"GGUF导出成功: {os.path.basename(export_path)}",
+            "export_path": export_path, "file_size": file_size,
+        })
+        _update_task_config(task_id, {"export_file_size": file_size})
+        _update_task_progress(task_id, 1.0, "done", db_conn)
+        _update_task_status(task_id, "done", db_conn)
+        return "done"
+    else:
+        _publish(training_job_id, {
+            "status": "failed", "progress": 0.0,
+            "phase": "exporting", "stage": "导出异常",
+            "message": "导出进程已结束但未找到产物文件",
+        })
+        _update_task_status(task_id, "failed", db_conn)
+        return "failed"
+
+
 @celery_client.task(bind=True, name="training.monitor", max_retries=0)
 def monitor_training_job(self, job_id: str, task_id: int) -> dict:
     """Celery 监控任务：轮询训练进度，发布 Redis 消息，进程结束后更新状态。
@@ -287,26 +459,53 @@ def monitor_training_job(self, job_id: str, task_id: int) -> dict:
     # 进程结束后，读取最终状态
     final_state = _read_trainer_state(output_dir)
     if final_state is not None and final_state.get("loss") is not None:
-        final_status = "done"
-        final_msg = {
-            "status": "done",
+        # 训练成功 — 发布过渡消息，然后启动自动导出
+        _publish(job_id, {
+            "status": "running",
             "progress": 1.0,
+            "phase": "training",
             "stage": "训练完成",
-            "message": "训练任务已完成，请前往任务详情查看最终结果",
+            "message": "训练任务已完成，正在启动自动GGUF导出...",
             "final_loss": final_state.get("loss"),
             "final_eval_loss": final_state.get("eval_loss"),
-        }
+        })
+
+        # 从 task config 读取 base_model
+        db_conn = _get_db_conn()
+        base_model = ""
+        try:
+            from src.adapters.repositories.task_repo import TaskRepository
+
+            if db_conn:
+                repo = TaskRepository(db_conn)
+                task = repo.find_by_id(task_id)
+                if task:
+                    cfg = json.loads(task.config)
+                    base_model = cfg.get("base_model", "")
+        except Exception:
+            pass
+
+        # 执行导出阶段
+        export_status = _run_export_phase(job_id, task_id, output_dir, base_model, db_conn)
+
+        if db_conn:
+            try:
+                db_conn.dispose()
+            except Exception:
+                pass
+
+        _logger.info("[Monitor] 训练+导出结束: job_id=%s, export_status=%s", job_id, export_status)
+        return {"job_id": job_id, "task_id": task_id, "status": export_status}
     else:
-        final_status = "failed"
+        # 训练失败
         final_msg = {
             "status": "failed",
             "progress": 0.0,
             "stage": "训练异常",
             "message": "训练进程已退出但未找到完整训练记录",
         }
+        _publish(job_id, final_msg)
+        _update_task_status(task_id, "failed")
 
-    _publish(job_id, final_msg)
-    _update_task_status(task_id, final_status)
-
-    _logger.info("[Monitor] 训练监控结束: job_id=%s, final_status=%s", job_id, final_status)
-    return {"job_id": job_id, "task_id": task_id, "status": final_status}
+        _logger.info("[Monitor] 训练监控结束: job_id=%s, final_status=failed", job_id)
+        return {"job_id": job_id, "task_id": task_id, "status": "failed"}

@@ -279,6 +279,16 @@ def terminate_training_task(
     except Exception as exc:
         _logger.warning("[terminate_training] 无法终止进程 %s: %s", job_id, exc)
 
+    # 如果任务处于导出阶段，同时终止导出子进程
+    export_job_id = config.get("export_job_id") if isinstance(config, dict) else None
+    if export_job_id:
+        try:
+            from src.core.task.training_monitor_task import _terminate_process as _terminate_export
+
+            _terminate_export(export_job_id)
+        except Exception as exc:
+            _logger.warning("[terminate_training] 无法终止导出进程 %s: %s", export_job_id, exc)
+
     # 更新任务状态
     svc.task_repo.update_status(task_id, "cancelled")
 
@@ -328,12 +338,46 @@ def get_training_log(
         return TrainingLogResponse(error="缺少 job_id")
 
     # 训练日志位于 job_dir/train.log
-    log_file = os.path.join(TRAINING_JOB_DIR, job_id, "train.log")
+    log_file = Path(TRAINING_JOB_DIR) / job_id / "train.log"
     if not log_file.exists():
         return TrainingLogResponse(error="日志文件尚未生成")
 
     try:
         with open(log_file, encoding="utf-8") as f:
+            lines = [line.rstrip("\n") for line in f.readlines()]
+        return TrainingLogResponse(lines=lines)
+    except Exception as exc:
+        return TrainingLogResponse(error=str(exc))
+
+
+@router.get("/{task_id}/export-log", response_model=TrainingLogResponse)
+def get_training_export_log(
+    task_id: int,
+    svc: ServiceFactory = Depends(get_services),
+    current_user: TokenPayload = Depends(get_current_user),
+):
+    """读取训练任务的自动导出日志（GGUF export.log）。"""
+    owner_id = int(current_user.user_id)
+    t = svc.task_repo.find_by_id(task_id)
+    if t is None or t.owner_id != owner_id:
+        return TrainingLogResponse(error="任务未找到")
+
+    export_job_id = None
+    try:
+        config = json.loads(t.config)
+        export_job_id = config.get("export_job_id")
+    except Exception:
+        return TrainingLogResponse(error="任务配置无效")
+
+    if not export_job_id:
+        return TrainingLogResponse(error="该任务暂无导出日志")
+
+    log_path = Path(TRAINING_JOB_DIR) / export_job_id / "export.log"
+    if not log_path.exists():
+        return TrainingLogResponse(error="导出日志文件尚未生成")
+
+    try:
+        with open(log_path, encoding="utf-8") as f:
             lines = [line.rstrip("\n") for line in f.readlines()]
         return TrainingLogResponse(lines=lines)
     except Exception as exc:

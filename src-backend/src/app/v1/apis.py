@@ -33,6 +33,10 @@ from src.app.v1.llamafactory import router as llamafactory_router
 
 api_v1.include_router(llamafactory_router)
 
+from src.app.v1.dashboard import router as dashboard_router
+
+api_v1.include_router(dashboard_router)
+
 
 @api_v1.get("/")
 def ask_v1_router():

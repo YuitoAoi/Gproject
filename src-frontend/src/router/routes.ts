@@ -95,6 +95,12 @@ export const businessRoutes: RouteRecordRaw[] = [
         name: 'CleaningMonitoringDetail',
         component: () => import('@/views/cleaning-monitor/index.vue'),
         meta: { title: '清洗监控详情', hidden: true }
+      },
+      {
+        path: 'export-monitoring/:id',
+        name: 'ExportMonitoringDetail',
+        component: () => import('@/views/cleaning-monitor/export.vue'),
+        meta: { title: '导出任务监控', hidden: true }
       }
     ]
   },

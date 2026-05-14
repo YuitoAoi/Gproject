@@ -29,6 +29,9 @@ export interface TrainingProgress {
     total_memory_mb?: number
     temperature?: number
   }>
+  phase?: 'training' | 'exporting'
+  export_path?: string
+  file_size?: number
   type?: string
 }
 
@@ -107,14 +110,16 @@ export function useWebSocketTask(initialJobId: string = '') {
       }
 
       if (status === 'done') {
+        const isExport = data.phase === 'exporting' || data.stage === '导出完成'
         ElNotification.success({
-          title: '训练完成',
-          message: message || `训练任务已完成`
+          title: isExport ? '导出完成' : '训练完成',
+          message: message || (isExport ? 'GGUF模型导出成功' : '训练任务已完成')
         })
       } else if (status === 'failed') {
+        const isExport = data.phase === 'exporting'
         ElNotification.error({
-          title: '训练失败',
-          message: message || `训练任务执行失败`
+          title: isExport ? '导出失败' : '训练失败',
+          message: message || `任务执行失败`
         })
       }
     } catch (e) {

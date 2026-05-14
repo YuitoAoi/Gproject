@@ -44,3 +44,7 @@ class DatasetRepository(abc.ABC):
     @abc.abstractmethod
     def count_modified_today(self, owner_id: int, today: "datetime") -> int:
         pass
+
+    @abc.abstractmethod
+    def count_by_owner(self, owner_id: int) -> int:
+        pass

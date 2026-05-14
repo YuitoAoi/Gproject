@@ -130,3 +130,96 @@ export async function submitTraining(data: TrainingSubmitRequest): Promise<Train
     return { success: false, error: '请求失败' }
   }
 }
+
+/** ═══ 导出任务提交 ═══ */
+
+export interface ExportSubmitRequest {
+  task_name: string
+  base_model: string
+  adapter_path: string
+  params: {
+    export_format?: 'gguf' | 'pytorch' | 'gptq' | 'awq'
+    quantization_method?: 'q4_k_m' | 'q5_k_m' | 'q8_0' | 'f16' | 'f32'
+    export_path?: string
+  }
+}
+
+export interface ExportSubmitResponse {
+  success: boolean
+  task_id?: number
+  job_id?: string
+  export_path?: string
+  error?: string
+}
+
+export async function submitExport(data: ExportSubmitRequest): Promise<ExportSubmitResponse> {
+  try {
+    return await request.post<ExportSubmitResponse>({
+      url: '/llamafactory/export',
+      data
+    })
+  } catch {
+    return { success: false, error: '请求失败' }
+  }
+}
+
+/** ═══ 检查点列表 ═══ */
+
+export interface CheckpointItem {
+  name: string
+  path: string
+  step: number
+  has_adapter: boolean
+}
+
+export interface CheckpointsResponse {
+  success: boolean
+  checkpoints: CheckpointItem[]
+  error?: string
+}
+
+export async function getCheckpoints(trainingTaskId: number): Promise<CheckpointsResponse> {
+  try {
+    return await request.get<CheckpointsResponse>({
+      url: `/llamafactory/checkpoints/${trainingTaskId}`
+    })
+  } catch {
+    return { success: false, checkpoints: [], error: '请求失败' }
+  }
+}
+
+/** ═══ 导出日志读取 ═══ */
+
+export interface ExportLogResponse {
+  lines: string[]
+  error?: string
+}
+
+export async function getExportLog(taskId: number): Promise<ExportLogResponse> {
+  try {
+    return await request.get<ExportLogResponse>({
+      url: `/llamafactory/export/${taskId}/log`
+    })
+  } catch {
+    return { lines: [], error: '请求失败' }
+  }
+}
+
+/** ═══ 导出任务终止 ═══ */
+
+export interface TerminateResponse {
+  success: boolean
+  terminated?: boolean
+  message?: string
+  error?: string
+}
+
+export async function terminateExport(taskId: number): Promise<TerminateResponse> {
+  try {
+    return await request.post<TerminateResponse>({
+      url: `/llamafactory/export/${taskId}/terminate`
+    })
+  } catch {
+    return { success: false, message: '请求失败' }
+  }
+}

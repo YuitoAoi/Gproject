@@ -12,7 +12,7 @@
       />
     </template>
 
-    <!-- 训练任务：使用原有训练布局 -->
+    <!-- 训练任务：使用原有训练布局（含自动导出阶段） -->
     <template v-else-if="taskType === 'training'">
       <!-- 顶部导航栏 -->
       <div class="monitoring-header">
@@ -23,38 +23,85 @@
           </ElButton>
           <span class="header-separator">|</span>
           <LfpSvgIcon icon="ri:brain-line" class="text-lg text-primary mr-2" />
-          <span class="task-name">任务: #{{ taskId }} ({{ displayData.name }})</span>
+          <span class="task-name">任务: #{{ taskId }} ({{ displayData?.name }})</span>
           <ElTag :type="statusConfig.type" effect="dark" class="ml-3">
             {{ statusConfig.label }}
           </ElTag>
+          <ElTag v-if="currentPhase === 'exporting'" type="warning" effect="dark" class="ml-2">
+            导出中
+          </ElTag>
+          <ElTag v-else-if="currentPhase === 'export-done'" type="success" effect="dark" class="ml-2">
+            训练+导出完成
+          </ElTag>
         </div>
         <div class="header-right">
-          <ElButton type="danger" @click="handleForceTerminate">
+          <ElButton
+            v-if="displayData?.status === 'running' || displayData?.status === 'pending'"
+            type="danger"
+            @click="handleForceTerminate"
+          >
             <LfpSvgIcon icon="ri:stop-circle-line" class="mr-1" />
             强制终止
           </ElButton>
         </div>
       </div>
 
-      <!-- 进度条 -->
-      <div class="progress-section">
+      <!-- ========== 训练阶段进度条 ========== -->
+      <div v-if="currentPhase === 'training'" class="progress-section">
         <div class="progress-bar-container">
-          <ElProgress :percentage="displayData.progress" :stroke-width="16" :show-text="false" />
+          <ElProgress :percentage="displayData?.progress ?? 0" :stroke-width="16" :show-text="false" />
         </div>
         <div class="progress-info">
           <span class="progress-text">
-            Step {{ displayData.currentStep }} / {{ displayData.totalSteps }} ({{ displayData.progress }}%)
+            Step {{ displayData?.currentStep ?? 0 }} / {{ displayData?.totalSteps ?? 0 }} ({{ displayData?.progress ?? 0 }}%)
           </span>
           <span class="progress-time">
             <LfpSvgIcon icon="ri:time-line" class="mr-1" />
-            已用时间: {{ displayData.elapsedTime }}
+            已用时间: {{ displayData?.elapsedTime ?? '-' }}
           </span>
         </div>
       </div>
 
-      <!-- 中部区域：训练指标 + 终端日志 -->
-      <div class="main-content">
-        <!-- 左侧：训练指标 -->
+      <!-- ========== 导出阶段进度条 ========== -->
+      <div v-else-if="currentPhase === 'exporting'" class="progress-section">
+        <div class="phase-stepper">
+          <ElSteps :active="1" finish-status="success" simple class="export-stepper">
+            <ElStep title="模型训练" status="finish" />
+            <ElStep title="GGUF 导出" status="process" />
+          </ElSteps>
+        </div>
+        <div class="progress-bar-container">
+          <ElProgress :percentage="exportProgressPct" :stroke-width="16" :show-text="false" />
+        </div>
+        <div class="progress-info">
+          <span class="progress-text">
+            <LfpSvgIcon v-if="currentPhase === 'exporting'" icon="ri:loader-2-line" class="animate-spin mr-1" />
+            {{ exportStage }}
+          </span>
+          <span class="progress-pct">{{ exportProgressPct }}%</span>
+        </div>
+        <div v-if="exportMessage" class="progress-message">{{ exportMessage }}</div>
+      </div>
+
+      <!-- ========== 导出完成摘要 ========== -->
+      <div v-else-if="currentPhase === 'export-done'" class="progress-section">
+        <div class="phase-stepper">
+          <ElSteps :active="2" finish-status="success" simple class="export-stepper">
+            <ElStep title="模型训练" status="finish" />
+            <ElStep title="GGUF 导出" status="finish" />
+          </ElSteps>
+        </div>
+        <div class="export-complete-banner">
+          <LfpSvgIcon icon="ri:checkbox-circle-line" class="text-2xl text-success mr-2" />
+          <span>训练与导出已完成</span>
+          <span class="ml-auto text-sm text-g-500" v-if="exportInfo.size">
+            文件大小: {{ formatFileSize(exportInfo.size) }}
+          </span>
+        </div>
+      </div>
+
+      <!-- ========== 中部区域：训练阶段 ========== -->
+      <div v-if="currentPhase === 'training'" class="main-content">
         <div class="metrics-section">
           <div class="section-header">
             <LfpSvgIcon icon="ri:line-chart-line" class="text-base text-primary mr-2" />
@@ -62,15 +109,15 @@
             <div class="metrics-stats ml-auto">
               <span class="stat-item">
                 <LfpSvgIcon icon="ri:flask-line" class="mr-1" />
-                LR: {{ displayData.learningRateValue ?? '-' }}
+                LR: {{ displayData?.learningRateValue ?? '-' }}
               </span>
               <span class="stat-item">
                 <LfpSvgIcon icon="ri:speed-line" class="mr-1" />
-                Loss: {{ displayData.loss ?? '-' }}
+                Loss: {{ displayData?.loss ?? '-' }}
               </span>
               <span class="stat-item">
                 <LfpSvgIcon icon="ri:memory-device-line" class="mr-1" />
-                Eval Loss: {{ displayData.evalLoss ?? '-' }}
+                Eval Loss: {{ displayData?.evalLoss ?? '-' }}
               </span>
             </div>
           </div>
@@ -78,20 +125,59 @@
             <LossChart :data="lossChartData" />
           </div>
         </div>
-
-        <!-- 右侧：终端日志 -->
         <div class="terminal-section">
           <Terminal :logs="terminalLogs" v-model:auto-scroll="autoScroll" />
         </div>
       </div>
 
-      <!-- 底部区域：参数快照 + GPU 监控 + 检查点 -->
+      <!-- ========== 中部区域：导出阶段 / 导出完成 ========== -->
+      <div v-else class="main-content">
+        <!-- 左侧：训练摘要 -->
+        <div class="metrics-section">
+          <div class="section-header">
+            <LfpSvgIcon icon="ri:bar-chart-box-line" class="text-base text-primary mr-2" />
+            <span>训练摘要</span>
+          </div>
+          <div class="training-summary">
+            <div class="summary-item">
+              <span class="summary-label">最终 Loss</span>
+              <span class="summary-value">{{ displayData?.loss ?? '-' }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Eval Loss</span>
+              <span class="summary-value">{{ displayData?.evalLoss ?? '-' }}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">学习率</span>
+              <span class="summary-value">{{ displayData?.learningRateValue ?? '-' }}</span>
+            </div>
+            <div class="summary-item" v-if="currentPhase === 'export-done'">
+              <span class="summary-label">导出路径</span>
+              <span class="summary-value export-path-value">{{ exportInfo.path || '-' }}</span>
+            </div>
+            <div class="summary-item" v-if="currentPhase === 'export-done'">
+              <span class="summary-label">文件大小</span>
+              <span class="summary-value">{{ exportInfo.size ? formatFileSize(exportInfo.size) : '-' }}</span>
+            </div>
+            <div class="summary-actions" v-if="currentPhase === 'export-done' && exportInfo.path">
+              <ElButton type="primary" @click="handleDownloadExport">
+                <LfpSvgIcon icon="ri:download-2-line" class="mr-1" />
+                下载模型
+              </ElButton>
+            </div>
+          </div>
+        </div>
+        <div class="terminal-section">
+          <Terminal :logs="exportTerminalLogs" v-model:auto-scroll="autoScroll" />
+        </div>
+      </div>
+
+      <!-- ========== 底部区域 ========== -->
       <div class="bottom-content">
         <div class="config-section">
           <ConfigSnapshot :config="displayData" />
         </div>
-        <!-- GPU 显存监控 -->
-        <div class="gpu-section" v-if="gpuStats">
+        <div class="gpu-section" v-if="currentPhase === 'training' && gpuStats">
           <div class="section-header">
             <LfpSvgIcon icon="ri:cpu-line" class="text-base text-primary mr-2" />
             <span>GPU 监控</span>
@@ -108,33 +194,39 @@
             </div>
           </div>
         </div>
-        <div class="checkpoint-section">
-          <CheckpointTable :checkpoints="checkpoints" />
+        <div class="checkpoint-section" v-if="currentPhase === 'training'">
+          <CheckpointTable :checkpoints="checkpoints" :base-model="trainingBaseModel" />
         </div>
       </div>
     </template>
 
-    <!-- 清洗/导出任务：不支持在此页面查看 -->
-    <template v-else>
-      <div class="unsupported-task">
-        <div class="unsupported-task__icon">
-          <span class="ri:error-warning-line text-5xl text-warning"></span>
+    <!-- 导出任务：跳转到独立的导出监控页面 -->
+    <template v-else-if="taskType === 'export'">
+      <div class="export-redirect">
+        <div class="redirect-content">
+          <LfpSvgIcon icon="ri:download-2-line" class="text-5xl text-warning mb-4" />
+          <h2>格式导出任务</h2>
+          <p class="text-g-500">正在跳转到导出监控页面...</p>
+          <ElButton type="primary" @click="goToExportMonitor">
+            <LfpSvgIcon icon="ri:arrow-right-line" class="mr-1" />
+            前往导出监控
+          </ElButton>
         </div>
-        <h2 class="unsupported-task__title">此页面不支持查看该任务类型</h2>
-        <p class="unsupported-task__desc">
-          当前页面仅支持查看
-          <strong>训练任务</strong>详情。
-        </p>
-        <p class="unsupported-task__desc">
-          <template v-if="taskType === 'cleaning'"
-            >请前往 <strong>清洗监控页面</strong> 查看。</template
-          >
-          <template v-else-if="taskType === 'export'">格式导出任务详情暂未开放。</template>
-          <template v-else>任务类型：{{ taskType }}</template>
-        </p>
-        <ElButton type="primary" @click="handleBack">
-          <span class="ri:arrow-left-line mr-1"></span>返回任务调度中心
-        </ElButton>
+      </div>
+    </template>
+
+    <!-- 清洗任务：跳转到清洗监控页面 -->
+    <template v-else-if="taskType === 'cleaning'">
+      <div class="export-redirect">
+        <div class="redirect-content">
+          <LfpSvgIcon icon="ri:cleaning-2-line" class="text-5xl text-primary mb-4" />
+          <h2>数据清洗任务</h2>
+          <p class="text-g-500">正在跳转到清洗监控页面...</p>
+          <ElButton type="primary" @click="goToCleaningMonitor">
+            <LfpSvgIcon icon="ri:arrow-right-line" class="mr-1" />
+            前往清洗监控
+          </ElButton>
+        </div>
       </div>
     </template>
   </div>
@@ -149,7 +241,13 @@
   import CheckpointTable from '@/components/business/task-dispatch/modules/task-monitoring/checkpoint-table.vue'
   import { ElMessage, ElMessageBox } from 'element-plus'
   import { TASK_STATUS_CONFIG } from '@/mock/modules/task-dispatch'
-  import { getTask as fetchTask, terminateTask, type TaskItem as ApiTask } from '@/api/task'
+  import {
+    getTask as fetchTask,
+    terminateTask,
+    getTrainingExportLog,
+    type TaskItem as ApiTask,
+  } from '@/api/task'
+  import { getCheckpoints } from '@/api/llamafactory'
   import { useWebSocketTask } from '@/hooks/core/useWebSocketTask'
 
   defineOptions({ name: 'TaskMonitoringPage' })
@@ -164,7 +262,18 @@
   const taskId = computed(() => Number(taskIdParam.value))
 
   const terminalLogs = ref<any[]>([])
+  const exportTerminalLogs = ref<any[]>([])
   const checkpoints = ref<any[]>([])
+  const trainingBaseModel = computed(() => {
+    const t = rawTask.value
+    if (!t) return ''
+    try {
+      const cfg = JSON.parse(t.config || '{}')
+      return cfg.base_model || ''
+    } catch {
+      return ''
+    }
+  })
 
   const autoScroll = ref(true)
 
@@ -216,11 +325,64 @@
     }
   })
 
-  // 先声明 WebSocket hook（trainingProgress 在此处可用）
+  // WebSocket hook
   const wsHook = useWebSocketTask('')
   const { connect: wsConnect, disconnect: wsDisconnect, lossHistory, trainingProgress } = wsHook
 
-  /** GPU 显存监控数据，从 WebSocket 实时推送获取 */
+  /** 当前任务阶段：training / exporting / export-done */
+  const currentPhase = computed(() => {
+    // 优先从 WebSocket 实时数据判断
+    const wsPhase = trainingProgress.value?.phase
+    if (wsPhase === 'exporting') {
+      // 导出阶段中
+      if (trainingProgress.value?.status === 'done') return 'export-done'
+      return 'exporting'
+    }
+    // 回退到 DB 数据判断（页面刷新场景）
+    const task = rawTask.value
+    if (task) {
+      if (task.phase === 'exporting' && task.status === 'running') return 'exporting'
+      if (task.status === 'done') {
+        try {
+          const cfg = JSON.parse(task.config || '{}')
+          if (cfg.export_path) return 'export-done'
+        } catch { /* ignore */ }
+      }
+    }
+    return 'training'
+  })
+
+  /** 导出进度（0-100） */
+  const exportProgressPct = computed(() => {
+    const p = trainingProgress.value
+    if (!p) return 0
+    return Math.round((p.progress ?? 0) * 100)
+  })
+
+  /** 导出阶段文字 */
+  const exportStage = computed(() => trainingProgress.value?.stage ?? '准备中')
+
+  /** 导出阶段消息 */
+  const exportMessage = computed(() => trainingProgress.value?.message ?? '')
+
+  /** 导出产物信息 */
+  const exportInfo = computed(() => {
+    const p = trainingProgress.value
+    const task = rawTask.value
+    let path = p?.export_path ?? ''
+    let size = p?.file_size ?? 0
+    // 回退从 task config 读取
+    if (!path && task) {
+      try {
+        const cfg = JSON.parse(task.config || '{}')
+        path = cfg.export_path ?? ''
+        size = cfg.export_file_size ?? 0
+      } catch { /* ignore */ }
+    }
+    return { path, size }
+  })
+
+  /** GPU 显存监控数据 */
   const gpuStats = computed(() => {
     const p = trainingProgress.value
     if (!p?.gpu?.length) return null
@@ -255,7 +417,7 @@
     }
   })
 
-  /** 合并后的展示数据：WebSocket 实时数据优先覆盖静态 API 数据 */
+  /** 合并后的展示数据 */
   const displayData = computed(() => {
     const base = taskData.value
     if (!base) return null
@@ -277,7 +439,6 @@
     return TASK_STATUS_CONFIG[status] || TASK_STATUS_CONFIG.pending
   })
 
-  /** Loss 曲线数据，从 WebSocket 实时累积 */
   const lossChartData = computed(() => lossHistory.value)
 
   async function loadLogs() {
@@ -301,22 +462,30 @@
           message: line
         }))
       } else if (data.error) {
-        terminalLogs.value = [
-          {
-            time: '',
-            level: 'WARN',
-            message: data.error
-          }
-        ]
+        terminalLogs.value = [{ time: '', level: 'WARN', message: data.error }]
       }
     } catch {
-      terminalLogs.value = [
-        {
+      terminalLogs.value = [{ time: '', level: 'WARN', message: '无法加载训练日志' }]
+    }
+  }
+
+  /** 加载导出日志 */
+  async function loadExportLogs() {
+    const id = taskId.value
+    if (isNaN(id)) return
+    try {
+      const resp = await getTrainingExportLog(id)
+      if (resp.lines) {
+        exportTerminalLogs.value = resp.lines.map((line: string) => ({
           time: '',
-          level: 'WARN',
-          message: '无法加载训练日志'
-        }
-      ]
+          level: parseLevel(line),
+          message: line
+        }))
+      } else if (resp.error) {
+        exportTerminalLogs.value = [{ time: '', level: 'WARN', message: resp.error }]
+      }
+    } catch {
+      exportTerminalLogs.value = [{ time: '', level: 'WARN', message: '无法加载导出日志' }]
     }
   }
 
@@ -330,7 +499,6 @@
     return 'INFO'
   }
 
-  /** WebSocket 推送训练完成/失败时，重新拉取任务数据刷新页面状态 */
   async function refreshTask() {
     const id = taskId.value
     if (isNaN(id)) return
@@ -340,9 +508,52 @@
         rawTask.value = resp.task
       }
     } catch {
-      // 静默失败，不影响用户
+      // 静默失败
     }
   }
+
+  async function loadCheckpoints() {
+    const id = taskId.value
+    if (isNaN(id)) return
+    try {
+      const resp = await getCheckpoints(id)
+      if (resp.success && resp.checkpoints) {
+        checkpoints.value = resp.checkpoints
+      }
+    } catch {
+      // 静默失败
+    }
+  }
+
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+    return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+  }
+
+  function handleDownloadExport() {
+    const path = exportInfo.value.path
+    if (!path) {
+      ElMessage.warning('未找到导出产物路径')
+      return
+    }
+    window.open(`/api/llamafactory/export/${taskId.value}/download`)
+  }
+
+  function goToExportMonitor() {
+    router.push(`/workbench/export-monitoring/${taskId.value}`)
+  }
+
+  function goToCleaningMonitor() {
+    router.push(`/workbench/cleaning-monitor/${taskId.value}`)
+  }
+
+  /** 监听阶段切换，自动加载导出日志 */
+  watch(currentPhase, (phase) => {
+    if (phase === 'exporting' || phase === 'export-done') {
+      loadExportLogs()
+    }
+  })
 
   onMounted(async () => {
     const id = taskId.value
@@ -362,6 +573,14 @@
       rawTask.value = resp.task
 
       await loadLogs()
+      if (taskType.value === 'training') {
+        await loadCheckpoints()
+      }
+
+      // 如果已处于导出阶段（刷新场景），加载导出日志
+      if (currentPhase.value === 'exporting' || currentPhase.value === 'export-done') {
+        await loadExportLogs()
+      }
 
       if (resp.task.status === 'running' || resp.task.status === 'pending') {
         const cfg = JSON.parse(resp.task.config || '{}')
@@ -470,6 +689,8 @@
       align-items: center;
 
       .progress-text {
+        display: flex;
+        align-items: center;
         font-size: 14px;
         font-weight: 500;
         color: var(--lfp-gray-800);
@@ -479,7 +700,40 @@
         font-size: 13px;
         color: var(--lfp-gray-600);
       }
+
+      .progress-pct {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--el-color-primary);
+      }
     }
+
+    .progress-message {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--lfp-gray-500);
+      word-break: break-all;
+    }
+  }
+
+  .phase-stepper {
+    margin-bottom: 16px;
+
+    .export-stepper {
+      padding: 8px 16px;
+    }
+  }
+
+  .export-complete-banner {
+    display: flex;
+    align-items: center;
+    margin-top: 12px;
+    padding: 12px 16px;
+    background: var(--el-color-success-light-9);
+    border-radius: var(--custom-radius, 8px);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--el-color-success-dark-2);
   }
 
   .main-content {
@@ -520,6 +774,41 @@
 
       .metrics-chart {
         flex: 1;
+      }
+
+      .training-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px 0;
+
+        .summary-item {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+
+          .summary-label {
+            font-size: 12px;
+            color: var(--lfp-gray-500);
+          }
+
+          .summary-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--lfp-gray-800);
+            font-family: 'Consolas', 'Monaco', monospace;
+
+            &.export-path-value {
+              font-size: 12px;
+              font-weight: 400;
+              word-break: break-all;
+            }
+          }
+        }
+
+        .summary-actions {
+          margin-top: 8px;
+        }
       }
     }
 
@@ -579,31 +868,37 @@
     }
   }
 
-  .unsupported-task {
+  .export-redirect {
     display: flex;
-    flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100%;
     min-height: 400px;
-    padding: 40px;
-    text-align: center;
 
-    &__icon {
-      margin-bottom: 24px;
-    }
+    .redirect-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
 
-    &__title {
-      font-size: 20px;
-      font-weight: 600;
-      color: var(--lfp-gray-800);
-      margin: 0 0 12px;
-    }
+      h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 0 8px;
+      }
 
-    &__desc {
-      font-size: 14px;
-      color: var(--lfp-gray-600);
-      margin: 0 0 8px;
+      p {
+        margin: 0 0 20px;
+      }
     }
+  }
+
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 </style>

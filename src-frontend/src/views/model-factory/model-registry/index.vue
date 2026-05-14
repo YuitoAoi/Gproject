@@ -173,7 +173,7 @@
   import { ElMessage } from 'element-plus'
   import LfpSvgIcon from '@/components/core/base/lfp-svg-icon/index.vue'
   import ModelDrawer from './modules/model-drawer.vue'
-  import { getLlamaFactoryModels } from '@/api/llamafactory'
+  import { getLlamaFactoryModels, getFinetunedModels } from '@/api/llamafactory'
 
   defineOptions({ name: 'ModelRegistryPage' })
 
@@ -237,9 +237,17 @@
   async function fetchModels() {
     loading.value = true
     try {
-      const resp = await getLlamaFactoryModels()
+      const [resp, finetunedResp] = await Promise.all([
+        getLlamaFactoryModels(),
+        getFinetunedModels(),
+      ])
       if (resp.success && resp.models) {
-        models.value = resp.models.map(parseModelId)
+        const onlineSet = new Set(finetunedResp.online ?? [])
+        models.value = resp.models.map((id: string) => {
+          const parsed = parseModelId(id)
+          parsed.online = onlineSet.has(id)
+          return parsed
+        })
       } else {
         models.value = []
         if (resp.error) {

@@ -4,29 +4,29 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
       <LfpStatsCard
         title="运行中 / 排队中"
-        :count="3"
+        :count="activeTaskCount"
         description="当前活动任务数"
         icon="ri:timer-line"
         iconStyle="bg-blue-500"
       />
       <LfpStatsCard
         title="已纳管数据集"
-        :count="12"
-        description="总容量 4.5 GB"
+        :count="datasetCount"
+        :description="`总容量 ${storageTotalLabel}`"
         icon="ri:database-2-line"
         iconStyle="bg-green-500"
       />
       <LfpStatsCard
         title="已微调模型"
-        :count="5"
+        :count="finetunedModelCount"
         description="可用模型数量"
         icon="ri:robot-3-line"
         iconStyle="bg-purple-500"
       />
       <LfpStatsCard
-        title="累计算力消耗"
-        :count="128"
-        description="本周新增: 12 小时"
+        title="已完成任务"
+        :count="computeTaskCount"
+        description="历史累计完成"
         icon="ri:cpu-line"
         iconStyle="bg-orange-500"
       />
@@ -79,15 +79,19 @@
       <!-- 右侧 25%：存储水位 -->
       <div class="lg:col-span-3 flex">
         <LfpDonutChartCard
+          v-if="storageInfo"
           class="flex-1"
           title="存储水位"
-          :value="750"
-          :percentage="75"
-          :data="[750, 250]"
-          currentValue="已用 750GB"
-          previousValue="剩余 250GB"
+          :value="storageInfo.used_gb"
+          :percentage="storageInfo.percentage"
+          :data="[storageInfo.used_gb, storageInfo.free_gb]"
+          :currentValue="`已用 ${storageInfo.used_gb}GB`"
+          :previousValue="`剩余 ${storageInfo.free_gb}GB`"
           flex
         />
+        <div v-else class="flex-1 lfp-card p-5 flex items-center justify-center text-g-500 text-sm">
+          存储信息不可用
+        </div>
       </div>
     </div>
 
@@ -97,11 +101,11 @@
       <div class="lg:col-span-4 h-[450px]">
         <LfpBarChartCard
           class="h-full"
-          :value="42"
+          :value="totalDoneCount"
           label="过去7天完成任务"
-          :percentage="12"
-          :chartData="[3, 5, 2, 8, 12, 7, 5]"
-          :xAxisData="['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']"
+          :percentage="doneTrendPercentage"
+          :chartData="dailyDoneChartData"
+          :xAxisData="dailyDoneXAxis"
           flex
         />
       </div>
@@ -130,70 +134,99 @@
 </template>
 
 <script setup lang="ts">
+  import { getDashboard, type DashboardResponse, type ServiceHealthItem } from '@/api/dashboard'
+
   defineOptions({ name: 'DashboardPage' })
 
-  const serviceHealthList = ref([
-    {
-      title: 'Redis',
-      status: '正常',
-      time: '运行中',
-      class: 'bg-green-100 text-green-600',
-      icon: 'ri:database-2-line'
-    },
-    {
-      title: 'Celery',
-      status: '正常',
-      time: '运行中',
-      class: 'bg-green-100 text-green-600',
-      icon: 'ri:timer-flash-line'
-    },
-    {
-      title: 'WebSocket',
-      status: '正常',
-      time: '运行中',
-      class: 'bg-green-100 text-green-600',
-      icon: 'ri:wifi-line'
-    },
-    {
-      title: 'GPU Driver',
-      status: '正常',
-      time: '就绪',
-      class: 'bg-blue-100 text-blue-600',
-      icon: 'ri:hard-drive-3-line'
-    }
-  ])
+  const dashboardData = ref<DashboardResponse | null>(null)
+
+  // ── 统计卡片 ──────────────────────────────────────────
+
+  const activeTaskCount = computed(() => dashboardData.value?.active_task_count ?? 0)
+  const datasetCount = computed(() => dashboardData.value?.dataset_count ?? 0)
+  const finetunedModelCount = computed(() => dashboardData.value?.finetuned_model_count ?? 0)
+  const computeTaskCount = computed(() => dashboardData.value?.compute_task_count ?? 0)
+
+  // ── 服务健康枢纽 ──────────────────────────────────────
+
+  const serviceHealthList = computed(() => {
+    const raw = dashboardData.value?.service_health ?? []
+    return raw.map((item: ServiceHealthItem) => ({
+      title: item.title,
+      status: item.status,
+      time: item.time,
+      class: item.class_,
+      icon: item.icon,
+    }))
+  })
+
+  // ── GPU 数据（暂为静态） ──────────────────────────────
 
   const gpuData = ref([
-    { name: 'GPU 0: RTX 4090', usage: 95 },
-    { name: 'GPU 1: RTX 4090', usage: 80 },
-    { name: 'GPU 2: RTX 4090', usage: 45 },
+    { name: 'GPU 0: RTX 4090', usage: 0 },
+    { name: 'GPU 1: RTX 4090', usage: 0 },
+    { name: 'GPU 2: RTX 4090', usage: 0 },
     { name: 'GPU 3: RTX 4090', usage: 0 },
-    { name: 'GPU 4: RTX 4090', usage: 60 },
-    { name: 'GPU 5: RTX 4090', usage: 30 },
-    { name: 'GPU 6: RTX 4090', usage: 85 },
-    { name: 'GPU 7: RTX 4090', usage: 0 }
+    { name: 'GPU 4: RTX 4090', usage: 0 },
+    { name: 'GPU 5: RTX 4090', usage: 0 },
+    { name: 'GPU 6: RTX 4090', usage: 0 },
+    { name: 'GPU 7: RTX 4090', usage: 0 },
   ])
 
-  const taskProgressList = ref([
-    { taskName: 'Llama3-微调-001', phase: '训练中', progress: 65 },
-    { taskName: 'Qwen-数据清洗', phase: '数据处理', progress: 90 },
-    { taskName: 'Baichuan-模型导出', phase: '已完成', progress: 100 },
-    { taskName: 'ChatGLM3-增量训练', phase: '排队中', progress: 0 },
-    { taskName: 'DeepSeek-评测任务', phase: '推理中', progress: 45 },
-    { taskName: 'Mistral-格式转换', phase: '数据处理', progress: 78 },
-    { taskName: 'LLaMA2-检索增强', phase: '训练中', progress: 32 },
-    { taskName: 'Qwen2.5-量化导出', phase: '已完成', progress: 100 },
-    { taskName: 'Yi-34B-全量微调', phase: '排队中', progress: 5 },
-    { taskName: 'Phi-3-数据标注', phase: '数据处理', progress: 88 }
-  ])
+  // ── 存储水位 ──────────────────────────────────────────
 
-  const auditTrailList = ref([
-    { time: '10 分钟前', status: 'success', content: 'Admin 启动了 Llama3 微调任务' },
-    { time: '1 小时前', status: 'success', content: '数据集 清洗完成，大小 1.2GB' },
-    { time: '昨天', status: 'success', content: '导出模型 Qwen-7B-chat 完成' },
-    { time: '2 天前', status: 'primary', content: '新建数据集 medical-zh 成功，共 5000 条' },
-    { time: '3 天前', status: 'danger', content: '训练任务 fine-tune-batch-1 失败：OOM' }
-  ])
+  const storageInfo = computed(() => dashboardData.value?.storage ?? null)
+  const storageTotalLabel = computed(() => {
+    const s = storageInfo.value
+    return s ? `${s.total_gb} GB` : '—'
+  })
+
+  // ── 7 天完成任务趋势 ──────────────────────────────────
+
+  const dailyDoneChartData = computed(() => {
+    const raw = dashboardData.value?.daily_done ?? []
+    return raw.map((d) => d.count)
+  })
+
+  const dailyDoneXAxis = computed(() => {
+    const raw = dashboardData.value?.daily_done ?? []
+    return raw.map((d) => d.date)
+  })
+
+  const totalDoneCount = computed(() => {
+    return (dashboardData.value?.daily_done ?? []).reduce((sum, d) => sum + d.count, 0)
+  })
+
+  const doneTrendPercentage = computed(() => {
+    const counts = dashboardData.value?.daily_done ?? []
+    if (counts.length < 2) return 0
+    const firstHalf = counts.slice(0, Math.floor(counts.length / 2)).reduce((s, d) => s + d.count, 0)
+    const secondHalf = counts.slice(Math.floor(counts.length / 2)).reduce((s, d) => s + d.count, 0)
+    if (firstHalf === 0) return secondHalf > 0 ? 100 : 0
+    return Math.round(((secondHalf - firstHalf) / firstHalf) * 100)
+  })
+
+  // ── 任务简报 ──────────────────────────────────────────
+
+  const taskProgressList = computed(() => {
+    return (dashboardData.value?.task_briefing ?? []).map((t) => ({
+      taskName: t.taskName,
+      phase: t.phase,
+      progress: t.progress,
+    }))
+  })
+
+  // ── 审计追踪 ──────────────────────────────────────────
+
+  const auditTrailList = computed(() => {
+    return (dashboardData.value?.audit_trail ?? []).map((a) => ({
+      time: a.time,
+      status: a.status,
+      content: a.content,
+    }))
+  })
+
+  // ── GPU 辅助 ──────────────────────────────────────────
 
   const getGpuUsageClass = (usage: number) => {
     if (usage > 80) return 'text-red-500'
@@ -206,6 +239,15 @@
     if (usage > 50) return '#e6a23c'
     return '#67c23a'
   }
+
+  // ── 数据加载 ──────────────────────────────────────────
+
+  onMounted(async () => {
+    const result = await getDashboard()
+    if (result) {
+      dashboardData.value = result
+    }
+  })
 </script>
 
 <style lang="scss" scoped>
