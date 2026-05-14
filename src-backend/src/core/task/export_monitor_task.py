@@ -57,9 +57,22 @@ def _is_process_alive(job_id: str) -> bool:
         return False
     try:
         pid = int(pid_path.read_text(encoding="utf-8").strip())
-        os.kill(pid, 0)
-        return True
-    except (OSError, ValueError):
+        if sys.platform == "win32":
+            import ctypes
+
+            kernel32 = ctypes.windll.kernel32
+            PROCESS_QUERY_INFORMATION = 0x0400
+            handle = kernel32.OpenProcess(PROCESS_QUERY_INFORMATION, False, pid)
+            if not handle:
+                return False
+            exit_code = ctypes.c_ulong()
+            kernel32.GetExitCodeProcess(handle, ctypes.byref(exit_code))
+            kernel32.CloseHandle(handle)
+            return exit_code.value == 259  # STILL_ACTIVE
+        else:
+            os.kill(pid, 0)
+            return True
+    except (OSError, ValueError, ImportError):
         return False
 
 

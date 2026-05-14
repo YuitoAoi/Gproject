@@ -168,7 +168,10 @@ def dispatch_task(
     if t.task_type == "training":
         celery_client.send_task("training.monitor", kwargs={"job_id": job_id, "task_id": task_id})
     elif t.task_type == "cleaning":
-        celery_client.send_task("dataset.monitor_graphgen", kwargs={"job_id": job_id, "dataset_id": dataset_id})
+        try:
+            celery_client.send_task("dataset.monitor_graphgen", kwargs={"job_id": job_id, "dataset_id": dataset_id})
+        except Exception as exc:
+            _logger.warning("[dispatch_task] 下发 dataset.monitor_graphgen 失败: %s", exc)
     else:
         raise HTTPException(status_code=400, detail=f"Task type {t.task_type} does not support dispatch")
 

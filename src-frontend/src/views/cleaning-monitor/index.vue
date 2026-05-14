@@ -368,7 +368,48 @@
   }
 
   const wsHook = useWebSocketTask('')
-  const { connect: wsConnect, disconnect: wsDisconnect } = wsHook
+  const { connect: wsConnect, disconnect: wsDisconnect, trainingProgress } = wsHook
+
+  /** 消费 WebSocket 实时进度消息，更新本地状态和日志 */
+  watch(trainingProgress, (data) => {
+    if (!data) return
+
+    // 更新 rawTask 的 progress 和 phase（反映到页面进度条和阶段显示）
+    if (rawTask.value) {
+      rawTask.value.progress = data.progress ?? rawTask.value.progress
+      rawTask.value.phase = data.stage || rawTask.value.phase
+      if (data.status) {
+        rawTask.value.status = data.status as any
+      }
+    }
+
+    // 追加日志行（区分阶段日志和引擎日志）
+    const now = new Date()
+    const time = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`
+
+    if (data.type === 'engine_log' && data.line) {
+      // 从 monitor 任务直接推送的日志行
+      terminalLogs.value.push({
+        time,
+        level: parseLevel(data.line),
+        message: data.line
+      })
+    } else if (data.stage && data.status !== 'pending') {
+      // 阶段进度消息
+      const level = data.status === 'done' ? 'STAGE_DONE'
+        : data.status === 'failed' ? 'STAGE_ERROR'
+        : 'STAGE_INPROGRESS'
+      const displayMsg = data.status === 'failed' ? `▸ ${data.stage}`
+        : data.progress != null ? `▸ ${data.stage}  ${Math.round(data.progress * 100)}%`
+        : `▸ ${data.stage}`
+      terminalLogs.value.push({ time, level: level as any, message: displayMsg })
+      if (data.message) {
+        terminalLogs.value.push({ time, level: parseLevel(data.message), message: data.message })
+      }
+    } else if (data.message) {
+      terminalLogs.value.push({ time, level: parseLevel(data.message), message: data.message })
+    }
+  })
 
   onMounted(async () => {
     const id = taskId.value

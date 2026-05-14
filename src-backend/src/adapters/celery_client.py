@@ -22,5 +22,6 @@ celery_client.conf.update(
     include=[
         "src.core.task.training_monitor_task",
         "src.core.task.export_monitor_task",
+        "src.core.task.graphgen_monitor_task",
     ],
 )
